@@ -429,8 +429,9 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
             </div>
         </div>
         <div class="top-bar-actions">
+            <button class="icon-btn round" onclick="toggleLang()" id="langBtn" title="Language">EN</button>
             <button class="icon-btn round" onclick="showSettings()" title="Settings">&#9881;</button>
-            <button class="icon-btn" onclick="showImportExport()" title="Import/Export">&#128229; ייצוא</button>
+            <button class="icon-btn" onclick="showImportExport()" id="btnExport">&#128229; <span data-i18n="export">&#1497;&#1497;&#1510;&#1493;&#1488;</span></button>
         </div>
     </div>
 
@@ -995,12 +996,57 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     }
 
     // Unified API (same interface as old FalAPI)
+    // Auto-fallback: try providers in order until one works
+    function getFallbackOrder() {
+        var selected = getProvider();
+        var order = [selected];
+        var all = ['pollinations', 'siliconflow', 'gemini', 'fal'];
+        all.forEach(function(p) { if (p !== selected) order.push(p); });
+        return order;
+    }
+
+    function getProviderInstance(name) {
+        if (name === 'siliconflow') return SiliconFlowProvider;
+        if (name === 'gemini') return GeminiProvider;
+        if (name === 'fal') return FalProvider;
+        return PollinationsProvider;
+    }
+
+    function tryWithFallback(method, args) {
+        var order = getFallbackOrder();
+        var lastError = null;
+
+        function tryNext(i) {
+            if (i >= order.length) return Promise.reject(lastError || new Error('All providers failed'));
+            var provName = order[i];
+            var prov = getProviderInstance(provName);
+            var provInfo = PROVIDERS[provName];
+
+            // Skip if needs key and no key set
+            if (provInfo.needsKey && !localStorage.getItem('ai_provider_key_' + provName)) {
+                return tryNext(i + 1);
+            }
+            // Skip if provider doesn't support this method
+            if (method === 'applyTemplate' && !provInfo.canEdit) return tryNext(i + 1);
+            if (method === 'isolateProduct' && !provInfo.canIsolate) return tryNext(i + 1);
+            if (method === 'enhanceToStudio' && !provInfo.canEdit) return tryNext(i + 1);
+
+            return prov[method].apply(null, args).catch(function(err) {
+                console.log('Provider ' + provName + ' failed: ' + err.message + ', trying next...');
+                lastError = err;
+                return tryNext(i + 1);
+            });
+        }
+        return tryNext(0);
+    }
+
+    // Unified API with auto-fallback
     var FalAPI = {
-        getApiKey: function() { return getProvider() === 'pollinations' ? 'free' : getProviderKey(); },
-        generateFromText: function(n, d) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().generateFromText(n, d); },
-        applyTemplate: function(s, n, d) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().applyTemplate(s, n, d); },
-        isolateProduct: function(s) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().isolateProduct(s); },
-        enhanceToStudio: function(s, n) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().enhanceToStudio(s, n); }
+        getApiKey: function() { return 'auto'; },
+        generateFromText: function(n, d) { return tryWithFallback('generateFromText', [n, d]); },
+        applyTemplate: function(s, n, d) { return tryWithFallback('applyTemplate', [s, n, d]); },
+        isolateProduct: function(s) { return tryWithFallback('isolateProduct', [s]); },
+        enhanceToStudio: function(s, n) { return tryWithFallback('enhanceToStudio', [s, n]); }
     };
 
     // ========================================
@@ -1100,7 +1146,7 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
             card.dataset.productId = product.id;
 
             var statusClass = 'status-' + product.status;
-            var statusText = { draft: '\u05D8\u05D9\u05D5\u05D8\u05D4', processing: '\u05DE\u05E2\u05D1\u05D3...', ready: '\u05DE\u05D5\u05DB\u05DF', error: '\u05E9\u05D2\u05D9\u05D0\u05D4' }[product.status] || product.status;
+            var statusText = { draft: t('statusDraft'), processing: t('statusProcessing'), ready: t('statusReady'), error: t('statusError') }[product.status] || product.status;
 
             var imageContent = '';
             if (product.thumbnailUrl) {
@@ -1109,6 +1155,7 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
                 imageContent = '<div class="card-placeholder">\uD83D\uDCE6</div>';
             }
 
+            var dis = product.status === 'processing' ? 'disabled' : '';
             card.innerHTML =
                 '<div class="card-select"><input type="checkbox" class="product-checkbox" ' +
                 (state.selectedIds.has(product.id) ? 'checked' : '') +
@@ -1119,13 +1166,13 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
                 '</div>' +
                 '<div class="card-info">' +
                 '<div class="card-name" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'name\')">' + escapeHtml(product.name) + '</div>' +
-                '<div class="card-desc" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'description\')">' + escapeHtml(product.description || '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4') + '</div>' +
+                '<div class="card-desc" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'description\')">' + escapeHtml(product.description || t('clickToEdit')) + '</div>' +
                 '</div>' +
                 '<div class="card-actions">' +
-                '<button class="ai-btn btn-generate" onclick="aiGenerate(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\u2728 \u05DE\u05D0\u05E4\u05E1</button>' +
-                '<button class="ai-btn btn-template" onclick="aiTemplate(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\uD83D\uDCCB \u05EA\u05D1\u05E0\u05D9\u05EA</button>' +
-                '<button class="ai-btn btn-isolate" onclick="aiIsolate(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\u2702 \u05D1\u05D9\u05D3\u05D5\u05D3</button>' +
-                '<button class="ai-btn btn-studio" onclick="aiStudio(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\uD83D\uDCF7 \u05E1\u05D8\u05D5\u05D3\u05D9\u05D5</button>' +
+                '<button class="ai-btn btn-generate" onclick="aiGenerate(\'' + product.id + '\')" ' + dis + '>' + t('generate') + '</button>' +
+                '<button class="ai-btn btn-template" onclick="aiTemplate(\'' + product.id + '\')" ' + dis + '>' + t('template') + '</button>' +
+                '<button class="ai-btn btn-isolate" onclick="aiIsolate(\'' + product.id + '\')" ' + dis + '>' + t('isolate') + '</button>' +
+                '<button class="ai-btn btn-studio" onclick="aiStudio(\'' + product.id + '\')" ' + dis + '>' + t('studio') + '</button>' +
                 '</div>' +
                 '<button class="card-delete" onclick="confirmDelete(\'' + product.id + '\')" title="\u05DE\u05D7\u05E7">&times;</button>';
 
@@ -1183,12 +1230,12 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
             element.setAttribute('contenteditable', 'false');
             element.classList.remove('editing');
             var newValue = element.textContent.trim();
-            if (newValue && newValue !== '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4') {
+            if (newValue && newValue !== t('clickToEdit')) {
                 var update = {};
                 update[field] = newValue;
                 updateProduct(productId, update);
             } else if (field === 'description') {
-                element.textContent = product.description || '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4';
+                element.textContent = product.description || t('clickToEdit');
             } else {
                 element.textContent = product[field];
             }
@@ -1201,7 +1248,7 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
                 element.blur();
             }
             if (e.key === 'Escape') {
-                element.textContent = product[field] || (field === 'description' ? '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4' : '');
+                element.textContent = product[field] || (field === 'description' ? t('clickToEdit') : '');
                 element.blur();
             }
         });
@@ -2095,7 +2142,109 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     }
 
     // ========================================
-    // 16. DRAG & DROP
+    // 16. INTERNATIONALIZATION
+    // ========================================
+    var LANG = {
+        he: {
+            search: '\u05d7\u05e4\u05e9 \u05de\u05d5\u05e6\u05e8\u05d9\u05dd...',
+            addProduct: '+ \u05de\u05d5\u05e6\u05e8 \u05d7\u05d3\u05e9',
+            selectAll: '\u2611 \u05d1\u05d7\u05e8 \u05d4\u05db\u05dc',
+            importExcel: '\u{1F4C4} \u05d9\u05d9\u05d1\u05d5\u05d0 Excel',
+            total: '\u05e1\u05d4"\u05db',
+            ready: '\u05de\u05d5\u05db\u05e0\u05d9\u05dd',
+            drafts: '\u05d8\u05d9\u05d5\u05d8\u05d5\u05ea',
+            errors: '\u05e9\u05d2\u05d9\u05d0\u05d5\u05ea',
+            emptyTitle: '\u05d0\u05d9\u05df \u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05e2\u05d3\u05d9\u05d9\u05df',
+            emptyDesc: '\u05dc\u05d7\u05e5 \u05e2\u05dc "\u05de\u05d5\u05e6\u05e8 \u05d7\u05d3\u05e9" \u05d0\u05d5 \u05d9\u05d9\u05d1\u05d0 Excel',
+            generate: '\u2728 \u05de\u05d0\u05e4\u05e1',
+            template: '\u{1F4CB} \u05ea\u05d1\u05e0\u05d9\u05ea',
+            isolate: '\u2702 \u05d1\u05d9\u05d3\u05d5\u05d3',
+            studio: '\u{1F4F7} \u05e1\u05d8\u05d5\u05d3\u05d9\u05d5',
+            selected: '\u05e0\u05d1\u05d7\u05e8\u05d5',
+            bulkGenerate: '\u2728 \u05d9\u05e6\u05d9\u05e8\u05d4',
+            bulkTemplate: '\u{1F4CB} \u05ea\u05d1\u05e0\u05d9\u05ea',
+            bulkIsolate: '\u2702 \u05d1\u05d9\u05d3\u05d5\u05d3',
+            bulkStudio: '\u{1F4F7} \u05e1\u05d8\u05d5\u05d3\u05d9\u05d5',
+            bulkDelete: '\u{1F5D1} \u05de\u05d7\u05e7',
+            export: '\u05d9\u05d9\u05e6\u05d5\u05d0',
+            settings: '\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea',
+            save: '\u05e9\u05de\u05d5\u05e8 \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea',
+            provider: '\u05e1\u05e4\u05e7 AI',
+            clickToEdit: '\u05dc\u05d7\u05e5 \u05dc\u05e2\u05e8\u05d9\u05db\u05d4',
+            statusDraft: '\u05d8\u05d9\u05d5\u05d8\u05d4',
+            statusProcessing: '\u05de\u05e2\u05d1\u05d3...',
+            statusReady: '\u05de\u05d5\u05db\u05df',
+            statusError: '\u05e9\u05d2\u05d9\u05d0\u05d4',
+            langBtn: 'EN'
+        },
+        en: {
+            search: 'Search products...',
+            addProduct: '+ New Product',
+            selectAll: '\u2611 Select All',
+            importExcel: '\u{1F4C4} Import Excel',
+            total: 'Total',
+            ready: 'Ready',
+            drafts: 'Drafts',
+            errors: 'Errors',
+            emptyTitle: 'No products yet',
+            emptyDesc: 'Click "New Product" or import Excel to start',
+            generate: '\u2728 Generate',
+            template: '\u{1F4CB} Template',
+            isolate: '\u2702 Isolate',
+            studio: '\u{1F4F7} Studio',
+            selected: 'selected',
+            bulkGenerate: '\u2728 Generate',
+            bulkTemplate: '\u{1F4CB} Template',
+            bulkIsolate: '\u2702 Isolate',
+            bulkStudio: '\u{1F4F7} Studio',
+            bulkDelete: '\u{1F5D1} Delete',
+            export: 'Export',
+            settings: 'Settings',
+            save: 'Save Settings',
+            provider: 'AI Provider',
+            clickToEdit: 'Click to edit',
+            statusDraft: 'Draft',
+            statusProcessing: 'Processing...',
+            statusReady: 'Ready',
+            statusError: 'Error',
+            langBtn: '\u05e2\u05d1'
+        }
+    };
+
+    function getLang() { return localStorage.getItem('app_lang') || 'he'; }
+    function t(key) { return (LANG[getLang()] || LANG.he)[key] || key; }
+
+    function toggleLang() {
+        var curr = getLang();
+        var next = curr === 'he' ? 'en' : 'he';
+        localStorage.setItem('app_lang', next);
+        document.documentElement.dir = next === 'he' ? 'rtl' : 'ltr';
+        document.documentElement.lang = next;
+        document.getElementById('langBtn').textContent = t('langBtn');
+        document.getElementById('searchInput').placeholder = t('search');
+        renderGrid();
+        applyLangToUI();
+    }
+
+    function applyLangToUI() {
+        var l = getLang();
+        document.documentElement.dir = l === 'he' ? 'rtl' : 'ltr';
+        document.documentElement.lang = l;
+        document.getElementById('langBtn').textContent = t('langBtn');
+        document.getElementById('searchInput').placeholder = t('search');
+        // Toolbar buttons
+        var tbBtns = document.getElementById('floatingToolbar').querySelectorAll('.toolbar-btn');
+        if (tbBtns.length >= 6) {
+            tbBtns[0].textContent = t('bulkGenerate');
+            tbBtns[1].textContent = t('bulkTemplate');
+            tbBtns[2].textContent = t('bulkIsolate');
+            tbBtns[3].textContent = t('bulkStudio');
+            tbBtns[4].textContent = t('bulkDelete');
+        }
+    }
+
+    // ========================================
+    // 17. DRAG & DROP
     // ========================================
     function setupDragDrop() {
         var dropZone = document.getElementById('dropZone');
@@ -2135,6 +2284,9 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
 
         // Init IndexedDB (persists between sessions)
         ImageDB.open().catch(function(err) { console.error('IndexedDB:', err); });
+
+        // Apply language
+        applyLangToUI();
 
         // Render
         renderGrid();
