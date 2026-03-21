@@ -1,32 +1,22 @@
 {
-  "name": "Menu Scanner — Ateres Golda",
-  "short_name": "Menu Scanner",
-  "description": "Scan event menus and track food waste",
-  "start_url": "./index.html",
+  "name": "AI Catalog Studio",
+  "short_name": "CatalogAI",
+  "description": "Professional product image generation with AI",
+  "start_url": "/index.html",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#f5f0eb",
-  "theme_color": "#1a3a2a",
+  "background_color": "#09090b",
+  "theme_color": "#7c3aed",
+  "orientation": "any",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "AI Catalog Studio",
-      "short_name": "Catalog",
-      "url": "./catalog.html",
-      "description": "AI-powered product catalog image generator"
+      "type": "image/png"
     }
   ]
 }
