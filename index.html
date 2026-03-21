@@ -531,7 +531,6 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
                     <div class="drop-zone-icon">&#128196;</div>
                     <div class="drop-zone-text">&#1490;&#1512;&#1493;&#1512; &#1511;&#1493;&#1489;&#1509; Excel &#1500;&#1499;&#1488;&#1503; &#1488;&#1493; &#1500;&#1495;&#1509; &#1500;&#1489;&#1495;&#1497;&#1512;&#1492;</div>
                 </div>
-                <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelImport(this.files[0])">
                 <div id="importPreview" style="display:none;margin-top:16px;">
                     <div style="font-size:13px;font-weight:600;margin-bottom:8px;">&#1502;&#1497;&#1508;&#1493;&#1497; &#1506;&#1502;&#1493;&#1491;&#1493;&#1514;:</div>
                     <div id="columnMapping"></div>
@@ -605,6 +604,7 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     <!-- ═══ HIDDEN FILE INPUT FOR SINGLE TEMPLATE ═══ -->
     <input type="file" id="singleTemplateInput" accept="image/*" style="display:none">
     <input type="file" id="singleSourceInput" accept="image/*" style="display:none">
+    <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelImport(this.files[0])">
 
     <!-- ═══ CDN LIBRARIES ═══ -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
