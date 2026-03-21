@@ -489,12 +489,20 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">FAL API Key</label>
-                    <input type="password" class="form-input" id="falKeyInput" placeholder="&#1492;&#1494;&#1503; &#1488;&#1514; &#1502;&#1508;&#1514;&#1495; &#1492;-API &#1513;&#1500; FAL">
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-                        &#1511;&#1489;&#1500; &#1502;&#1508;&#1514;&#1495; &#1489;-<a href="https://fal.ai/settings/keys" target="_blank" rel="noopener" style="color:var(--primary-light)">fal.ai/settings/keys</a>
-                    </div>
+                    <label class="form-label">&#1505;&#1508;&#1511; AI</label>
+                    <select class="form-input" id="providerSelect" onchange="onProviderChange()">
+                        <option value="pollinations">Pollinations - &#1495;&#1497;&#1504;&#1501;, &#1489;&#1500;&#1497; &#1502;&#1508;&#1514;&#1495;</option>
+                        <option value="siliconflow">SiliconFlow - &#1495;&#1497;&#1504;&#1501;, &#1510;&#1512;&#1497;&#1498; &#1502;&#1508;&#1514;&#1495;</option>
+                        <option value="gemini">Gemini (Google) - &#1495;&#1497;&#1504;&#1501;, &#1510;&#1512;&#1497;&#1498; &#1502;&#1508;&#1514;&#1495;</option>
+                        <option value="fal">FAL - &#1489;&#1514;&#1513;&#1500;&#1493;&#1501;</option>
+                    </select>
                 </div>
+                <div class="form-group" id="apiKeyGroup" style="display:none;">
+                    <label class="form-label" id="apiKeyLabel">API Key</label>
+                    <input type="password" class="form-input" id="apiKeyInput" placeholder="&#1492;&#1494;&#1503; &#1502;&#1508;&#1514;&#1495; API">
+                    <div id="apiKeyHint" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+                </div>
+                <div id="providerInfo" style="padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;background:var(--primary-dim);color:var(--primary-light);border:1px solid rgba(124,58,237,0.2);"></div>
                 <button class="btn-primary" onclick="saveSettings()">&#1513;&#1502;&#1493;&#1512; &#1492;&#1490;&#1491;&#1512;&#1493;&#1514;</button>
             </div>
         </div>
@@ -616,9 +624,17 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     // ========================================
     // 1. CONFIGURATION & STATE
     // ========================================
-    var FAL_API_BASE = 'https://fal.run';
+    var PROVIDERS = {
+        pollinations: { name: 'Pollinations (Free)', needsKey: false, canGenerate: true, canEdit: false, canIsolate: false },
+        siliconflow: { name: 'SiliconFlow (Free)', needsKey: true, canGenerate: true, canEdit: false, canIsolate: false },
+        gemini: { name: 'Gemini (Free)', needsKey: true, canGenerate: true, canEdit: true, canIsolate: true },
+        fal: { name: 'FAL (Paid)', needsKey: true, canGenerate: true, canEdit: true, canIsolate: true }
+    };
     var RATE_LIMIT_DELAY = 1000;
     var IS_EMBED = window.location.search.indexOf('embed=true') !== -1;
+
+    function getProvider() { return localStorage.getItem('ai_provider') || 'pollinations'; }
+    function getProviderKey() { return localStorage.getItem('ai_provider_key_' + getProvider()) || ''; }
 
     var state = {
         products: [],
@@ -853,47 +869,130 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     }
 
     // ========================================
-    // 7. FAL API MODULE
+    // 7. MULTI-PROVIDER AI MODULE
     // ========================================
-    var FalAPI = (function() {
-        function getKey() { return localStorage.getItem('fal_api_key') || ''; }
-        function check() { var k = getKey(); if (!k) { showToast('\u05d0\u05e0\u05d0 \u05d4\u05d6\u05df \u05de\u05e4\u05ea\u05d7 FAL API \u05d1\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea', 'error'); showSettings(); return null; } return k; }
-        function call(ep, body, key) {
-            return fetch(FAL_API_BASE + '/' + ep, { method: 'POST', headers: { 'Authorization': 'Key ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-            .then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || e.message || 'FAL error ' + r.status); }); return r.json(); });
-        }
+    function makePrompt(name, desc) {
+        return 'Professional studio product photograph of "' + name + '". ' + (desc ? desc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels.';
+    }
+    function makeEditPrompt(name, desc) {
+        return 'Keep the exact same container shape and form factor. Replace all branding, labels, and text with new branding for "' + name + '". ' + (desc ? desc + '. ' : '') + 'Professional product photo, clean white background. Keep the container shape identical.';
+    }
+    function makeStudioPrompt(name) {
+        return 'Transform this product photo of "' + name + '" into a professional studio photograph. Add soft diffused studio lighting with subtle reflections. Add a gentle shadow beneath the product. Clean white background. High-end commercial product shot.';
+    }
+    function makeIsolatePrompt() {
+        return 'Remove the background from this product image completely. Place the product on a pure clean white background (#FFFFFF). Keep the product perfectly intact with crisp, clean edges. No shadows.';
+    }
 
-        return {
-            getApiKey: getKey,
-            generateFromText: function(name, desc) {
-                var k = check(); if (!k) return Promise.reject(new Error('No key'));
-                var p = 'Professional studio product photograph of "' + name + '". ' + (desc ? desc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels.';
-                return call('fal-ai/flux/schnell', { prompt: p, image_size: 'square_hd', output_format: 'jpeg', num_inference_steps: 4 }, k)
-                .then(function(d) { return falUrlToBase64(d.images[0].url); });
-            },
-            applyTemplate: function(srcB64, name, desc) {
-                var k = check(); if (!k) return Promise.reject(new Error('No key'));
-                var p = 'Keep the exact same container shape and form factor. Replace all branding, labels, and text with new branding for "' + name + '". ' + (desc ? desc + '. ' : '') + 'Professional product photo. Keep the container shape identical.';
-                return base64ToFalUrl(srcB64, k)
-                .then(function(url) { return call('fal-ai/nano-banana-2/edit', { prompt: p, image_urls: [url], output_format: 'jpeg' }, k); })
-                .then(function(d) { return call('fal-ai/imageutils/rembg', { image_url: d.images[0].url }, k); })
-                .then(function(d) { return falUrlToBase64(d.image.url); });
-            },
-            isolateProduct: function(srcB64) {
-                var k = check(); if (!k) return Promise.reject(new Error('No key'));
-                return base64ToFalUrl(srcB64, k)
-                .then(function(url) { return call('fal-ai/imageutils/rembg', { image_url: url }, k); })
-                .then(function(d) { return falUrlToBase64(d.image.url); });
-            },
-            enhanceToStudio: function(srcB64, name) {
-                var k = check(); if (!k) return Promise.reject(new Error('No key'));
-                var p = 'Transform this product photo of "' + name + '" into a professional studio photograph. Add soft diffused studio lighting with subtle reflections. Add a gentle shadow beneath the product. Clean white background. High-end commercial product shot.';
-                return base64ToFalUrl(srcB64, k)
-                .then(function(url) { return call('fal-ai/nano-banana-2/edit', { prompt: p, image_urls: [url], output_format: 'jpeg' }, k); })
-                .then(function(d) { return falUrlToBase64(d.images[0].url); });
-            }
-        };
-    })();
+    function checkKey() {
+        var prov = getProvider();
+        if (!PROVIDERS[prov].needsKey) return true;
+        var k = getProviderKey();
+        if (!k) { showToast('\u05d0\u05e0\u05d0 \u05d4\u05d6\u05df \u05de\u05e4\u05ea\u05d7 API \u05d1\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea', 'error'); showSettings(); return false; }
+        return true;
+    }
+
+    // --- POLLINATIONS (free, no key) ---
+    var PollinationsProvider = {
+        generateFromText: function(name, desc) {
+            var prompt = encodeURIComponent(makePrompt(name, desc));
+            var url = 'https://image.pollinations.ai/prompt/' + prompt + '?width=1024&height=1024&nologo=true&seed=' + Math.floor(Math.random() * 999999);
+            return fetch(url).then(function(r) { if (!r.ok) throw new Error('Pollinations error ' + r.status); return r.blob(); }).then(function(b) { return blobToBase64(b); });
+        },
+        applyTemplate: function() { return Promise.reject(new Error('\u05EA\u05D1\u05E0\u05D9\u05EA \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DB\u05EA \u05D1-Pollinations. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
+        isolateProduct: function() { return Promise.reject(new Error('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-Pollinations. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
+        enhanceToStudio: function() { return Promise.reject(new Error('\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-Pollinations. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); }
+    };
+
+    // --- SILICONFLOW (free, key required) ---
+    var SiliconFlowProvider = {
+        generateFromText: function(name, desc) {
+            var k = getProviderKey();
+            return fetch('https://api.siliconflow.cn/v1/images/generations', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + k, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'black-forest-labs/FLUX.1-schnell', prompt: makePrompt(name, desc), image_size: '1024x1024' })
+            }).then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || e.error || 'SiliconFlow error'); }); return r.json(); })
+            .then(function(d) { return falUrlToBase64(d.images[0].url); });
+        },
+        applyTemplate: function() { return Promise.reject(new Error('\u05EA\u05D1\u05E0\u05D9\u05EA \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DB\u05EA \u05D1-SiliconFlow. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
+        isolateProduct: function() { return Promise.reject(new Error('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-SiliconFlow. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
+        enhanceToStudio: function() { return Promise.reject(new Error('\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-SiliconFlow. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); }
+    };
+
+    // --- GEMINI (free tier, key required) ---
+    var GeminiProvider = {
+        _call: function(body, key) {
+            return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + key, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            }).then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.error ? e.error.message : 'Gemini error ' + r.status); }); return r.json(); })
+            .then(function(d) {
+                if (!d.candidates || !d.candidates[0] || !d.candidates[0].content || !d.candidates[0].content.parts) throw new Error('No response from Gemini');
+                var parts = d.candidates[0].content.parts;
+                for (var i = 0; i < parts.length; i++) { if (parts[i].inlineData && parts[i].inlineData.data) return parts[i].inlineData.data; }
+                throw new Error('No image in Gemini response');
+            });
+        },
+        _textOnly: function(prompt, key) {
+            return GeminiProvider._call({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }, key);
+        },
+        _withImage: function(prompt, srcB64, key) {
+            return GeminiProvider._call({ contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: srcB64 } }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }, key);
+        },
+        generateFromText: function(name, desc) { return GeminiProvider._textOnly(makePrompt(name, desc), getProviderKey()); },
+        applyTemplate: function(srcB64, name, desc) { return GeminiProvider._withImage(makeEditPrompt(name, desc) + ' Also remove the background completely, place on pure white.', srcB64, getProviderKey()); },
+        isolateProduct: function(srcB64) { return GeminiProvider._withImage(makeIsolatePrompt(), srcB64, getProviderKey()); },
+        enhanceToStudio: function(srcB64, name) { return GeminiProvider._withImage(makeStudioPrompt(name), srcB64, getProviderKey()); }
+    };
+
+    // --- FAL (paid, key required) ---
+    var FalProvider = {
+        _call: function(ep, body) {
+            var k = getProviderKey();
+            return fetch('https://fal.run/' + ep, { method: 'POST', headers: { 'Authorization': 'Key ' + k, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            .then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || e.message || 'FAL error ' + r.status); }); return r.json(); });
+        },
+        generateFromText: function(name, desc) {
+            return FalProvider._call('fal-ai/flux/schnell', { prompt: makePrompt(name, desc), image_size: 'square_hd', output_format: 'jpeg', num_inference_steps: 4 })
+            .then(function(d) { return falUrlToBase64(d.images[0].url); });
+        },
+        applyTemplate: function(srcB64, name, desc) {
+            var k = getProviderKey();
+            return base64ToFalUrl(srcB64, k)
+            .then(function(url) { return FalProvider._call('fal-ai/nano-banana-2/edit', { prompt: makeEditPrompt(name, desc), image_urls: [url], output_format: 'jpeg' }); })
+            .then(function(d) { return FalProvider._call('fal-ai/imageutils/rembg', { image_url: d.images[0].url }); })
+            .then(function(d) { return falUrlToBase64(d.image.url); });
+        },
+        isolateProduct: function(srcB64) {
+            var k = getProviderKey();
+            return base64ToFalUrl(srcB64, k)
+            .then(function(url) { return FalProvider._call('fal-ai/imageutils/rembg', { image_url: url }); })
+            .then(function(d) { return falUrlToBase64(d.image.url); });
+        },
+        enhanceToStudio: function(srcB64, name) {
+            var k = getProviderKey();
+            return base64ToFalUrl(srcB64, k)
+            .then(function(url) { return FalProvider._call('fal-ai/nano-banana-2/edit', { prompt: makeStudioPrompt(name), image_urls: [url], output_format: 'jpeg' }); })
+            .then(function(d) { return falUrlToBase64(d.images[0].url); });
+        }
+    };
+
+    function getAI() {
+        var p = getProvider();
+        if (p === 'siliconflow') return SiliconFlowProvider;
+        if (p === 'gemini') return GeminiProvider;
+        if (p === 'fal') return FalProvider;
+        return PollinationsProvider;
+    }
+
+    // Unified API (same interface as old FalAPI)
+    var FalAPI = {
+        getApiKey: function() { return getProvider() === 'pollinations' ? 'free' : getProviderKey(); },
+        generateFromText: function(n, d) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().generateFromText(n, d); },
+        applyTemplate: function(s, n, d) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().applyTemplate(s, n, d); },
+        isolateProduct: function(s) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().isolateProduct(s); },
+        enhanceToStudio: function(s, n) { if (!checkKey()) return Promise.reject(new Error('No key')); return getAI().enhanceToStudio(s, n); }
+    };
 
     // ========================================
     // 8. PRODUCT MANAGER (CRUD)
@@ -1947,19 +2046,43 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
         img.src = '';
     }
 
+    var PROVIDER_HINTS = {
+        pollinations: { label: '', hint: '', info: '\u2705 \u05d7\u05d9\u05e0\u05dd \u05dc\u05d2\u05de\u05e8\u05d9! \u05d9\u05d5\u05e6\u05e8 \u05ea\u05de\u05d5\u05e0\u05d5\u05ea \u05de\u05d0\u05e4\u05e1 \u05d1\u05dc\u05d9 \u05de\u05e4\u05ea\u05d7. \u05ea\u05d1\u05e0\u05d9\u05ea/\u05d1\u05d9\u05d3\u05d5\u05d3/\u05e1\u05d8\u05d5\u05d3\u05d9\u05d5 \u05dc\u05d0 \u05e0\u05ea\u05de\u05db\u05d9\u05dd.' },
+        siliconflow: { label: 'SiliconFlow API Key', hint: '\u05d4\u05d9\u05e8\u05e9\u05dd \u05d1-<a href="https://cloud.siliconflow.cn" target="_blank" rel="noopener" style="color:var(--primary-light)">cloud.siliconflow.cn</a> (\u05d7\u05d9\u05e0\u05dd)', info: '\u2705 Flux Schnell \u05d7\u05d9\u05e0\u05dd, 2000 \u05d1\u05e7\u05e9\u05d5\u05ea/\u05d9\u05d5\u05dd. \u05e8\u05e7 \u05d9\u05e6\u05d9\u05e8\u05d4 \u05de\u05d0\u05e4\u05e1.' },
+        gemini: { label: 'Gemini API Key', hint: '\u05e7\u05d1\u05dc \u05de\u05e4\u05ea\u05d7 \u05d1-<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--primary-light)">Google AI Studio</a> (\u05d7\u05d9\u05e0\u05dd)', info: '\u2705 \u05db\u05dc 4 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e0\u05ea\u05de\u05db\u05d5\u05ea! 15 \u05d1\u05e7\u05e9\u05d5\u05ea/\u05d3\u05e7\u05d4 \u05d7\u05d9\u05e0\u05dd.' },
+        fal: { label: 'FAL API Key', hint: '\u05e7\u05d1\u05dc \u05de\u05e4\u05ea\u05d7 \u05d1-<a href="https://fal.ai/settings/keys" target="_blank" rel="noopener" style="color:var(--primary-light)">fal.ai/settings/keys</a>', info: '\u05db\u05dc 4 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea + \u05d0\u05d9\u05db\u05d5\u05ea \u05d2\u05d1\u05d5\u05d4\u05d4. \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05dc\u05e4\u05d9 \u05e9\u05d9\u05de\u05d5\u05e9.' }
+    };
+
+    function onProviderChange() {
+        var prov = document.getElementById('providerSelect').value;
+        var hints = PROVIDER_HINTS[prov];
+        var keyGroup = document.getElementById('apiKeyGroup');
+        var needsKey = PROVIDERS[prov].needsKey;
+        keyGroup.style.display = needsKey ? 'block' : 'none';
+        if (needsKey) {
+            document.getElementById('apiKeyLabel').textContent = hints.label;
+            document.getElementById('apiKeyHint').innerHTML = hints.hint;
+            var existingKey = localStorage.getItem('ai_provider_key_' + prov) || '';
+            document.getElementById('apiKeyInput').value = existingKey ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + existingKey.slice(-8) : '';
+        }
+        document.getElementById('providerInfo').innerHTML = hints.info;
+    }
+
     function showSettings() {
-        var key = localStorage.getItem('fal_api_key') || '';
-        document.getElementById('falKeyInput').value = key ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + key.slice(-8) : '';
+        document.getElementById('providerSelect').value = getProvider();
+        onProviderChange();
         openModal('settingsModal');
     }
 
     function saveSettings() {
-        var keyInput = document.getElementById('falKeyInput').value.trim();
-        if (keyInput && !keyInput.startsWith('\u2022')) {
-            localStorage.setItem('fal_api_key', keyInput);
+        var prov = document.getElementById('providerSelect').value;
+        localStorage.setItem('ai_provider', prov);
+        if (PROVIDERS[prov].needsKey) {
+            var keyInput = document.getElementById('apiKeyInput').value.trim();
+            if (keyInput && !keyInput.startsWith('\u2022')) localStorage.setItem('ai_provider_key_' + prov, keyInput);
         }
         closeModal('settingsModal');
-        showToast('\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05E0\u05E9\u05DE\u05E8\u05D5!', 'success');
+        showToast('\u05e1\u05e4\u05e7 ' + PROVIDERS[prov].name + ' \u05e0\u05e9\u05de\u05e8!', 'success');
     }
 
     // ========================================
