@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(ls \"C:\\\\Users\\\\eliyr\\\\.claude\"\".mcp* 2>/dev/null; cat \"C:Userseliyr.claude.mcp.json\" 2>/dev/null; cat \"C:UserseliyrAppDataRoamingClaude.mcp.json\" 2>/dev/null; cat \"c:DevIMAGE-GENERATOR.mcp.json \")",
+      "Bash(find C:/Dev/IMAGE-GENERATOR -name *.md -newer C:/Dev/IMAGE-GENERATOR/.git/HEAD -mtime -1)",
+      "Bash(grep -ri fal C:/Users/eliyr/.claude/projects --include=*.md -l)",
+      "Read(//c/Dev/**)",
+      "Bash(while read:*)",
+      "Bash(do grep:*)",
+      "Bash(find C:/Users/eliyr/.claude -name *.md -mtime -1)",
+      "Bash(git -C \"C:/Dev/IMAGE-GENERATOR\" log --all --oneline -20)",
+      "Bash(find C:/Dev -maxdepth 5 -name *.env* -not -path */node_modules/* -not -path */.next/*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://mcp.fal.ai/mcp\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl -s https://mcp.fal.ai/mcp -H 'Accept: application/json')",
+      "Bash(curl -s -X POST \"https://mcp.fal.ai/mcp\" -H \"Authorization: Bearer ec5620a7-0f96-41ce-b1d4-d7fcbf003b09:306de6784b3b1e24a66bf91f2e81d1cd\" -H \"Content-Type: application/json\" -d '{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"id\"\":1,\"\"method\"\":\"\"initialize\"\",\"\"params\"\":{\"\"protocolVersion\"\":\"\"2024-11-05\"\",\"\"capabilities\"\":{},\"\"clientInfo\"\":{\"\"name\"\":\"\"test\"\",\"\"version\"\":\"\"1.0\"\"}}}')",
+      "Bash(curl -s -X POST \"https://mcp.fal.ai/mcp\" -H \"Authorization: Bearer ec5620a7-0f96-41ce-b1d4-d7fcbf003b09:306de6784b3b1e24a66bf91f2e81d1cd\" -H \"Content-Type: application/json\" -H \"Accept: application/json, text/event-stream\" -d '{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"id\"\":1,\"\"method\"\":\"\"initialize\"\",\"\"params\"\":{\"\"protocolVersion\"\":\"\"2024-11-05\"\",\"\"capabilities\"\":{},\"\"clientInfo\"\":{\"\"name\"\":\"\"test\"\",\"\"version\"\":\"\"1.0\"\"}}}')",
+      "mcp__fal__search_models",
+      "mcp__fal__recommend_model",
+      "Bash(git -C \"c:/Dev/IMAGE-GENERATOR\" log --all --oneline --graph)",
+      "Bash(git -C \"c:/Dev/IMAGE-GENERATOR\" branch -a)"
+    ]
+  }
+}
