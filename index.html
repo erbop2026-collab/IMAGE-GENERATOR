@@ -893,9 +893,17 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     }
 
     // --- POLLINATIONS (free, no key) ---
+    function toAsciiSafe(text) {
+        // Remove non-ASCII chars for URL-based APIs, keep only Latin + digits + basic punctuation
+        var safe = text.replace(/[^\x20-\x7E]/g, '').trim();
+        return safe || 'product';
+    }
+
     var PollinationsProvider = {
         generateFromText: function(name, desc) {
-            var engPrompt = 'Professional studio product photograph of a product called "' + name + '". ' + (desc ? 'Description: ' + desc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels on the image.';
+            var safeName = toAsciiSafe(name);
+            var safeDesc = desc ? toAsciiSafe(desc) : '';
+            var engPrompt = 'Professional studio product photograph of "' + safeName + '". ' + (safeDesc ? safeDesc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels.';
             var prompt = encodeURIComponent(engPrompt);
             var url = 'https://image.pollinations.ai/prompt/' + prompt + '?width=1024&height=1024&nologo=true&seed=' + Math.floor(Math.random() * 999999);
             return fetch(url).then(function(r) { if (!r.ok) throw new Error('Pollinations error ' + r.status); return r.blob(); }).then(function(b) { return blobToBase64(b); });
