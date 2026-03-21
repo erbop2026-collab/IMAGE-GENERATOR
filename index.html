@@ -895,7 +895,8 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
     // --- POLLINATIONS (free, no key) ---
     var PollinationsProvider = {
         generateFromText: function(name, desc) {
-            var prompt = encodeURIComponent(makePrompt(name, desc));
+            var engPrompt = 'Professional studio product photograph of a product called "' + name + '". ' + (desc ? 'Description: ' + desc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels on the image.';
+            var prompt = encodeURIComponent(engPrompt);
             var url = 'https://image.pollinations.ai/prompt/' + prompt + '?width=1024&height=1024&nologo=true&seed=' + Math.floor(Math.random() * 999999);
             return fetch(url).then(function(r) { if (!r.ok) throw new Error('Pollinations error ' + r.status); return r.blob(); }).then(function(b) { return blobToBase64(b); });
         },
