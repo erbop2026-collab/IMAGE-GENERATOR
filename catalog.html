@@ -1,0 +1,2297 @@
+<!--
+AI CATALOG STUDIO
+Version: 1.0.0
+Last Updated: 2026-02-25
+Part of Menu Scanner - Ateres Golda
+-->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI Catalog Studio">
+    <meta name="theme-color" content="#1a3a2a">
+    <meta name="description" content="AI Catalog Studio - Generate professional product images with Gemini AI">
+    <script>if(location.protocol!=='file:')document.write('<link rel="manifest" href="manifest.json">');</script>
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>AI Catalog Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f5f0eb;
+            --card: #ffffff;
+            --primary: #1a3a2a;
+            --primary-light: #2d5f42;
+            --accent: #c8956c;
+            --accent-light: #e8c9a8;
+            --accent-hover: #b07a52;
+            --text: #2c2c2c;
+            --text-muted: #7a7a7a;
+            --border: #e2ddd7;
+            --success: #3a7d4f;
+            --success-bg: #e8f5ec;
+            --error: #c0392b;
+            --error-bg: #fdf0ee;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            direction: rtl;
+        }
+
+        /* ═══ TOP BAR ═══ */
+        .top-bar {
+            background: var(--primary);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .top-bar-right { display: flex; align-items: center; gap: 12px; }
+        .top-bar-brand { display: flex; align-items: center; gap: 12px; }
+        .top-bar-logo {
+            width: 36px; height: 36px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: white;
+        }
+        .top-bar h1 { font-family: 'Playfair Display', serif; font-size: 19px; color: white; font-weight: 600; }
+        .top-bar-subtitle { font-size: 10px; color: var(--accent-light); letter-spacing: 1.5px; }
+        .top-bar-actions { display: flex; gap: 8px; align-items: center; }
+        .icon-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 10px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: white; font-size: 13px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer; transition: background 0.2s; white-space: nowrap;
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.22); }
+        .icon-btn.round { padding: 8px 12px; }
+        .nav-link {
+            color: var(--accent-light); text-decoration: none;
+            font-size: 12px; font-weight: 500;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .nav-link:hover { color: white; }
+
+        /* ═══ CONTAINER ═══ */
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+
+        /* ═══ SEARCH & ADD BAR ═══ */
+        .action-bar {
+            display: flex; gap: 10px; margin-bottom: 20px;
+            flex-wrap: wrap; align-items: center;
+        }
+        .search-box {
+            flex: 1; min-width: 200px;
+            position: relative;
+        }
+        .search-input {
+            width: 100%; padding: 12px 16px 12px 40px;
+            border: 1.5px solid var(--border); border-radius: var(--radius);
+            font-size: 14px; font-family: 'DM Sans', sans-serif;
+            background: var(--card); color: var(--text);
+        }
+        .search-input:focus { outline: none; border-color: var(--accent); }
+        .search-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted); font-size: 16px; pointer-events: none;
+        }
+        .btn-add {
+            padding: 12px 20px;
+            background: var(--accent); color: white; border: none;
+            border-radius: var(--radius); font-size: 14px; font-weight: 700;
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+            transition: background 0.2s;
+        }
+        .btn-add:hover { background: var(--accent-hover); }
+        .action-buttons { display: flex; gap: 8px; }
+        .btn-action {
+            padding: 10px 16px;
+            background: var(--card); color: var(--text); border: 1.5px solid var(--border);
+            border-radius: var(--radius); font-size: 13px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-action:hover { border-color: var(--accent); background: #faf6f2; }
+
+        /* ═══ STATS BAR ═══ */
+        .stats-bar {
+            display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .stat-chip {
+            padding: 6px 14px; background: var(--card);
+            border: 1px solid var(--border); border-radius: 20px;
+            font-size: 12px; font-weight: 600; color: var(--text-muted);
+        }
+        .stat-chip span { color: var(--primary); }
+
+        /* ═══ PRODUCT GRID ═══ */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center; padding: 80px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state h3 { font-family: 'Playfair Display', serif; color: var(--primary); margin-bottom: 8px; font-size: 20px; }
+        .empty-state p { font-size: 14px; line-height: 1.6; }
+
+        /* ═══ PRODUCT CARD ═══ */
+        .catalog-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: box-shadow 0.2s, transform 0.15s;
+            position: relative;
+        }
+        .catalog-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .catalog-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+        .catalog-card.processing .card-image::after {
+            content: ''; position: absolute; inset: 0;
+            background: rgba(255,255,255,0.7);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .card-select {
+            position: absolute; top: 8px; right: 8px; z-index: 5;
+        }
+        .product-checkbox {
+            width: 20px; height: 20px; cursor: pointer;
+            accent-color: var(--accent);
+        }
+        .card-image {
+            width: 100%; aspect-ratio: 1; background: #f0ece7;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+        }
+        .card-image img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .card-placeholder {
+            font-size: 48px; opacity: 0.2;
+        }
+        .card-status {
+            position: absolute; top: 8px; left: 8px;
+            padding: 3px 10px; border-radius: 20px;
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+        }
+        .status-draft { background: var(--bg); color: var(--text-muted); }
+        .status-processing { background: #fff3cd; color: #856404; }
+        .status-ready { background: var(--success-bg); color: var(--success); }
+        .status-error { background: var(--error-bg); color: var(--error); }
+        .card-spinner {
+            position: absolute; inset: 0;
+            background: rgba(255,255,255,0.8);
+            display: none; align-items: center; justify-content: center;
+        }
+        .card-spinner.show { display: flex; }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--border); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .card-info { padding: 12px; }
+        .card-name {
+            font-weight: 600; font-size: 14px; color: var(--primary);
+            margin-bottom: 4px; min-height: 20px;
+            outline: none; border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .card-name:focus, .card-name.editing {
+            border-bottom-color: var(--accent);
+        }
+        .card-desc {
+            font-size: 12px; color: var(--text-muted);
+            min-height: 16px; outline: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .card-desc:focus, .card-desc.editing {
+            border-bottom-color: var(--accent);
+        }
+        .card-actions {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 4px; padding: 0 8px 8px;
+        }
+        .ai-btn {
+            padding: 6px 4px;
+            border: 1px solid var(--border); border-radius: 6px;
+            background: var(--bg); color: var(--text);
+            font-size: 11px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 3px;
+        }
+        .ai-btn:hover { border-color: var(--accent); background: #faf6f2; }
+        .ai-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-generate { border-color: #a78bfa; }
+        .btn-generate:hover { background: #f5f3ff; border-color: #8b5cf6; }
+        .btn-template { border-color: #60a5fa; }
+        .btn-template:hover { background: #eff6ff; border-color: #3b82f6; }
+        .btn-isolate { border-color: #34d399; }
+        .btn-isolate:hover { background: #ecfdf5; border-color: #10b981; }
+        .btn-studio { border-color: #f97316; }
+        .btn-studio:hover { background: #fff7ed; border-color: #ea580c; }
+        .card-delete {
+            position: absolute; top: 8px; left: 8px;
+            width: 28px; height: 28px;
+            background: rgba(0,0,0,0.5); color: white;
+            border: none; border-radius: 50%;
+            font-size: 14px; cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+            transition: background 0.2s; z-index: 5;
+        }
+        .catalog-card:hover .card-delete { display: flex; }
+        .card-delete:hover { background: var(--error); }
+
+        /* ═══ FLOATING TOOLBAR ═══ */
+        .floating-toolbar {
+            position: fixed; bottom: -80px; left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a; color: white;
+            border-radius: 16px; padding: 12px 24px;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: bottom 0.3s ease; z-index: 1000;
+        }
+        .floating-toolbar.visible { bottom: 24px; }
+        .toolbar-count {
+            font-size: 13px; font-weight: 700;
+            padding: 4px 12px; background: var(--accent);
+            border-radius: 20px; white-space: nowrap;
+        }
+        .toolbar-btn {
+            padding: 8px 16px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: transparent; color: white;
+            font-size: 12px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer; transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .toolbar-btn:hover { background: rgba(255,255,255,0.15); }
+        .toolbar-btn.danger { border-color: #ef4444; color: #fca5a5; }
+        .toolbar-btn.danger:hover { background: rgba(239,68,68,0.2); }
+        .toolbar-divider { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
+
+        /* ═══ MODALS ═══ */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            overflow-y: auto;
+        }
+        .modal-overlay.show { display: block; }
+        .modal {
+            background: var(--card); max-width: 500px;
+            margin: 60px auto 40px; border-radius: var(--radius);
+            box-shadow: var(--shadow-lg); overflow: hidden;
+        }
+        .modal-header {
+            background: var(--primary); padding: 18px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-header h2 { font-family: 'Playfair Display', serif; color: white; font-size: 17px; }
+        .modal-close {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(255,255,255,0.1); border: none;
+            color: white; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-body { padding: 24px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: var(--text-muted); margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%; padding: 11px 14px;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 14px; font-family: 'DM Sans', sans-serif;
+            color: var(--text); background: white;
+        }
+        .form-input:focus { outline: none; border-color: var(--accent); }
+        .btn-primary {
+            display: block; width: 100%; padding: 14px;
+            background: var(--accent); color: white; border: none;
+            border-radius: var(--radius); font-size: 15px; font-weight: 700;
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+            text-align: center;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        /* ═══ PROGRESS MODAL ═══ */
+        .progress-content { text-align: center; padding: 20px 0; }
+        .progress-content .spinner { width: 48px; height: 48px; margin: 0 auto 20px; }
+        .progress-text { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--primary); }
+        .progress-track { width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; border-radius: 4px; transition: width 0.3s; }
+        .progress-label { font-size: 12px; color: var(--text-muted); }
+        .btn-stop {
+            margin-top: 20px; padding: 10px 24px;
+            background: var(--error); color: white; border: none;
+            border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+            font-family: 'DM Sans', sans-serif; cursor: pointer;
+        }
+
+        /* ═══ IMAGE ZOOM MODAL ═══ */
+        .zoom-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85); z-index: 3000;
+            align-items: center; justify-content: center; cursor: pointer;
+        }
+        .zoom-overlay.show { display: flex; }
+        .zoom-overlay img {
+            max-width: 90vw; max-height: 90vh;
+            border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+
+        /* ═══ TOAST ═══ */
+        .toast-container {
+            position: fixed; top: 80px; left: 50%;
+            transform: translateX(-50%); z-index: 5000;
+            display: flex; flex-direction: column; gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            padding: 12px 20px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 600;
+            box-shadow: var(--shadow-md); pointer-events: auto;
+            animation: toastIn 0.3s ease;
+            max-width: 400px;
+        }
+        .toast.success { background: var(--success-bg); color: var(--success); border: 1px solid #b8dcc2; }
+        .toast.error { background: var(--error-bg); color: var(--error); border: 1px solid #f0c6c0; }
+        .toast.info { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        @keyframes toastIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+        .toast.removing { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastOut { to { opacity:0; transform:translateY(-10px); } }
+
+        /* ═══ FILE DROP ZONE ═══ */
+        .drop-zone {
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 30px; text-align: center; cursor: pointer;
+            transition: all 0.2s; background: var(--bg);
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent); background: #faf6f2;
+        }
+        .drop-zone-icon { font-size: 36px; opacity: 0.4; margin-bottom: 8px; }
+        .drop-zone-text { font-size: 13px; color: var(--text-muted); }
+
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 600px) {
+            .container { padding: 12px 10px 120px; }
+            .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+            .action-bar { flex-direction: column; }
+            .search-box { min-width: 100%; }
+            .floating-toolbar { padding: 10px 16px; gap: 8px; border-radius: 12px; }
+            .toolbar-btn { padding: 6px 12px; font-size: 11px; }
+            .top-bar h1 { font-size: 16px; }
+            .ai-btn { font-size: 10px; padding: 5px 3px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══ TOP BAR ═══ -->
+    <div class="top-bar">
+        <div class="top-bar-right">
+            <div class="top-bar-brand">
+                <div class="top-bar-logo">AI</div>
+                <div>
+                    <h1>AI Catalog Studio</h1>
+                    <div class="top-bar-subtitle">ATERES GOLDA</div>
+                </div>
+            </div>
+        </div>
+        <div class="top-bar-actions">
+            <a href="index.html" class="nav-link">&larr; Menu Scanner</a>
+            <button class="icon-btn round" onclick="showSettings()" title="Settings">&#9881;</button>
+            <button class="icon-btn" onclick="showImportExport()" title="Import/Export">&#128229; ייצוא</button>
+        </div>
+    </div>
+
+    <!-- ═══ MAIN CONTAINER ═══ -->
+    <div class="container">
+        <!-- ACTION BAR -->
+        <div class="action-bar">
+            <div class="search-box">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="&#1495;&#1508;&#1513; &#1502;&#1493;&#1510;&#1512;&#1497;&#1501;..." oninput="filterProducts()">
+            </div>
+            <button class="btn-add" onclick="addNewProduct()">+ &#1502;&#1493;&#1510;&#1512; &#1495;&#1491;&#1513;</button>
+            <div class="action-buttons">
+                <button class="btn-action" onclick="selectAll()">&#9745; &#1489;&#1495;&#1512; &#1492;&#1499;&#1500;</button>
+                <button class="btn-action" onclick="importExcel()">&#128196; &#1497;&#1497;&#1489;&#1493;&#1488; Excel</button>
+            </div>
+        </div>
+
+        <!-- STATS BAR -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-chip">&#1505;&#1492;&quot;&#1499;: <span id="statTotal">0</span></div>
+            <div class="stat-chip">&#1502;&#1493;&#1499;&#1504;&#1497;&#1501;: <span id="statReady">0</span></div>
+            <div class="stat-chip">&#1496;&#1497;&#1493;&#1496;&#1493;&#1514;: <span id="statDraft">0</span></div>
+            <div class="stat-chip">&#1513;&#1490;&#1497;&#1488;&#1493;&#1514;: <span id="statError">0</span></div>
+        </div>
+
+        <!-- PRODUCT GRID -->
+        <div class="product-grid" id="productGrid">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">&#128247;</div>
+                <h3>&#1488;&#1497;&#1503; &#1502;&#1493;&#1510;&#1512;&#1497;&#1501; &#1506;&#1491;&#1497;&#1497;&#1503;</h3>
+                <p>&#1500;&#1495;&#1509; &#1506;&#1500; &quot;&#1502;&#1493;&#1510;&#1512; &#1495;&#1491;&#1513;&quot; &#1488;&#1493; &#1497;&#1497;&#1489;&#1488; &#1511;&#1493;&#1489;&#1509; Excel &#1499;&#1491;&#1497; &#1500;&#1492;&#1514;&#1495;&#1497;&#1500;</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ FLOATING TOOLBAR ═══ -->
+    <div class="floating-toolbar" id="floatingToolbar">
+        <div class="toolbar-count" id="toolbarCount">0 &#1504;&#1489;&#1495;&#1512;&#1493;</div>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" onclick="bulkGenerate()">&#10024; &#1497;&#1510;&#1497;&#1512;&#1492; &#1500;&#1499;&#1493;&#1500;&#1501;</button>
+        <button class="toolbar-btn" onclick="bulkTemplate()">&#128203; &#1514;&#1489;&#1504;&#1497;&#1514;</button>
+        <button class="toolbar-btn" onclick="bulkIsolate()">&#9986; &#1489;&#1497;&#1491;&#1493;&#1491;</button>
+        <button class="toolbar-btn" onclick="bulkStudio()">&#128247; &#1505;&#1496;&#1493;&#1491;&#1497;&#1493;</button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn danger" onclick="bulkDelete()">&#128465; &#1502;&#1495;&#1511;</button>
+        <button class="toolbar-btn" onclick="deselectAll()">&#10005;</button>
+    </div>
+
+    <!-- ═══ SETTINGS MODAL ═══ -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>&#9881; &#1492;&#1490;&#1491;&#1512;&#1493;&#1514;</h2>
+                <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Gemini API Key</label>
+                    <input type="password" class="form-input" id="geminiKeyInput" placeholder="&#1492;&#1494;&#1503; &#1488;&#1514; &#1502;&#1508;&#1514;&#1495; &#1492;-API &#1513;&#1500; Gemini">
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+                        &#1511;&#1489;&#1500; &#1502;&#1508;&#1514;&#1495; &#1489;-<a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">Google AI Studio</a>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Firebase Config (&#1488;&#1493;&#1508;&#1510;&#1497;&#1493;&#1504;&#1500;&#1497;)</label>
+                    <input type="text" class="form-input" id="fbApiKeyInput" placeholder="API Key">
+                    <input type="text" class="form-input" id="fbProjectInput" placeholder="Project ID" style="margin-top:6px;">
+                    <input type="text" class="form-input" id="fbAppInput" placeholder="App ID" style="margin-top:6px;">
+                </div>
+                <div id="catalogFirebaseStatus" style="padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:12px;background:#e8f5ec;color:#3a7d4f">&#9203; &#1500;&#1488; &#1502;&#1495;&#1493;&#1489;&#1512;</div>
+                <button class="btn-primary" onclick="saveSettings()">&#1513;&#1502;&#1493;&#1512; &#1492;&#1490;&#1491;&#1512;&#1493;&#1514;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ PROGRESS MODAL ═══ -->
+    <div class="modal-overlay" id="progressModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>&#9889; &#1502;&#1506;&#1489;&#1491; &#1514;&#1502;&#1493;&#1504;&#1493;&#1514;...</h2>
+                <button class="modal-close" onclick="cancelBulkOperation()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="progress-content">
+                    <div class="spinner"></div>
+                    <div class="progress-text" id="progressText">&#1502;&#1506;&#1489;&#1491; &#1502;&#1493;&#1510;&#1512; 1 &#1502;&#1514;&#1493;&#1498; 10...</div>
+                    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+                    <div class="progress-label" id="progressLabel">0%</div>
+                    <button class="btn-stop" onclick="cancelBulkOperation()">&#9724; &#1506;&#1510;&#1493;&#1512;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ IMPORT/EXPORT MODAL ═══ -->
+    <div class="modal-overlay" id="importExportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>&#128229; &#1497;&#1497;&#1489;&#1493;&#1488; / &#1497;&#1497;&#1510;&#1493;&#1488;</h2>
+                <button class="modal-close" onclick="closeModal('importExportModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary)">&#1497;&#1497;&#1489;&#1493;&#1488;</h3>
+                <div class="drop-zone" id="dropZone" onclick="document.getElementById('excelFileInput').click()">
+                    <div class="drop-zone-icon">&#128196;</div>
+                    <div class="drop-zone-text">&#1490;&#1512;&#1493;&#1512; &#1511;&#1493;&#1489;&#1509; Excel &#1500;&#1499;&#1488;&#1503; &#1488;&#1493; &#1500;&#1495;&#1509; &#1500;&#1489;&#1495;&#1497;&#1512;&#1492;</div>
+                </div>
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelImport(this.files[0])">
+                <div id="importPreview" style="display:none;margin-top:16px;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;">&#1502;&#1497;&#1508;&#1493;&#1497; &#1506;&#1502;&#1493;&#1491;&#1493;&#1514;:</div>
+                    <div id="columnMapping"></div>
+                    <button class="btn-primary" style="margin-top:12px;" onclick="confirmImport()">&#1497;&#1497;&#1489;&#1488; &#1502;&#1493;&#1510;&#1512;&#1497;&#1501;</button>
+                </div>
+                <hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">
+                <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary)">&#1497;&#1497;&#1510;&#1493;&#1488;</h3>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-action" style="flex:1;" onclick="exportExcel()">&#128196; &#1497;&#1497;&#1510;&#1493;&#1488; Excel</button>
+                    <button class="btn-action" style="flex:1;" onclick="exportZip()">&#128230; &#1497;&#1497;&#1510;&#1493;&#1488; ZIP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ADD PRODUCT MODAL ═══ -->
+    <div class="modal-overlay" id="addProductModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>+ &#1502;&#1493;&#1510;&#1512; &#1495;&#1491;&#1513;</h2>
+                <button class="modal-close" onclick="closeModal('addProductModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">&#1513;&#1501; &#1492;&#1502;&#1493;&#1510;&#1512;</label>
+                    <input type="text" class="form-input" id="newProductName" placeholder="&#1500;&#1491;&#1493;&#1490;&#1502;&#1492;: &#1488;&#1508;&#1512;&#1505;&#1511; &#1502;&#1513;&#1493;&#1502;&#1512;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">&#1514;&#1497;&#1488;&#1493;&#1512; (&#1488;&#1493;&#1508;&#1510;&#1497;&#1493;&#1504;&#1500;&#1497;)</label>
+                    <input type="text" class="form-input" id="newProductDesc" placeholder="&#1508;&#1495;&#1497;&#1514; 500 &#1490;&#1512;&#1501;, &#1505;&#1497;&#1512;&#1493;&#1508; &#1511;&#1500;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">&#1514;&#1502;&#1493;&#1504;&#1492; (&#1488;&#1493;&#1508;&#1510;&#1497;&#1493;&#1504;&#1500;&#1497;)</label>
+                    <input type="file" class="form-input" id="newProductImage" accept="image/*">
+                </div>
+                <button class="btn-primary" onclick="confirmAddProduct()">&#1492;&#1493;&#1505;&#1507; &#1502;&#1493;&#1510;&#1512;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TEMPLATE UPLOAD MODAL ═══ -->
+    <div class="modal-overlay" id="templateModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>&#128203; &#1489;&#1495;&#1512; &#1514;&#1502;&#1493;&#1504;&#1514; &#1514;&#1489;&#1504;&#1497;&#1514;</h2>
+                <button class="modal-close" onclick="closeModal('templateModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">&#1489;&#1495;&#1512; &#1514;&#1502;&#1493;&#1504;&#1492; &#1513;&#1500; &#1502;&#1493;&#1510;&#1512; &#1511;&#1497;&#1497;&#1501; - &#1492;-AI &#1497;&#1513;&#1502;&#1493;&#1512; &#1506;&#1500; &#1492;&#1510;&#1493;&#1512;&#1492; &#1493;&#1497;&#1495;&#1500;&#1497;&#1507; &#1488;&#1514; &#1492;&#1502;&#1497;&#1514;&#1493;&#1490;</p>
+                <div class="drop-zone" onclick="document.getElementById('templateFileInput').click()">
+                    <div class="drop-zone-icon">&#128444;</div>
+                    <div class="drop-zone-text">&#1490;&#1512;&#1493;&#1512; &#1514;&#1502;&#1493;&#1504;&#1492; &#1500;&#1499;&#1488;&#1503; &#1488;&#1493; &#1500;&#1495;&#1509; &#1500;&#1489;&#1495;&#1497;&#1512;&#1492;</div>
+                </div>
+                <input type="file" id="templateFileInput" accept="image/*" style="display:none" onchange="handleTemplateUpload(this.files[0])">
+                <div id="templatePreview" style="display:none;margin-top:12px;text-align:center;">
+                    <img id="templatePreviewImg" style="max-width:200px;border-radius:8px;border:1px solid var(--border);">
+                    <button class="btn-primary" style="margin-top:12px;" onclick="confirmTemplate()">&#1492;&#1495;&#1500; &#1514;&#1489;&#1504;&#1497;&#1514;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ IMAGE ZOOM ═══ -->
+    <div class="zoom-overlay" id="zoomOverlay" onclick="closeZoom()">
+        <img id="zoomImage" src="" alt="Zoomed product">
+    </div>
+
+    <!-- ═══ TOAST CONTAINER ═══ -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ═══ HIDDEN FILE INPUT FOR SINGLE TEMPLATE ═══ -->
+    <input type="file" id="singleTemplateInput" accept="image/*" style="display:none">
+    <input type="file" id="singleSourceInput" accept="image/*" style="display:none">
+
+    <!-- ═══ CDN LIBRARIES ═══ -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+    // ========================================
+    // 1. CONFIGURATION & STATE
+    // ========================================
+    var FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyCSaIMmLjUIdxWVFjjDTlcWIyQBfnpKWYw',
+        projectId: 'depreciation-recording',
+        appId: '1:480755533717:web:a5c7f7d71b17453ffa189c'
+    };
+
+    var GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+    var RATE_LIMIT_DELAY = 4500; // ms between API calls
+
+    var state = {
+        products: [],
+        filteredProducts: null,
+        selectedIds: new Set(),
+        bulkCancelled: false,
+        bulkRunning: false,
+        templateTargetId: null,
+        templateBulkIds: null,
+        importedData: null,
+        importColumns: null,
+        db: null,
+        idb: null
+    };
+
+    // ========================================
+    // 2. UTILITY FUNCTIONS
+    // ========================================
+    function generateId() {
+        return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+    }
+
+    function showToast(message, type) {
+        type = type || 'info';
+        var container = document.getElementById('toastContainer');
+        var toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(function() {
+            toast.classList.add('removing');
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 3500);
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('show');
+    }
+
+    function openModal(id) {
+        document.getElementById(id).classList.add('show');
+    }
+
+    // ========================================
+    // 3. INDEXEDDB STORAGE MODULE
+    // ========================================
+    var ImageDB = (function() {
+        var DB_NAME = 'CatalogStudioDB';
+        var DB_VERSION = 1;
+        var STORE_NAME = 'productImages';
+        var dbInstance = null;
+
+        function open() {
+            return new Promise(function(resolve, reject) {
+                if (dbInstance) { resolve(dbInstance); return; }
+                var request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = function(e) {
+                    var db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = function(e) {
+                    dbInstance = e.target.result;
+                    resolve(dbInstance);
+                };
+                request.onerror = function(e) { reject(e.target.error); };
+            });
+        }
+
+        function saveImage(productId, fullBlob, thumbnailBlob, sourceBlob) {
+            return open().then(function(db) {
+                return new Promise(function(resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readwrite');
+                    var store = tx.objectStore(STORE_NAME);
+                    var record = {
+                        id: productId,
+                        full: fullBlob || null,
+                        thumbnail: thumbnailBlob || null,
+                        source: sourceBlob || null,
+                        updatedAt: Date.now()
+                    };
+                    var req = store.put(record);
+                    req.onsuccess = function() { resolve(); };
+                    req.onerror = function(e) { reject(e.target.error); };
+                });
+            });
+        }
+
+        function getImage(productId) {
+            return open().then(function(db) {
+                return new Promise(function(resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readonly');
+                    var store = tx.objectStore(STORE_NAME);
+                    var req = store.get(productId);
+                    req.onsuccess = function() { resolve(req.result || null); };
+                    req.onerror = function(e) { reject(e.target.error); };
+                });
+            });
+        }
+
+        function deleteImage(productId) {
+            return open().then(function(db) {
+                return new Promise(function(resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readwrite');
+                    var store = tx.objectStore(STORE_NAME);
+                    var req = store.delete(productId);
+                    req.onsuccess = function() { resolve(); };
+                    req.onerror = function(e) { reject(e.target.error); };
+                });
+            });
+        }
+
+        function getAllImages() {
+            return open().then(function(db) {
+                return new Promise(function(resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readonly');
+                    var store = tx.objectStore(STORE_NAME);
+                    var req = store.getAll();
+                    req.onsuccess = function() { resolve(req.result || []); };
+                    req.onerror = function(e) { reject(e.target.error); };
+                });
+            });
+        }
+
+        return {
+            open: open,
+            saveImage: saveImage,
+            getImage: getImage,
+            deleteImage: deleteImage,
+            getAllImages: getAllImages
+        };
+    })();
+
+    // ========================================
+    // 4. IMAGE UTILITIES
+    // ========================================
+    function compressImage(blob, maxWidth, maxHeight, quality) {
+        return new Promise(function(resolve) {
+            var img = new Image();
+            img.onload = function() {
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                var ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+                canvas.width = img.width * ratio;
+                canvas.height = img.height * ratio;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function(compressed) {
+                    URL.revokeObjectURL(img.src);
+                    resolve(compressed);
+                }, 'image/jpeg', quality || 0.8);
+            };
+            img.onerror = function() {
+                URL.revokeObjectURL(img.src);
+                resolve(blob);
+            };
+            img.src = URL.createObjectURL(blob);
+        });
+    }
+
+    function generateThumbnail(blob) {
+        return compressImage(blob, 200, 200, 0.6);
+    }
+
+    function optimizeFullImage(blob) {
+        return compressImage(blob, 1024, 1024, 0.85);
+    }
+
+    function blobToBase64(blob) {
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                var base64 = reader.result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    function base64ToBlob(base64, mimeType) {
+        mimeType = mimeType || 'image/jpeg';
+        var byteChars = atob(base64);
+        var byteNums = new Array(byteChars.length);
+        for (var i = 0; i < byteChars.length; i++) {
+            byteNums[i] = byteChars.charCodeAt(i);
+        }
+        return new Blob([new Uint8Array(byteNums)], { type: mimeType });
+    }
+
+    function dataUrlToBlob(dataUrl) {
+        var parts = dataUrl.split(',');
+        var mime = parts[0].match(/:(.*?);/)[1];
+        return base64ToBlob(parts[1], mime);
+    }
+
+    // ========================================
+    // 5. FIREBASE MODULE
+    // ========================================
+    function initFirebase() {
+        var cfg = JSON.parse(localStorage.getItem('catalogFirebaseConfig') || 'null') || FIREBASE_CONFIG;
+        if (!cfg || !cfg.apiKey || !cfg.projectId) {
+            updateCatalogFirebaseStatus(false);
+            return;
+        }
+        try {
+            if (firebase.apps.length) {
+                state.db = firebase.firestore();
+                state.db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+                    console.log('Persistence:', err.code);
+                });
+                testFirebaseConnection();
+            } else {
+                firebase.initializeApp({
+                    apiKey: cfg.apiKey,
+                    projectId: cfg.projectId,
+                    appId: cfg.appId || 'placeholder'
+                });
+                state.db = firebase.firestore();
+                state.db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+                    console.log('Persistence:', err.code);
+                });
+                testFirebaseConnection();
+            }
+        } catch(e) {
+            try {
+                state.db = firebase.firestore();
+                testFirebaseConnection();
+            } catch(e2) {
+                console.error('Firebase init error:', e2);
+                updateCatalogFirebaseStatus(false);
+            }
+        }
+    }
+
+    function testFirebaseConnection() {
+        if (!state.db) { updateCatalogFirebaseStatus(false); return; }
+        state.db.collection('catalogProducts').limit(1).get().then(function() {
+            updateCatalogFirebaseStatus(true);
+        }).catch(function() {
+            updateCatalogFirebaseStatus(true);
+        });
+    }
+
+    function updateCatalogFirebaseStatus(connected) {
+        var el = document.getElementById('catalogFirebaseStatus');
+        if (!el) return;
+        if (connected) {
+            el.style.background = '#e8f5ec';
+            el.style.color = '#3a7d4f';
+            el.textContent = '\u2705 \u05DE\u05D7\u05D5\u05D1\u05E8 \u05DC-Firebase';
+        } else {
+            el.style.background = '#fdf0ee';
+            el.style.color = '#c0392b';
+            el.textContent = '\u274C \u05DC\u05D0 \u05DE\u05D7\u05D5\u05D1\u05E8';
+        }
+    }
+
+    function syncToFirebase(product) {
+        if (!state.db) return Promise.resolve();
+        var data = {
+            name: product.name,
+            description: product.description || '',
+            status: product.status,
+            lastAction: product.lastAction || null,
+            errorMessage: product.errorMessage || '',
+            thumbnailUrl: product.thumbnailUrl || '',
+            order: product.order || 0,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        return state.db.collection('catalogProducts').doc(product.id).set(data, { merge: true }).catch(function(err) {
+            console.error('Sync error:', err);
+        });
+    }
+
+    function deleteFromFirebase(productId) {
+        if (!state.db) return Promise.resolve();
+        return state.db.collection('catalogProducts').doc(productId).delete().catch(function(err) {
+            console.error('Delete sync error:', err);
+        });
+    }
+
+    function loadFromFirebase() {
+        if (!state.db) return Promise.resolve([]);
+        return state.db.collection('catalogProducts').orderBy('order').get().then(function(snapshot) {
+            var products = [];
+            snapshot.forEach(function(doc) {
+                var data = doc.data();
+                data.id = doc.id;
+                products.push(data);
+            });
+            return products;
+        }).catch(function(err) {
+            console.error('Load from Firebase error:', err);
+            return [];
+        });
+    }
+
+    // ========================================
+    // 6. LOCAL STORAGE MODULE
+    // ========================================
+    function saveProductsLocal() {
+        var toSave = state.products.map(function(p) {
+            return {
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                status: p.status,
+                lastAction: p.lastAction,
+                errorMessage: p.errorMessage,
+                thumbnailUrl: p.thumbnailUrl || '',
+                order: p.order,
+                createdAt: p.createdAt,
+                updatedAt: Date.now()
+            };
+        });
+        localStorage.setItem('catalogProducts', JSON.stringify(toSave));
+    }
+
+    function loadProductsLocal() {
+        try {
+            return JSON.parse(localStorage.getItem('catalogProducts') || '[]');
+        } catch(e) { return []; }
+    }
+
+    // ========================================
+    // 7. GEMINI API MODULE
+    // ========================================
+    var GeminiAPI = (function() {
+        function getApiKey() {
+            return localStorage.getItem('gemini_api_key') || '';
+        }
+
+        function checkApiKey() {
+            var key = getApiKey();
+            if (!key) {
+                showToast('\u05D0;\u05E0\u05D0 \u05D4\u05D6\u05DF \u05DE\u05E4\u05EA\u05D7 Gemini API \u05D1\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA', 'error');
+                showSettings();
+                return null;
+            }
+            return key;
+        }
+
+        // Generate from scratch (text-to-image)
+        function generateFromText(productName, description) {
+            var key = checkApiKey();
+            if (!key) return Promise.reject(new Error('No API key'));
+
+            var prompt = 'Create a professional studio product photograph of "' + productName + '". ' +
+                (description ? description + '. ' : '') +
+                'Clean pure white background, soft diffused studio lighting, ' +
+                'commercial product photography style, high detail, photorealistic, no text or labels on the image.';
+
+            return fetch(GEMINI_API_BASE + '/models/gemini-2.5-flash-image:generateContent?key=' + key, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE', 'TEXT']
+                    }
+                })
+            }).then(function(res) {
+                if (!res.ok) return res.json().then(function(err) { throw new Error(err.error ? err.error.message : 'API error ' + res.status); });
+                return res.json();
+            }).then(function(data) {
+                return extractImageFromResponse(data);
+            });
+        }
+
+        // Template (preserve shape, change branding)
+        function applyTemplate(sourceImageBase64, productName, description) {
+            var key = checkApiKey();
+            if (!key) return Promise.reject(new Error('No API key'));
+
+            var prompt = 'Take this product image and keep the exact same container shape, size, and form factor. ' +
+                'Replace all branding, labels, and text with new branding for "' + productName + '". ' +
+                (description ? description + '. ' : '') +
+                'Professional product photo, clean white background. Keep the container shape identical.';
+
+            return fetch(GEMINI_API_BASE + '/models/gemini-2.5-flash-image:generateContent?key=' + key, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: 'image/jpeg', data: sourceImageBase64 } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE', 'TEXT']
+                    }
+                })
+            }).then(function(res) {
+                if (!res.ok) return res.json().then(function(err) { throw new Error(err.error ? err.error.message : 'API error ' + res.status); });
+                return res.json();
+            }).then(function(data) {
+                return extractImageFromResponse(data);
+            });
+        }
+
+        // Isolate (background removal)
+        function isolateProduct(sourceImageBase64) {
+            var key = checkApiKey();
+            if (!key) return Promise.reject(new Error('No API key'));
+
+            var prompt = 'Remove the background from this product image completely. ' +
+                'Place the product on a pure clean white background (#FFFFFF). ' +
+                'Keep the product perfectly intact with crisp, clean edges. No shadows.';
+
+            return fetch(GEMINI_API_BASE + '/models/gemini-2.5-flash-image:generateContent?key=' + key, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: 'image/jpeg', data: sourceImageBase64 } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE', 'TEXT']
+                    }
+                })
+            }).then(function(res) {
+                if (!res.ok) return res.json().then(function(err) { throw new Error(err.error ? err.error.message : 'API error ' + res.status); });
+                return res.json();
+            }).then(function(data) {
+                return extractImageFromResponse(data);
+            });
+        }
+
+        // Studio (enhance to professional)
+        function enhanceToStudio(sourceImageBase64, productName) {
+            var key = checkApiKey();
+            if (!key) return Promise.reject(new Error('No API key'));
+
+            var prompt = 'Transform this product photo of "' + productName + '" into a professional studio photograph. ' +
+                'Add soft, diffused studio lighting with subtle reflections. ' +
+                'Add a gentle shadow beneath the product. Clean white background. ' +
+                'Make it look like a high-end commercial product shot for a catalog.';
+
+            return fetch(GEMINI_API_BASE + '/models/gemini-2.5-flash-image:generateContent?key=' + key, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: 'image/jpeg', data: sourceImageBase64 } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE', 'TEXT']
+                    }
+                })
+            }).then(function(res) {
+                if (!res.ok) return res.json().then(function(err) { throw new Error(err.error ? err.error.message : 'API error ' + res.status); });
+                return res.json();
+            }).then(function(data) {
+                return extractImageFromResponse(data);
+            });
+        }
+
+        function extractImageFromResponse(data) {
+            if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
+                throw new Error('No valid response from AI');
+            }
+            var parts = data.candidates[0].content.parts;
+            for (var i = 0; i < parts.length; i++) {
+                if (parts[i].inlineData && parts[i].inlineData.data) {
+                    return parts[i].inlineData.data;
+                }
+            }
+            throw new Error('No image in AI response');
+        }
+
+        return {
+            generateFromText: generateFromText,
+            applyTemplate: applyTemplate,
+            isolateProduct: isolateProduct,
+            enhanceToStudio: enhanceToStudio,
+            getApiKey: function() { return localStorage.getItem('gemini_api_key') || ''; }
+        };
+    })();
+
+    // ========================================
+    // 8. PRODUCT MANAGER (CRUD)
+    // ========================================
+    function createProduct(name, description, imageBlob) {
+        var product = {
+            id: generateId(),
+            name: name || '\u05DE\u05D5\u05E6\u05E8 \u05D7\u05D3\u05E9',
+            description: description || '',
+            status: 'draft',
+            lastAction: null,
+            errorMessage: '',
+            thumbnailUrl: '',
+            order: state.products.length,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+        state.products.push(product);
+        saveProductsLocal();
+        syncToFirebase(product);
+
+        if (imageBlob) {
+            processAndSaveImage(product.id, imageBlob).then(function() {
+                renderGrid();
+            });
+        }
+        return product;
+    }
+
+    function updateProduct(id, fields) {
+        var product = getProduct(id);
+        if (!product) return;
+        for (var key in fields) {
+            if (fields.hasOwnProperty(key)) {
+                product[key] = fields[key];
+            }
+        }
+        product.updatedAt = Date.now();
+        saveProductsLocal();
+        syncToFirebase(product);
+    }
+
+    function deleteProduct(id) {
+        state.products = state.products.filter(function(p) { return p.id !== id; });
+        state.selectedIds.delete(id);
+        saveProductsLocal();
+        deleteFromFirebase(id);
+        ImageDB.deleteImage(id);
+    }
+
+    function getProduct(id) {
+        for (var i = 0; i < state.products.length; i++) {
+            if (state.products[i].id === id) return state.products[i];
+        }
+        return null;
+    }
+
+    function processAndSaveImage(productId, blob) {
+        return Promise.all([
+            optimizeFullImage(blob),
+            generateThumbnail(blob)
+        ]).then(function(results) {
+            var fullBlob = results[0];
+            var thumbBlob = results[1];
+            return ImageDB.saveImage(productId, fullBlob, thumbBlob, blob).then(function() {
+                return blobToBase64(thumbBlob);
+            }).then(function(thumbBase64) {
+                var thumbUrl = 'data:image/jpeg;base64,' + thumbBase64;
+                updateProduct(productId, {
+                    status: 'ready',
+                    thumbnailUrl: thumbUrl
+                });
+            });
+        });
+    }
+
+    // ========================================
+    // 9. UI RENDERER
+    // ========================================
+    function renderGrid() {
+        var grid = document.getElementById('productGrid');
+        var products = state.filteredProducts || state.products;
+
+        if (products.length === 0) {
+            grid.innerHTML = '<div class="empty-state">' +
+                '<div class="empty-state-icon">&#128247;</div>' +
+                '<h3>\u05D0\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05E2\u05D3\u05D9\u05D9\u05DF</h3>' +
+                '<p>\u05DC\u05D7\u05E5 \u05E2\u05DC "\u05DE\u05D5\u05E6\u05E8 \u05D7\u05D3\u05E9" \u05D0\u05D5 \u05D9\u05D9\u05D1\u05D0 \u05E7\u05D5\u05D1\u05E5 Excel \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC</p>' +
+                '</div>';
+            updateStats();
+            return;
+        }
+
+        var fragment = document.createDocumentFragment();
+
+        products.forEach(function(product) {
+            var card = document.createElement('div');
+            card.className = 'catalog-card' + (state.selectedIds.has(product.id) ? ' selected' : '');
+            card.dataset.productId = product.id;
+
+            var statusClass = 'status-' + product.status;
+            var statusText = { draft: '\u05D8\u05D9\u05D5\u05D8\u05D4', processing: '\u05DE\u05E2\u05D1\u05D3...', ready: '\u05DE\u05D5\u05DB\u05DF', error: '\u05E9\u05D2\u05D9\u05D0\u05D4' }[product.status] || product.status;
+
+            var imageContent = '';
+            if (product.thumbnailUrl) {
+                imageContent = '<img src="' + product.thumbnailUrl + '" alt="' + product.name + '" onclick="zoomImage(\'' + product.id + '\')" style="cursor:pointer;">';
+            } else {
+                imageContent = '<div class="card-placeholder">\uD83D\uDCE6</div>';
+            }
+
+            card.innerHTML =
+                '<div class="card-select"><input type="checkbox" class="product-checkbox" ' +
+                (state.selectedIds.has(product.id) ? 'checked' : '') +
+                ' onchange="toggleSelect(\'' + product.id + '\', this.checked)"></div>' +
+                '<div class="card-image">' + imageContent +
+                '<div class="card-status ' + statusClass + '">' + statusText + '</div>' +
+                '<div class="card-spinner" id="spinner_' + product.id + '"><div class="spinner"></div></div>' +
+                '</div>' +
+                '<div class="card-info">' +
+                '<div class="card-name" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'name\')">' + escapeHtml(product.name) + '</div>' +
+                '<div class="card-desc" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'description\')">' + escapeHtml(product.description || '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4') + '</div>' +
+                '</div>' +
+                '<div class="card-actions">' +
+                '<button class="ai-btn btn-generate" onclick="aiGenerate(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\u2728 \u05DE\u05D0\u05E4\u05E1</button>' +
+                '<button class="ai-btn btn-template" onclick="aiTemplate(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\uD83D\uDCCB \u05EA\u05D1\u05E0\u05D9\u05EA</button>' +
+                '<button class="ai-btn btn-isolate" onclick="aiIsolate(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\u2702 \u05D1\u05D9\u05D3\u05D5\u05D3</button>' +
+                '<button class="ai-btn btn-studio" onclick="aiStudio(\'' + product.id + '\')" ' + (product.status === 'processing' ? 'disabled' : '') + '>\uD83D\uDCF7 \u05E1\u05D8\u05D5\u05D3\u05D9\u05D5</button>' +
+                '</div>' +
+                '<button class="card-delete" onclick="confirmDelete(\'' + product.id + '\')" title="\u05DE\u05D7\u05E7">&times;</button>';
+
+            fragment.appendChild(card);
+        });
+
+        grid.innerHTML = '';
+        grid.appendChild(fragment);
+        updateStats();
+        updateFloatingToolbar();
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function updateStats() {
+        var total = state.products.length;
+        var ready = 0, draft = 0, errors = 0;
+        state.products.forEach(function(p) {
+            if (p.status === 'ready') ready++;
+            else if (p.status === 'draft') draft++;
+            else if (p.status === 'error') errors++;
+        });
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statReady').textContent = ready;
+        document.getElementById('statDraft').textContent = draft;
+        document.getElementById('statError').textContent = errors;
+    }
+
+    // ========================================
+    // 10. INLINE EDITING
+    // ========================================
+    function startEdit(element, productId, field) {
+        if (element.getAttribute('contenteditable') === 'true') return;
+        var product = getProduct(productId);
+        if (!product) return;
+
+        element.setAttribute('contenteditable', 'true');
+        element.classList.add('editing');
+
+        if (field === 'description' && !product.description) {
+            element.textContent = '';
+        }
+
+        element.focus();
+        var range = document.createRange();
+        range.selectNodeContents(element);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+
+        function save() {
+            element.setAttribute('contenteditable', 'false');
+            element.classList.remove('editing');
+            var newValue = element.textContent.trim();
+            if (newValue && newValue !== '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4') {
+                var update = {};
+                update[field] = newValue;
+                updateProduct(productId, update);
+            } else if (field === 'description') {
+                element.textContent = product.description || '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4';
+            } else {
+                element.textContent = product[field];
+            }
+        }
+
+        element.addEventListener('blur', save, { once: true });
+        element.addEventListener('keydown', function handler(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                element.blur();
+            }
+            if (e.key === 'Escape') {
+                element.textContent = product[field] || (field === 'description' ? '\u05DC\u05D7\u05E5 \u05DC\u05E2\u05E8\u05D9\u05DB\u05D4' : '');
+                element.blur();
+            }
+        });
+    }
+
+    // ========================================
+    // 11. SELECTION & FLOATING TOOLBAR
+    // ========================================
+    function toggleSelect(productId, checked) {
+        if (checked) {
+            state.selectedIds.add(productId);
+        } else {
+            state.selectedIds.delete(productId);
+        }
+        var card = document.querySelector('[data-product-id="' + productId + '"]');
+        if (card) card.classList.toggle('selected', checked);
+        updateFloatingToolbar();
+    }
+
+    function selectAll() {
+        var products = state.filteredProducts || state.products;
+        products.forEach(function(p) { state.selectedIds.add(p.id); });
+        renderGrid();
+    }
+
+    function deselectAll() {
+        state.selectedIds.clear();
+        renderGrid();
+    }
+
+    function updateFloatingToolbar() {
+        var toolbar = document.getElementById('floatingToolbar');
+        var count = state.selectedIds.size;
+        if (count > 0) {
+            toolbar.classList.add('visible');
+            document.getElementById('toolbarCount').textContent = count + ' \u05E0\u05D1\u05D7\u05E8\u05D5';
+        } else {
+            toolbar.classList.remove('visible');
+        }
+    }
+
+    // ========================================
+    // 12. SINGLE AI ACTIONS
+    // ========================================
+    function showCardSpinner(productId, show) {
+        var spinner = document.getElementById('spinner_' + productId);
+        if (spinner) spinner.classList.toggle('show', show);
+    }
+
+    function aiGenerate(productId) {
+        var product = getProduct(productId);
+        if (!product) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        updateProduct(productId, { status: 'processing' });
+        renderGrid();
+        showCardSpinner(productId, true);
+
+        GeminiAPI.generateFromText(product.name, product.description).then(function(base64) {
+            var blob = base64ToBlob(base64);
+            return processAndSaveImage(productId, blob).then(function() {
+                updateProduct(productId, { status: 'ready', lastAction: 'generate', errorMessage: '' });
+                showToast('\u05EA\u05DE\u05D5\u05E0\u05D4 \u05E0\u05D5\u05E6\u05E8\u05D4 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
+            });
+        }).catch(function(err) {
+            updateProduct(productId, { status: 'error', errorMessage: err.message });
+            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
+        }).then(function() {
+            showCardSpinner(productId, false);
+            renderGrid();
+        });
+    }
+
+    function aiTemplate(productId) {
+        var product = getProduct(productId);
+        if (!product) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        state.templateTargetId = productId;
+        state.templateBulkIds = null;
+
+        var input = document.getElementById('singleTemplateInput');
+        input.onchange = function() {
+            if (!input.files[0]) return;
+            var file = input.files[0];
+            var reader = new FileReader();
+            reader.onload = function() {
+                var base64 = reader.result.split(',')[1];
+                runTemplate(productId, base64);
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+        };
+        input.click();
+    }
+
+    function runTemplate(productId, sourceBase64) {
+        var product = getProduct(productId);
+        if (!product) return;
+
+        updateProduct(productId, { status: 'processing' });
+        renderGrid();
+        showCardSpinner(productId, true);
+
+        GeminiAPI.applyTemplate(sourceBase64, product.name, product.description).then(function(base64) {
+            var blob = base64ToBlob(base64);
+            return processAndSaveImage(productId, blob).then(function() {
+                updateProduct(productId, { status: 'ready', lastAction: 'template', errorMessage: '' });
+                showToast('\u05EA\u05D1\u05E0\u05D9\u05EA \u05D4\u05D5\u05D7\u05DC\u05D4 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
+            });
+        }).catch(function(err) {
+            updateProduct(productId, { status: 'error', errorMessage: err.message });
+            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
+        }).then(function() {
+            showCardSpinner(productId, false);
+            renderGrid();
+        });
+    }
+
+    function aiIsolate(productId) {
+        var product = getProduct(productId);
+        if (!product) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        ImageDB.getImage(productId).then(function(record) {
+            if (!record || (!record.full && !record.source)) {
+                // Ask user to upload an image
+                var input = document.getElementById('singleSourceInput');
+                input.onchange = function() {
+                    if (!input.files[0]) return;
+                    var file = input.files[0];
+                    var reader = new FileReader();
+                    reader.onload = function() {
+                        var base64 = reader.result.split(',')[1];
+                        runIsolate(productId, base64);
+                    };
+                    reader.readAsDataURL(file);
+                    input.value = '';
+                };
+                input.click();
+                return;
+            }
+            var blob = record.source || record.full;
+            blobToBase64(blob).then(function(base64) {
+                runIsolate(productId, base64);
+            });
+        });
+    }
+
+    function runIsolate(productId, sourceBase64) {
+        var product = getProduct(productId);
+        if (!product) return;
+
+        updateProduct(productId, { status: 'processing' });
+        renderGrid();
+        showCardSpinner(productId, true);
+
+        GeminiAPI.isolateProduct(sourceBase64).then(function(base64) {
+            var blob = base64ToBlob(base64);
+            return processAndSaveImage(productId, blob).then(function() {
+                updateProduct(productId, { status: 'ready', lastAction: 'isolate', errorMessage: '' });
+                showToast('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05D1\u05D5\u05E6\u05E2 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
+            });
+        }).catch(function(err) {
+            updateProduct(productId, { status: 'error', errorMessage: err.message });
+            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
+        }).then(function() {
+            showCardSpinner(productId, false);
+            renderGrid();
+        });
+    }
+
+    function aiStudio(productId) {
+        var product = getProduct(productId);
+        if (!product) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        ImageDB.getImage(productId).then(function(record) {
+            if (!record || (!record.full && !record.source)) {
+                var input = document.getElementById('singleSourceInput');
+                input.onchange = function() {
+                    if (!input.files[0]) return;
+                    var file = input.files[0];
+                    var reader = new FileReader();
+                    reader.onload = function() {
+                        var base64 = reader.result.split(',')[1];
+                        runStudio(productId, base64);
+                    };
+                    reader.readAsDataURL(file);
+                    input.value = '';
+                };
+                input.click();
+                return;
+            }
+            var blob = record.source || record.full;
+            blobToBase64(blob).then(function(base64) {
+                runStudio(productId, base64);
+            });
+        });
+    }
+
+    function runStudio(productId, sourceBase64) {
+        var product = getProduct(productId);
+        if (!product) return;
+
+        updateProduct(productId, { status: 'processing' });
+        renderGrid();
+        showCardSpinner(productId, true);
+
+        GeminiAPI.enhanceToStudio(sourceBase64, product.name).then(function(base64) {
+            var blob = base64ToBlob(base64);
+            return processAndSaveImage(productId, blob).then(function() {
+                updateProduct(productId, { status: 'ready', lastAction: 'studio', errorMessage: '' });
+                showToast('\u05E9\u05D3\u05E8\u05D5\u05D2 \u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05D4\u05D5\u05E9\u05DC\u05DD!', 'success');
+            });
+        }).catch(function(err) {
+            updateProduct(productId, { status: 'error', errorMessage: err.message });
+            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
+        }).then(function() {
+            showCardSpinner(productId, false);
+            renderGrid();
+        });
+    }
+
+    // ========================================
+    // 13. BULK OPERATIONS
+    // ========================================
+    function getSelectedProductIds() {
+        return Array.from(state.selectedIds);
+    }
+
+    function showProgress(current, total, text) {
+        openModal('progressModal');
+        var pct = Math.round((current / total) * 100);
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('progressLabel').textContent = pct + '%';
+        document.getElementById('progressText').textContent = text || ('\u05DE\u05E2\u05D1\u05D3 ' + current + ' \u05DE\u05EA\u05D5\u05DA ' + total + '...');
+    }
+
+    function hideProgress() {
+        closeModal('progressModal');
+        document.getElementById('progressFill').style.width = '0%';
+    }
+
+    function cancelBulkOperation() {
+        state.bulkCancelled = true;
+        hideProgress();
+        showToast('\u05E4\u05E2\u05D5\u05DC\u05D4 \u05D1\u05D5\u05D8\u05DC\u05D4', 'info');
+    }
+
+    function bulkGenerate() {
+        var ids = getSelectedProductIds();
+        if (ids.length === 0) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        state.bulkCancelled = false;
+        state.bulkRunning = true;
+        var completed = 0;
+        var errors = 0;
+
+        function processNext(index) {
+            if (state.bulkCancelled || index >= ids.length) {
+                state.bulkRunning = false;
+                hideProgress();
+                deselectAll();
+                renderGrid();
+                showToast('\u05D4\u05D5\u05E9\u05DC\u05DD! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
+                return;
+            }
+            var product = getProduct(ids[index]);
+            showProgress(index + 1, ids.length, '\u05DE\u05D9\u05D9\u05E6\u05E8 "' + (product ? product.name : '') + '"...');
+
+            if (!product) { processNext(index + 1); return; }
+
+            updateProduct(ids[index], { status: 'processing' });
+
+            GeminiAPI.generateFromText(product.name, product.description).then(function(base64) {
+                var blob = base64ToBlob(base64);
+                return processAndSaveImage(ids[index], blob).then(function() {
+                    updateProduct(ids[index], { status: 'ready', lastAction: 'generate', errorMessage: '' });
+                    completed++;
+                });
+            }).catch(function(err) {
+                updateProduct(ids[index], { status: 'error', errorMessage: err.message });
+                errors++;
+            }).then(function() {
+                setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
+            });
+        }
+
+        processNext(0);
+    }
+
+    function bulkTemplate() {
+        var ids = getSelectedProductIds();
+        if (ids.length === 0) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        state.templateBulkIds = ids;
+        state.templateTargetId = null;
+        openModal('templateModal');
+    }
+
+    function handleTemplateUpload(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function() {
+            document.getElementById('templatePreviewImg').src = reader.result;
+            document.getElementById('templatePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function confirmTemplate() {
+        var img = document.getElementById('templatePreviewImg');
+        if (!img.src) return;
+
+        var base64 = img.src.split(',')[1];
+        closeModal('templateModal');
+
+        if (state.templateBulkIds && state.templateBulkIds.length > 0) {
+            runBulkTemplate(state.templateBulkIds, base64);
+        } else if (state.templateTargetId) {
+            runTemplate(state.templateTargetId, base64);
+        }
+
+        document.getElementById('templatePreview').style.display = 'none';
+        document.getElementById('templateFileInput').value = '';
+    }
+
+    function runBulkTemplate(ids, sourceBase64) {
+        state.bulkCancelled = false;
+        state.bulkRunning = true;
+        var completed = 0;
+        var errors = 0;
+
+        function processNext(index) {
+            if (state.bulkCancelled || index >= ids.length) {
+                state.bulkRunning = false;
+                hideProgress();
+                deselectAll();
+                renderGrid();
+                showToast('\u05EA\u05D1\u05E0\u05D9\u05EA \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
+                return;
+            }
+            var product = getProduct(ids[index]);
+            showProgress(index + 1, ids.length, '\u05DE\u05D7\u05D9\u05DC \u05EA\u05D1\u05E0\u05D9\u05EA \u05E2\u05DC "' + (product ? product.name : '') + '"...');
+
+            if (!product) { processNext(index + 1); return; }
+
+            updateProduct(ids[index], { status: 'processing' });
+
+            GeminiAPI.applyTemplate(sourceBase64, product.name, product.description).then(function(base64) {
+                var blob = base64ToBlob(base64);
+                return processAndSaveImage(ids[index], blob).then(function() {
+                    updateProduct(ids[index], { status: 'ready', lastAction: 'template', errorMessage: '' });
+                    completed++;
+                });
+            }).catch(function(err) {
+                updateProduct(ids[index], { status: 'error', errorMessage: err.message });
+                errors++;
+            }).then(function() {
+                setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
+            });
+        }
+
+        processNext(0);
+    }
+
+    function bulkIsolate() {
+        var ids = getSelectedProductIds();
+        if (ids.length === 0) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        state.bulkCancelled = false;
+        state.bulkRunning = true;
+        var completed = 0;
+        var errors = 0;
+
+        function processNext(index) {
+            if (state.bulkCancelled || index >= ids.length) {
+                state.bulkRunning = false;
+                hideProgress();
+                deselectAll();
+                renderGrid();
+                showToast('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05D4\u05D5\u05E9\u05DC\u05DD! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
+                return;
+            }
+            var product = getProduct(ids[index]);
+            showProgress(index + 1, ids.length, '\u05DE\u05D1\u05D5\u05D3\u05D3 "' + (product ? product.name : '') + '"...');
+
+            if (!product) { processNext(index + 1); return; }
+
+            ImageDB.getImage(ids[index]).then(function(record) {
+                if (!record || (!record.full && !record.source)) {
+                    errors++;
+                    updateProduct(ids[index], { status: 'error', errorMessage: '\u05D0\u05D9\u05DF \u05EA\u05DE\u05D5\u05E0\u05D4 \u05DC\u05D1\u05D9\u05D3\u05D5\u05D3' });
+                    setTimeout(function() { processNext(index + 1); }, 500);
+                    return;
+                }
+                var blob = record.source || record.full;
+                updateProduct(ids[index], { status: 'processing' });
+                blobToBase64(blob).then(function(base64) {
+                    return GeminiAPI.isolateProduct(base64);
+                }).then(function(resultBase64) {
+                    var resultBlob = base64ToBlob(resultBase64);
+                    return processAndSaveImage(ids[index], resultBlob).then(function() {
+                        updateProduct(ids[index], { status: 'ready', lastAction: 'isolate', errorMessage: '' });
+                        completed++;
+                    });
+                }).catch(function(err) {
+                    updateProduct(ids[index], { status: 'error', errorMessage: err.message });
+                    errors++;
+                }).then(function() {
+                    setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
+                });
+            });
+        }
+
+        processNext(0);
+    }
+
+    function bulkStudio() {
+        var ids = getSelectedProductIds();
+        if (ids.length === 0) return;
+        if (!GeminiAPI.getApiKey()) { showSettings(); return; }
+
+        state.bulkCancelled = false;
+        state.bulkRunning = true;
+        var completed = 0;
+        var errors = 0;
+
+        function processNext(index) {
+            if (state.bulkCancelled || index >= ids.length) {
+                state.bulkRunning = false;
+                hideProgress();
+                deselectAll();
+                renderGrid();
+                showToast('\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05D4\u05D5\u05E9\u05DC\u05DD! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
+                return;
+            }
+            var product = getProduct(ids[index]);
+            showProgress(index + 1, ids.length, '\u05DE\u05E9\u05D3\u05E8\u05D2 "' + (product ? product.name : '') + '"...');
+
+            if (!product) { processNext(index + 1); return; }
+
+            ImageDB.getImage(ids[index]).then(function(record) {
+                if (!record || (!record.full && !record.source)) {
+                    errors++;
+                    updateProduct(ids[index], { status: 'error', errorMessage: '\u05D0\u05D9\u05DF \u05EA\u05DE\u05D5\u05E0\u05D4 \u05DC\u05E9\u05D3\u05E8\u05D5\u05D2' });
+                    setTimeout(function() { processNext(index + 1); }, 500);
+                    return;
+                }
+                var blob = record.source || record.full;
+                updateProduct(ids[index], { status: 'processing' });
+                blobToBase64(blob).then(function(base64) {
+                    return GeminiAPI.enhanceToStudio(base64, product.name);
+                }).then(function(resultBase64) {
+                    var resultBlob = base64ToBlob(resultBase64);
+                    return processAndSaveImage(ids[index], resultBlob).then(function() {
+                        updateProduct(ids[index], { status: 'ready', lastAction: 'studio', errorMessage: '' });
+                        completed++;
+                    });
+                }).catch(function(err) {
+                    updateProduct(ids[index], { status: 'error', errorMessage: err.message });
+                    errors++;
+                }).then(function() {
+                    setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
+                });
+            });
+        }
+
+        processNext(0);
+    }
+
+    function bulkDelete() {
+        var ids = getSelectedProductIds();
+        if (ids.length === 0) return;
+        if (!confirm('\u05D4\u05D0\u05DD \u05DC\u05DE\u05D7\u05D5\u05E7 ' + ids.length + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD?')) return;
+
+        ids.forEach(function(id) { deleteProduct(id); });
+        deselectAll();
+        renderGrid();
+        showToast(ids.length + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05E0\u05DE\u05D7\u05E7\u05D5', 'success');
+    }
+
+    // ========================================
+    // 14. IMPORT / EXPORT
+    // ========================================
+    function showImportExport() {
+        openModal('importExportModal');
+    }
+
+    function importExcel() {
+        document.getElementById('excelFileInput').click();
+    }
+
+    function handleExcelImport(file) {
+        if (!file) return;
+        // Reset file input so same file can be re-selected
+        var fileInput = document.getElementById('excelFileInput');
+        if (fileInput) fileInput.value = '';
+        var fileName = file.name.toLowerCase();
+
+        // CSV fallback when XLSX library not available
+        if (typeof XLSX === 'undefined') {
+            if (fileName.endsWith('.csv')) {
+                var textReader = new FileReader();
+                textReader.onload = function(e) {
+                    try {
+                        var data = parseCSV(e.target.result);
+                        if (data.length < 2) {
+                            showToast('\u05D4\u05E7\u05D5\u05D1\u05E5 \u05E8\u05D9\u05E7', 'error');
+                            return;
+                        }
+                        state.importedData = data;
+                        state.importColumns = data[0];
+                        openModal('importExportModal');
+                        showColumnMapping(data[0]);
+                    } catch(err) {
+                        showToast('\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05E7\u05E8\u05D9\u05D0\u05EA CSV: ' + err.message, 'error');
+                    }
+                };
+                textReader.readAsText(file);
+            } else {
+                showToast('\u05E1\u05E4\u05E8\u05D9\u05D9\u05EA XLSX \u05DC\u05D0 \u05E0\u05D8\u05E2\u05E0\u05D4. \u05D4\u05E9\u05EA\u05DE\u05E9 \u05D1\u05E7\u05D5\u05D1\u05E5 CSV \u05D0\u05D5 \u05E4\u05EA\u05D7 \u05D3\u05E8\u05DA \u05E9\u05E8\u05EA \u05D0\u05D9\u05E0\u05D8\u05E8\u05E0\u05D8.', 'error');
+            }
+            return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var wb = XLSX.read(e.target.result, { type: 'array' });
+                var ws = wb.Sheets[wb.SheetNames[0]];
+                var data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+                if (data.length < 2) {
+                    showToast('\u05D4\u05E7\u05D5\u05D1\u05E5 \u05E8\u05D9\u05E7', 'error');
+                    return;
+                }
+
+                // Find first non-empty row as header row
+                var headerRowIdx = 0;
+                for (var r = 0; r < Math.min(data.length, 10); r++) {
+                    var row = data[r];
+                    if (!row || !Array.isArray(row)) continue;
+                    var nonEmpty = row.filter(function(cell) {
+                        return cell !== undefined && cell !== null && cell.toString().trim() !== '';
+                    });
+                    if (nonEmpty.length >= 2) {
+                        headerRowIdx = r;
+                        break;
+                    }
+                }
+
+                // Ensure all rows have same number of columns using range
+                var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+                var totalCols = range.e.c - range.s.c + 1;
+                var headerRow = data[headerRowIdx] || [];
+                // Pad header row to total columns
+                while (headerRow.length < totalCols) {
+                    headerRow.push('');
+                }
+
+                // Rebuild data from headerRowIdx onwards
+                var importData = [headerRow];
+                for (var i = headerRowIdx + 1; i < data.length; i++) {
+                    var row = data[i] || [];
+                    while (row.length < totalCols) row.push('');
+                    importData.push(row);
+                }
+
+                if (importData.length < 2) {
+                    showToast('\u05D4\u05E7\u05D5\u05D1\u05E5 \u05E8\u05D9\u05E7', 'error');
+                    return;
+                }
+
+                state.importedData = importData;
+                state.importColumns = headerRow;
+                openModal('importExportModal');
+                showColumnMapping(headerRow);
+            } catch(err) {
+                showToast('\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05E7\u05E8\u05D9\u05D0\u05EA \u05D4\u05E7\u05D5\u05D1\u05E5: ' + err.message, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function parseCSV(text) {
+        var lines = text.split(/\r?\n/).filter(function(line) { return line.trim(); });
+        return lines.map(function(line) {
+            var result = [];
+            var current = '';
+            var inQuotes = false;
+            for (var i = 0; i < line.length; i++) {
+                var ch = line[i];
+                if (ch === '"') {
+                    if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (ch === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += ch;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        });
+    }
+
+    function showColumnMapping(columns) {
+        var container = document.getElementById('columnMapping');
+        if (!container) return;
+
+        // Filter out empty columns
+        var validCols = [];
+        columns.forEach(function(col, i) {
+            var text = (col === undefined || col === null) ? '' : col.toString().trim();
+            validCols.push({ index: i, text: text, original: col });
+        });
+
+        if (validCols.length === 0) {
+            // Try to infer column count from data rows
+            var maxCols = 0;
+            if (state.importedData) {
+                for (var ri = 0; ri < Math.min(state.importedData.length, 10); ri++) {
+                    if (state.importedData[ri] && state.importedData[ri].length > maxCols) {
+                        maxCols = state.importedData[ri].length;
+                    }
+                }
+            }
+            if (maxCols > 0) {
+                for (var ci = 0; ci < maxCols; ci++) {
+                    validCols.push({ index: ci, text: '', original: '' });
+                }
+            } else {
+                container.innerHTML = '<div style="padding:12px;color:#d32f2f;font-size:13px;">\u05DC\u05D0 \u05E0\u05DE\u05E6\u05D0\u05D5 \u05E2\u05DE\u05D5\u05D3\u05D5\u05EA \u05D1\u05E7\u05D5\u05D1\u05E5</div>';
+                document.getElementById('importPreview').style.display = 'block';
+                return;
+            }
+        }
+
+        var nameAutoIdx = -1;
+        var descAutoIdx = -1;
+        validCols.forEach(function(vc) {
+            if (vc.text && nameAutoIdx === -1 && (vc.text.includes('\u05E9\u05DD') || vc.text.toLowerCase().includes('name'))) nameAutoIdx = vc.index;
+            if (vc.text && descAutoIdx === -1 && (vc.text.includes('\u05EA\u05D9\u05D0\u05D5\u05E8') || vc.text.toLowerCase().includes('desc'))) descAutoIdx = vc.index;
+        });
+
+        // Get first data row sample for column previews
+        var sampleRow = (state.importedData && state.importedData.length > 1) ? state.importedData[1] : [];
+
+        function buildSelect(id, autoIdx) {
+            var s = '<select id="' + id + '" style="width:100%;padding:10px 12px;border:1.5px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a2e;direction:rtl;appearance:auto;-webkit-appearance:listbox;">';
+            s += '<option value="-1">-- \u05D1\u05D7\u05E8 \u05E2\u05DE\u05D5\u05D3\u05D4 --</option>';
+            validCols.forEach(function(vc) {
+                var label = vc.text || '(\u05E2\u05DE\u05D5\u05D3\u05D4 ' + (vc.index + 1) + ')';
+                // Add sample value from first data row
+                var sample = sampleRow[vc.index];
+                if (sample !== undefined && sample !== null && sample.toString().trim()) {
+                    var sampleText = sample.toString().trim();
+                    if (sampleText.length > 25) sampleText = sampleText.substring(0, 25) + '...';
+                    label += ' \u2190 "' + sampleText + '"';
+                }
+                var sel = (vc.index === autoIdx) ? ' selected' : '';
+                s += '<option value="' + vc.index + '"' + sel + '>' + (vc.index + 1) + '. ' + escapeHtml(label) + '</option>';
+            });
+            s += '</select>';
+            return s;
+        }
+
+        var html = '';
+        html += '<div style="margin-bottom:10px;">';
+        html += '<label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px;">\u05E2\u05DE\u05D5\u05D3\u05EA \u05E9\u05DD \u05DE\u05D5\u05E6\u05E8 *</label>';
+        html += buildSelect('colName', nameAutoIdx);
+        html += '</div>';
+        html += '<div style="margin-bottom:10px;">';
+        html += '<label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px;">\u05E2\u05DE\u05D5\u05D3\u05EA \u05EA\u05D9\u05D0\u05D5\u05E8 (\u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9)</label>';
+        html += buildSelect('colDesc', descAutoIdx);
+        html += '</div>';
+
+        // Data preview
+        html += '<div style="margin-top:8px;padding:10px;background:#f5f5f5;border-radius:8px;font-size:12px;max-height:120px;overflow-y:auto;">';
+        html += '<div style="font-weight:600;margin-bottom:6px;">\u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 (' + (state.importedData.length - 1) + ' \u05E9\u05D5\u05E8\u05D5\u05EA):</div>';
+        var previewCount = Math.min(state.importedData.length - 1, 5);
+        for (var r = 1; r <= previewCount; r++) {
+            var row = state.importedData[r];
+            var preview = row ? row.slice(0, 3).join(' | ') : '';
+            html += '<div style="padding:2px 0;color:#555;border-bottom:1px solid #e0e0e0;">' + escapeHtml(preview) + '</div>';
+        }
+        if (state.importedData.length - 1 > 5) {
+            html += '<div style="padding:2px 0;color:#999;">...</div>';
+        }
+        html += '</div>';
+
+        container.innerHTML = html;
+        document.getElementById('importPreview').style.display = 'block';
+    }
+
+    function confirmImport() {
+        var nameCol = parseInt(document.getElementById('colName').value);
+        var descCol = parseInt(document.getElementById('colDesc').value);
+
+        if (nameCol === -1) {
+            showToast('\u05D1\u05D7\u05E8 \u05E2\u05DE\u05D5\u05D3\u05EA \u05E9\u05DD', 'error');
+            return;
+        }
+
+        var data = state.importedData;
+        var count = 0;
+        for (var i = 1; i < data.length; i++) {
+            var name = data[i][nameCol];
+            if (!name || !name.toString().trim()) continue;
+            var desc = descCol >= 0 ? (data[i][descCol] || '') : '';
+            createProduct(name.toString().trim(), desc.toString().trim());
+            count++;
+        }
+
+        closeModal('importExportModal');
+        document.getElementById('importPreview').style.display = 'none';
+        document.getElementById('excelFileInput').value = '';
+        state.importedData = null;
+        state.importColumns = null;
+        renderGrid();
+        showToast(count + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05D9\u05D5\u05D1\u05D0\u05D5 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
+    }
+
+    function exportExcel() {
+        if (state.products.length === 0) {
+            showToast('\u05D0\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05DC\u05D9\u05D9\u05E6\u05D5\u05D0', 'error');
+            return;
+        }
+
+        var wsData = [['\u05E9\u05DD \u05DE\u05D5\u05E6\u05E8', '\u05EA\u05D9\u05D0\u05D5\u05E8', '\u05E1\u05D8\u05D8\u05D5\u05E1', '\u05E4\u05E2\u05D5\u05DC\u05D4 \u05D0\u05D7\u05E8\u05D5\u05E0\u05D4']];
+        state.products.forEach(function(p) {
+            wsData.push([p.name, p.description || '', p.status, p.lastAction || '']);
+        });
+
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, ws, '\u05E7\u05D8\u05DC\u05D5\u05D2');
+        XLSX.writeFile(wb, 'catalog_export_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+        showToast('\u05E7\u05D5\u05D1\u05E5 Excel \u05D9\u05D5\u05E6\u05D0 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
+    }
+
+    function exportZip() {
+        if (state.products.length === 0) {
+            showToast('\u05D0\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05DC\u05D9\u05D9\u05E6\u05D5\u05D0', 'error');
+            return;
+        }
+
+        showToast('\u05DE\u05DB\u05D9\u05DF \u05E7\u05D5\u05D1\u05E5 ZIP...', 'info');
+
+        var zip = new JSZip();
+        var promises = [];
+
+        state.products.forEach(function(product) {
+            if (product.status !== 'ready') return;
+            var promise = ImageDB.getImage(product.id).then(function(record) {
+                if (record && record.full) {
+                    var safeName = product.name.replace(/[\/\\:*?"<>|]/g, '_');
+                    zip.file(safeName + '.jpg', record.full);
+                }
+            });
+            promises.push(promise);
+        });
+
+        Promise.all(promises).then(function() {
+            return zip.generateAsync({ type: 'blob' });
+        }).then(function(content) {
+            saveAs(content, 'catalog_images_' + new Date().toISOString().slice(0, 10) + '.zip');
+            showToast('\u05E7\u05D5\u05D1\u05E5 ZIP \u05D9\u05D5\u05E6\u05D0 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
+        }).catch(function(err) {
+            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05D9\u05E6\u05D5\u05D0: ' + err.message, 'error');
+        });
+    }
+
+    // ========================================
+    // 15. UI ACTIONS & EVENT HANDLERS
+    // ========================================
+    function addNewProduct() {
+        openModal('addProductModal');
+        document.getElementById('newProductName').value = '';
+        document.getElementById('newProductDesc').value = '';
+        document.getElementById('newProductImage').value = '';
+        setTimeout(function() { document.getElementById('newProductName').focus(); }, 100);
+    }
+
+    function confirmAddProduct() {
+        var name = document.getElementById('newProductName').value.trim();
+        if (!name) {
+            showToast('\u05D4\u05D6\u05DF \u05E9\u05DD \u05DE\u05D5\u05E6\u05E8', 'error');
+            return;
+        }
+        var desc = document.getElementById('newProductDesc').value.trim();
+        var fileInput = document.getElementById('newProductImage');
+        var imageFile = fileInput.files[0] || null;
+
+        var product = createProduct(name, desc, imageFile);
+        closeModal('addProductModal');
+        renderGrid();
+        showToast('\u05DE\u05D5\u05E6\u05E8 "\u200E' + name + '" \u05E0\u05D5\u05E1\u05E3!', 'success');
+    }
+
+    function confirmDelete(productId) {
+        var product = getProduct(productId);
+        if (!product) return;
+        if (!confirm('\u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA "' + product.name + '"?')) return;
+        deleteProduct(productId);
+        renderGrid();
+        showToast('\u05DE\u05D5\u05E6\u05E8 \u05E0\u05DE\u05D7\u05E7', 'success');
+    }
+
+    function filterProducts() {
+        var query = document.getElementById('searchInput').value.trim().toLowerCase();
+        if (!query) {
+            state.filteredProducts = null;
+        } else {
+            state.filteredProducts = state.products.filter(function(p) {
+                return p.name.toLowerCase().includes(query) ||
+                    (p.description && p.description.toLowerCase().includes(query));
+            });
+        }
+        renderGrid();
+    }
+
+    function zoomImage(productId) {
+        ImageDB.getImage(productId).then(function(record) {
+            if (record && record.full) {
+                var url = URL.createObjectURL(record.full);
+                document.getElementById('zoomImage').src = url;
+                document.getElementById('zoomOverlay').classList.add('show');
+            } else {
+                var product = getProduct(productId);
+                if (product && product.thumbnailUrl) {
+                    document.getElementById('zoomImage').src = product.thumbnailUrl;
+                    document.getElementById('zoomOverlay').classList.add('show');
+                }
+            }
+        });
+    }
+
+    function closeZoom() {
+        var overlay = document.getElementById('zoomOverlay');
+        overlay.classList.remove('show');
+        var img = document.getElementById('zoomImage');
+        if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+        img.src = '';
+    }
+
+    function showSettings() {
+        var key = localStorage.getItem('gemini_api_key') || '';
+        document.getElementById('geminiKeyInput').value = key ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + key.slice(-8) : '';
+
+        var cfg = JSON.parse(localStorage.getItem('catalogFirebaseConfig') || 'null') || FIREBASE_CONFIG;
+        document.getElementById('fbApiKeyInput').value = cfg.apiKey || '';
+        document.getElementById('fbProjectInput').value = cfg.projectId || '';
+        document.getElementById('fbAppInput').value = cfg.appId || '';
+
+        openModal('settingsModal');
+    }
+
+    function saveSettings() {
+        var keyInput = document.getElementById('geminiKeyInput').value.trim();
+        if (keyInput && !keyInput.startsWith('\u2022')) {
+            localStorage.setItem('gemini_api_key', keyInput);
+        }
+
+        var fbCfg = {
+            apiKey: document.getElementById('fbApiKeyInput').value.trim(),
+            projectId: document.getElementById('fbProjectInput').value.trim(),
+            appId: document.getElementById('fbAppInput').value.trim()
+        };
+        if (fbCfg.apiKey && fbCfg.projectId) {
+            localStorage.setItem('catalogFirebaseConfig', JSON.stringify(fbCfg));
+        }
+
+        closeModal('settingsModal');
+        showToast('\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05E0\u05E9\u05DE\u05E8\u05D5!', 'success');
+
+        // Reinit Firebase if config changed
+        initFirebase();
+    }
+
+    // ========================================
+    // 16. DRAG & DROP
+    // ========================================
+    function setupDragDrop() {
+        var dropZone = document.getElementById('dropZone');
+        if (!dropZone) return;
+
+        ['dragenter', 'dragover'].forEach(function(evtName) {
+            dropZone.addEventListener(evtName, function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(function(evtName) {
+            dropZone.addEventListener(evtName, function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            var files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleExcelImport(files[0]);
+            }
+        });
+    }
+
+    // ========================================
+    // 17. INITIALIZATION
+    // ========================================
+    function init() {
+        // Load products from localStorage
+        state.products = loadProductsLocal();
+
+        // Init Firebase
+        initFirebase();
+
+        // Init IndexedDB
+        ImageDB.open().then(function() {
+            console.log('IndexedDB ready');
+        }).catch(function(err) {
+            console.error('IndexedDB error:', err);
+        });
+
+        // If no local products, try loading from Firebase
+        if (state.products.length === 0 && state.db) {
+            loadFromFirebase().then(function(products) {
+                if (products.length > 0) {
+                    state.products = products;
+                    saveProductsLocal();
+                    renderGrid();
+                    showToast(products.length + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D5 \u05DE-Firebase', 'info');
+                }
+            });
+        }
+
+        // Render
+        renderGrid();
+        setupDragDrop();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeZoom();
+                document.querySelectorAll('.modal-overlay.show').forEach(function(modal) {
+                    modal.classList.remove('show');
+                });
+            }
+        });
+    }
+
+    // Run init when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    </script>
+</body>
+</html>
