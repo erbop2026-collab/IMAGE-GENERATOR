@@ -483,28 +483,17 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
 
     <!-- ═══ SETTINGS MODAL ═══ -->
     <div class="modal-overlay" id="settingsModal">
-        <div class="modal">
+        <div class="modal" style="max-width:560px;">
             <div class="modal-header">
-                <h2>&#9881; &#1492;&#1490;&#1491;&#1512;&#1493;&#1514;</h2>
+                <h2>&#9881; AI Providers</h2>
                 <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">&#1505;&#1508;&#1511; AI</label>
-                    <select class="form-input" id="providerSelect" onchange="onProviderChange()">
-                        <option value="pollinations">Pollinations - &#1495;&#1497;&#1504;&#1501;, &#1489;&#1500;&#1497; &#1502;&#1508;&#1514;&#1495;</option>
-                        <option value="siliconflow">SiliconFlow - &#1495;&#1497;&#1504;&#1501;, &#1510;&#1512;&#1497;&#1498; &#1502;&#1508;&#1514;&#1495;</option>
-                        <option value="gemini">Gemini (Google) - &#1495;&#1497;&#1504;&#1501;, &#1510;&#1512;&#1497;&#1498; &#1502;&#1508;&#1514;&#1495;</option>
-                        <option value="fal">FAL - &#1489;&#1514;&#1513;&#1500;&#1493;&#1501;</option>
-                    </select>
+            <div class="modal-body" style="padding:16px;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;padding:10px 14px;background:var(--primary-dim);border-radius:8px;border:1px solid rgba(124,58,237,0.2);color:var(--primary-light);">
+                    Auto-fallback: the app tries each provider in order. Add keys to enable more providers.
                 </div>
-                <div class="form-group" id="apiKeyGroup" style="display:none;">
-                    <label class="form-label" id="apiKeyLabel">API Key</label>
-                    <input type="password" class="form-input" id="apiKeyInput" placeholder="&#1492;&#1494;&#1503; &#1502;&#1508;&#1514;&#1495; API">
-                    <div id="apiKeyHint" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
-                </div>
-                <div id="providerInfo" style="padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;background:var(--primary-dim);color:var(--primary-light);border:1px solid rgba(124,58,237,0.2);"></div>
-                <button class="btn-primary" onclick="saveSettings()">&#1513;&#1502;&#1493;&#1512; &#1492;&#1490;&#1491;&#1512;&#1493;&#1514;</button>
+                <div id="providersList"></div>
+                <button class="btn-primary" style="margin-top:16px;" onclick="saveAllSettings()">Save All</button>
             </div>
         </div>
     </div>
@@ -2102,43 +2091,61 @@ EMBED: <iframe src="index.html?embed=true"></iframe>
         img.src = '';
     }
 
-    var PROVIDER_HINTS = {
-        pollinations: { label: '', hint: '', info: '\u2705 \u05d7\u05d9\u05e0\u05dd \u05dc\u05d2\u05de\u05e8\u05d9! \u05d9\u05d5\u05e6\u05e8 \u05ea\u05de\u05d5\u05e0\u05d5\u05ea \u05de\u05d0\u05e4\u05e1 \u05d1\u05dc\u05d9 \u05de\u05e4\u05ea\u05d7. \u05ea\u05d1\u05e0\u05d9\u05ea/\u05d1\u05d9\u05d3\u05d5\u05d3/\u05e1\u05d8\u05d5\u05d3\u05d9\u05d5 \u05dc\u05d0 \u05e0\u05ea\u05de\u05db\u05d9\u05dd.' },
-        siliconflow: { label: 'SiliconFlow API Key', hint: '\u05d4\u05d9\u05e8\u05e9\u05dd \u05d1-<a href="https://cloud.siliconflow.cn" target="_blank" rel="noopener" style="color:var(--primary-light)">cloud.siliconflow.cn</a> (\u05d7\u05d9\u05e0\u05dd)', info: '\u2705 Flux Schnell \u05d7\u05d9\u05e0\u05dd, 2000 \u05d1\u05e7\u05e9\u05d5\u05ea/\u05d9\u05d5\u05dd. \u05e8\u05e7 \u05d9\u05e6\u05d9\u05e8\u05d4 \u05de\u05d0\u05e4\u05e1.' },
-        gemini: { label: 'Gemini API Key', hint: '\u05e7\u05d1\u05dc \u05de\u05e4\u05ea\u05d7 \u05d1-<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--primary-light)">Google AI Studio</a> (\u05d7\u05d9\u05e0\u05dd)', info: '\u2705 \u05db\u05dc 4 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e0\u05ea\u05de\u05db\u05d5\u05ea! 15 \u05d1\u05e7\u05e9\u05d5\u05ea/\u05d3\u05e7\u05d4 \u05d7\u05d9\u05e0\u05dd.' },
-        fal: { label: 'FAL API Key', hint: '\u05e7\u05d1\u05dc \u05de\u05e4\u05ea\u05d7 \u05d1-<a href="https://fal.ai/settings/keys" target="_blank" rel="noopener" style="color:var(--primary-light)">fal.ai/settings/keys</a>', info: '\u05db\u05dc 4 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea + \u05d0\u05d9\u05db\u05d5\u05ea \u05d2\u05d1\u05d5\u05d4\u05d4. \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05dc\u05e4\u05d9 \u05e9\u05d9\u05de\u05d5\u05e9.' }
-    };
+    var PROVIDER_LIST = [
+        { id: 'pollinations', name: 'Pollinations', price: 'Free', badge: '\u2705 FREE', needsKey: false, features: 'Generate only', url: '', urlLabel: '', desc: 'No signup needed. Text-to-image only.' },
+        { id: 'siliconflow', name: 'SiliconFlow', price: 'Free', badge: '\u2705 FREE', needsKey: true, features: 'Generate (Flux Schnell)', url: 'https://cloud.siliconflow.cn/account/ak', urlLabel: 'cloud.siliconflow.cn', desc: 'Chinese provider. 2000 free requests/day.' },
+        { id: 'gemini', name: 'Gemini (Google)', price: 'Free', badge: '\u2705 FREE', needsKey: true, features: 'All 4 actions', url: 'https://aistudio.google.com/apikey', urlLabel: 'aistudio.google.com', desc: 'Best free option! Generate + Template + Isolate + Studio. 15 req/min.' },
+        { id: 'fal', name: 'FAL', price: 'Paid', badge: '\u{1F4B3}', needsKey: true, features: 'All 4 actions (best quality)', url: 'https://fal.ai/settings/keys', urlLabel: 'fal.ai/settings/keys', desc: 'Pay per use. Flux + Nano Banana + rembg.' }
+    ];
 
-    function onProviderChange() {
-        var prov = document.getElementById('providerSelect').value;
-        var hints = PROVIDER_HINTS[prov];
-        var keyGroup = document.getElementById('apiKeyGroup');
-        var needsKey = PROVIDERS[prov].needsKey;
-        keyGroup.style.display = needsKey ? 'block' : 'none';
-        if (needsKey) {
-            document.getElementById('apiKeyLabel').textContent = hints.label;
-            document.getElementById('apiKeyHint').innerHTML = hints.hint;
-            var existingKey = localStorage.getItem('ai_provider_key_' + prov) || '';
-            document.getElementById('apiKeyInput').value = existingKey ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + existingKey.slice(-8) : '';
-        }
-        document.getElementById('providerInfo').innerHTML = hints.info;
+    function renderProvidersList() {
+        var container = document.getElementById('providersList');
+        var html = '';
+        PROVIDER_LIST.forEach(function(p) {
+            var key = localStorage.getItem('ai_provider_key_' + p.id) || '';
+            var hasKey = !p.needsKey || !!key;
+            var statusColor = hasKey ? 'var(--success)' : 'var(--text-muted)';
+            var statusDot = hasKey ? '\u25CF' : '\u25CB';
+            html += '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;background:var(--bg-elevated);">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            html += '<span style="color:' + statusColor + ';font-size:10px;">' + statusDot + '</span>';
+            html += '<strong style="font-size:14px;color:var(--text);">' + p.name + '</strong>';
+            html += '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:' + (p.price === 'Free' ? 'var(--success-bg)' : 'var(--warning-bg)') + ';color:' + (p.price === 'Free' ? 'var(--success)' : 'var(--warning)') + ';">' + p.badge + '</span>';
+            html += '</div>';
+            html += '<span style="font-size:11px;color:var(--text-muted);">' + p.features + '</span>';
+            html += '</div>';
+            html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">' + p.desc + '</div>';
+            if (p.needsKey) {
+                html += '<div style="display:flex;gap:8px;align-items:center;">';
+                html += '<input type="password" class="form-input" id="key_' + p.id + '" placeholder="API Key" value="' + (key ? '\u2022\u2022\u2022\u2022\u2022\u2022' + key.slice(-6) : '') + '" style="flex:1;padding:8px 12px;font-size:13px;">';
+                if (p.url) {
+                    html += '<a href="' + p.url + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary-light);white-space:nowrap;text-decoration:none;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);">' + p.urlLabel + ' \u2197</a>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        });
+        container.innerHTML = html;
     }
 
     function showSettings() {
-        document.getElementById('providerSelect').value = getProvider();
-        onProviderChange();
+        renderProvidersList();
         openModal('settingsModal');
     }
 
-    function saveSettings() {
-        var prov = document.getElementById('providerSelect').value;
-        localStorage.setItem('ai_provider', prov);
-        if (PROVIDERS[prov].needsKey) {
-            var keyInput = document.getElementById('apiKeyInput').value.trim();
-            if (keyInput && !keyInput.startsWith('\u2022')) localStorage.setItem('ai_provider_key_' + prov, keyInput);
-        }
+    function saveAllSettings() {
+        PROVIDER_LIST.forEach(function(p) {
+            if (!p.needsKey) return;
+            var input = document.getElementById('key_' + p.id);
+            if (!input) return;
+            var val = input.value.trim();
+            if (val && !val.startsWith('\u2022')) {
+                localStorage.setItem('ai_provider_key_' + p.id, val);
+            }
+        });
         closeModal('settingsModal');
-        showToast('\u05e1\u05e4\u05e7 ' + PROVIDERS[prov].name + ' \u05e0\u05e9\u05de\u05e8!', 'success');
+        showToast('Settings saved!', 'success');
     }
 
     // ========================================
