@@ -362,6 +362,67 @@
     color: var(--text-muted);
     padding: 6px 0;
   }
+
+  .product-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .info-pill {
+    display: inline-block;
+    background: #f1f5f9;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .info-pill.cost { background: #fef3c7; color: #92400e; }
+  .info-pill.pack { background: #dbeafe; color: #1e40af; }
+  .info-pill.pot  { background: #e0e7ff; color: #3730a3; }
+
+  .result-extra {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+  .results-total-cost {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1.5px solid rgba(255,255,255,0.25);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .reverse-result {
+    text-align: center;
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    min-height: 22px;
+  }
+  .reverse-result.empty { background: #f1f5f9; color: var(--text-muted); font-weight: 500; font-size: 13px; }
+
+  .order-meta-summary {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .history-meta-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
   .card-title-row {
     display: flex;
     justify-content: space-between;
@@ -483,6 +544,20 @@
 <!-- ============ TAB: CALCULATOR ============ -->
 <section class="tab-content active" id="tab-calc">
   <div class="card">
+    <div class="card-title">📅 Order Details</div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Order name (optional)</label>
+        <input type="text" id="orderName" placeholder="e.g. Saturday event" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Event date (optional)</label>
+        <input type="date" id="orderDate">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-title">🔍 Find / Quick-add Product</div>
     <input type="text" id="calcSearch" placeholder="Type product name to filter rows or quick-add..." autocomplete="off">
     <div id="quickAddList" class="quick-add-list"></div>
@@ -555,6 +630,20 @@
         <input type="number" id="newProductCooked" placeholder="36" step="any" min="0" inputmode="decimal">
       </div>
     </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Cost per unit ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <input type="number" id="newProductCost" placeholder="e.g. 1.20" step="any" min="0" inputmode="decimal">
+      </div>
+    </div>
+    <div class="field">
+      <label>Pot/Tray capacity <span style="color:var(--text-muted);font-weight:400;">(optional, cooked amount per pot)</span></label>
+      <input type="number" id="newProductPot" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
+    </div>
     <button class="btn-primary" id="addProductBtn">Save Product</button>
   </div>
 
@@ -569,6 +658,25 @@
       </select>
     </div>
     <div id="productsList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔄 Reverse Calc — How many portions?</div>
+    <div class="field">
+      <label>Product</label>
+      <select id="reverseProduct"></select>
+    </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Raw amount you have</label>
+        <input type="number" id="reverseRaw" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Portion size (cooked)</label>
+        <input type="number" id="reversePortion" placeholder="e.g. 8" step="any" min="0" inputmode="decimal">
+      </div>
+    </div>
+    <div id="reverseResult" class="reverse-result empty">Pick a product and enter amounts to see how many portions you get.</div>
   </div>
 </section>
 
@@ -589,11 +697,13 @@
 var STORAGE_KEY_PRODUCTS = 'kitchen_calc_products_v2';
 var STORAGE_KEY_ORDER    = 'kitchen_calc_order_v2';
 var STORAGE_KEY_HISTORY  = 'kitchen_calc_history_v1';
+var STORAGE_KEY_META     = 'kitchen_calc_meta_v1';
 var HISTORY_LIMIT = 50;
 
-var products = [];   // [{id, name, raw, cooked, unit}]
+var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, unitsPerPot?}]
 var orderRows = [];  // [{id, productId, portions, portionSize}]
-var historyEntries = [];    // [{id, ts, rows:[...], totals:[...]}]
+var historyEntries = [];    // [{id, ts, name?, eventDate?, rows:[...], totals:[...]}]
+var orderMeta = { name: '', eventDate: '' };
 
 // Phase A UI state (not persisted)
 var productSearch = '';
@@ -651,6 +761,14 @@ function loadState() {
     var h = localStorage.getItem(STORAGE_KEY_HISTORY);
     if (h) historyEntries = JSON.parse(h);
   } catch(e) { historyEntries = []; }
+  try {
+    var m = localStorage.getItem(STORAGE_KEY_META);
+    if (m) {
+      var parsed = JSON.parse(m);
+      orderMeta.name = parsed.name || '';
+      orderMeta.eventDate = parsed.eventDate || '';
+    }
+  } catch(e) { orderMeta = { name: '', eventDate: '' }; }
 
   if (products.length === 0) {
     products = [
@@ -667,6 +785,7 @@ function loadState() {
 function saveProducts() { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); }
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
 function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyEntries)); }
+function saveMeta()     { localStorage.setItem(STORAGE_KEY_META, JSON.stringify(orderMeta)); }
 function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 // ============ TABS ============
@@ -712,6 +831,12 @@ function buildProductViewCard(p) {
   var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
   var per1 = ratio.toFixed(3).replace(/\.?0+$/, '');
   var u = unitLabel(p.unit);
+  var pillsHtml = '';
+  var pillBits = [];
+  if (p.packSize > 0)    pillBits.push('<span class="info-pill pack">📦 pack ' + format(p.packSize) + ' ' + escapeHtml(u) + '</span>');
+  if (p.costPerUnit > 0) pillBits.push('<span class="info-pill cost">💰 $' + p.costPerUnit + '/' + escapeHtml(u) + '</span>');
+  if (p.unitsPerPot > 0) pillBits.push('<span class="info-pill pot">🍲 pot ' + format(p.unitsPerPot) + ' ' + escapeHtml(u) + '</span>');
+  if (pillBits.length) pillsHtml = '<div class="product-pills">' + pillBits.join('') + '</div>';
   var div = document.createElement('div');
   div.className = 'product-item';
   div.innerHTML =
@@ -720,6 +845,7 @@ function buildProductViewCard(p) {
         '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
         '<div class="product-detail">' + format(p.raw) + ' ' + escapeHtml(u) + ' raw → ' + format(p.cooked) + ' ' + escapeHtml(u) + ' cooked</div>' +
         '<div class="product-ratio-badge">Ratio: ' + per1 + ' raw per 1 cooked</div>' +
+        pillsHtml +
       '</div>' +
       '<div class="product-actions">' +
         '<button class="btn-secondary btn-icon" data-edit="' + p.id + '" title="Edit">✏️</button>' +
@@ -745,6 +871,9 @@ function buildProductEditCard(p) {
         return '<option value="' + it[0] + '"' + sel + '>' + it[1] + '</option>';
       }).join('') + '</optgroup>';
   }).join('');
+  var packVal = (p.packSize > 0) ? p.packSize : '';
+  var costVal = (p.costPerUnit > 0) ? p.costPerUnit : '';
+  var potVal  = (p.unitsPerPot > 0) ? p.unitsPerPot : '';
   div.innerHTML =
     '<div class="edit-form">' +
       '<div class="field">' +
@@ -764,6 +893,20 @@ function buildProductEditCard(p) {
           '<label>Cooked amount</label>' +
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="cooked" data-eid="' + p.id + '" value="' + p.cooked + '">' +
         '</div>' +
+      '</div>' +
+      '<div class="row-grid">' +
+        '<div class="field">' +
+          '<label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Cost per unit ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="costPerUnit" data-eid="' + p.id + '" value="' + costVal + '">' +
+        '</div>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Pot/Tray capacity <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
+        '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="unitsPerPot" data-eid="' + p.id + '" value="' + potVal + '">' +
       '</div>' +
       '<div class="edit-form-buttons">' +
         '<button class="btn-primary" data-savep="' + p.id + '">Save</button>' +
@@ -801,6 +944,8 @@ function renderProducts() {
         saveProducts();
         renderProducts();
         renderOrderRows();
+        renderReverseSelect();
+        renderReverseResult();
       }
     });
   });
@@ -817,10 +962,15 @@ function renderProducts() {
       var pid = btn.getAttribute('data-dup');
       var p = products.find(function(x){ return x.id === pid; });
       if (!p) return;
-      products.push({ id: id(), name: p.name + ' (copy)', raw: p.raw, cooked: p.cooked, unit: p.unit });
+      var copy = { id: id(), name: p.name + ' (copy)', raw: p.raw, cooked: p.cooked, unit: p.unit };
+      if (p.packSize > 0)    copy.packSize = p.packSize;
+      if (p.costPerUnit > 0) copy.costPerUnit = p.costPerUnit;
+      if (p.unitsPerPot > 0) copy.unitsPerPot = p.unitsPerPot;
+      products.push(copy);
       saveProducts();
       renderProducts();
       renderOrderRows();
+      renderReverseSelect();
       toast('Product duplicated ✓');
     });
   });
@@ -833,13 +983,21 @@ function renderProducts() {
       var raw = parseFloat(document.querySelector('[data-edit-field="raw"][data-eid="' + pid + '"]').value);
       var cooked = parseFloat(document.querySelector('[data-edit-field="cooked"][data-eid="' + pid + '"]').value);
       var unit = document.querySelector('[data-edit-field="unit"][data-eid="' + pid + '"]').value;
+      var packVal = parseFloat(document.querySelector('[data-edit-field="packSize"][data-eid="' + pid + '"]').value);
+      var costVal = parseFloat(document.querySelector('[data-edit-field="costPerUnit"][data-eid="' + pid + '"]').value);
+      var potVal  = parseFloat(document.querySelector('[data-edit-field="unitsPerPot"][data-eid="' + pid + '"]').value);
       if (!name) { toast('Enter a product name'); return; }
       if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
       p.name = name; p.raw = raw; p.cooked = cooked; p.unit = unit;
+      if (packVal > 0) p.packSize = packVal; else delete p.packSize;
+      if (costVal > 0) p.costPerUnit = costVal; else delete p.costPerUnit;
+      if (potVal  > 0) p.unitsPerPot = potVal; else delete p.unitsPerPot;
       saveProducts();
       productEditingId = null;
       renderProducts();
       renderOrderRows();
+      renderReverseSelect();
+      renderReverseResult();
       toast('Product updated ✓');
     });
   });
@@ -865,15 +1023,26 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   var raw = parseFloat(document.getElementById('newProductRaw').value);
   var cooked = parseFloat(document.getElementById('newProductCooked').value);
   var unit = document.getElementById('newProductUnit').value;
+  var packRaw = parseFloat(document.getElementById('newProductPack').value);
+  var costRaw = parseFloat(document.getElementById('newProductCost').value);
+  var potRaw  = parseFloat(document.getElementById('newProductPot').value);
   if (!name) { toast('Enter a product name'); return; }
   if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
-  products.push({ id: id(), name: name, raw: raw, cooked: cooked, unit: unit });
+  var prod = { id: id(), name: name, raw: raw, cooked: cooked, unit: unit };
+  if (packRaw > 0) prod.packSize = packRaw;
+  if (costRaw > 0) prod.costPerUnit = costRaw;
+  if (potRaw  > 0) prod.unitsPerPot = potRaw;
+  products.push(prod);
   saveProducts();
   document.getElementById('newProductName').value = '';
   document.getElementById('newProductRaw').value = '';
   document.getElementById('newProductCooked').value = '';
+  document.getElementById('newProductPack').value = '';
+  document.getElementById('newProductCost').value = '';
+  document.getElementById('newProductPot').value = '';
   renderProducts();
   renderOrderRows();
+  renderReverseSelect();
   toast('Product added ✓');
 });
 
@@ -1061,7 +1230,13 @@ function computeTotals() {
     if (!(cooked > 0)) return;
     var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
     var raw = cooked * ratio;
-    if (!totals[p.id]) totals[p.id] = { productId: p.id, name: p.name, unit: p.unit, cooked: 0, raw: 0 };
+    if (!totals[p.id]) totals[p.id] = {
+      productId: p.id, name: p.name, unit: p.unit,
+      cooked: 0, raw: 0,
+      packSize: p.packSize || 0,
+      costPerUnit: p.costPerUnit || 0,
+      unitsPerPot: p.unitsPerPot || 0
+    };
     totals[p.id].cooked += cooked;
     totals[p.id].raw += raw;
   });
@@ -1075,16 +1250,37 @@ function renderResults(totalsArr) {
     return;
   }
   var html = '<div class="results-card"><h3>✅ Raw Amounts to Cook</h3>';
+  var orderTotalCost = 0;
+  var hasAnyCost = false;
   totalsArr.forEach(function(t) {
     var u = unitLabel(t.unit);
     var rawAlt = altDisplay(t.raw, t.unit);
     var cookedAlt = altDisplay(t.cooked, t.unit);
+    var extras = [];
+    if (t.packSize > 0) {
+      var packs = Math.ceil(t.raw / t.packSize);
+      var totalInPacks = packs * t.packSize;
+      extras.push('📦 ' + packs + ' pack' + (packs !== 1 ? 's' : '') + ' of ' + format(t.packSize) + ' ' + escapeHtml(u) + ' = ' + format(totalInPacks) + ' ' + escapeHtml(u));
+    }
+    if (t.unitsPerPot > 0) {
+      var pots = Math.ceil(t.cooked / t.unitsPerPot);
+      extras.push('🍲 ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + escapeHtml(u) + ' each)');
+    }
+    var lineCost = 0;
+    if (t.costPerUnit > 0) {
+      lineCost = t.raw * t.costPerUnit;
+      orderTotalCost += lineCost;
+      hasAnyCost = true;
+      extras.push('💰 $' + lineCost.toFixed(2));
+    }
+    var extrasHtml = extras.length ? '<div class="result-extra">' + extras.join('<br>') + '</div>' : '';
     html +=
       '<div class="result-line">' +
         '<div style="flex:1;min-width:0;">' +
           '<div class="result-name">' + escapeHtml(t.name) + '</div>' +
           '<div class="result-sub">Total cooked: ' + format(t.cooked) + ' ' + escapeHtml(u) +
             (cookedAlt ? ' <span style="opacity:.7">(' + cookedAlt + ')</span>' : '') + '</div>' +
+          extrasHtml +
         '</div>' +
         '<div style="text-align:right;">' +
           '<div class="result-amount">' + format(t.raw) + ' ' + escapeHtml(u) + '</div>' +
@@ -1092,6 +1288,9 @@ function renderResults(totalsArr) {
         '</div>' +
       '</div>';
   });
+  if (hasAnyCost) {
+    html += '<div class="results-total-cost"><span>💰 Total order cost</span><span>$' + orderTotalCost.toFixed(2) + '</span></div>';
+  }
   html += '</div>';
   resEl.innerHTML = html;
 }
@@ -1109,13 +1308,82 @@ document.getElementById('calcBtn').addEventListener('click', function() {
 
 // ============ CLEAR ============
 document.getElementById('clearBtn').addEventListener('click', function() {
-  if (orderRows.length === 0) { toast('Already empty'); return; }
-  if (!confirm('Clear all rows?')) return;
+  if (orderRows.length === 0 && !orderMeta.name && !orderMeta.eventDate) { toast('Already empty'); return; }
+  if (!confirm('Clear all rows and order details?')) return;
   orderRows = [];
+  orderMeta = { name: '', eventDate: '' };
   saveOrder();
+  saveMeta();
+  syncOrderMetaInputs();
   document.getElementById('results').innerHTML = '';
   renderOrderRows();
   toast('Cleared ✓');
+});
+
+// ============ ORDER META (#3) ============
+function syncOrderMetaInputs() {
+  var n = document.getElementById('orderName');
+  var d = document.getElementById('orderDate');
+  if (n) n.value = orderMeta.name || '';
+  if (d) d.value = orderMeta.eventDate || '';
+}
+document.getElementById('orderName').addEventListener('input', function(e) {
+  orderMeta.name = e.target.value;
+  saveMeta();
+});
+document.getElementById('orderDate').addEventListener('change', function(e) {
+  orderMeta.eventDate = e.target.value;
+  saveMeta();
+});
+
+// ============ REVERSE CALC (#7) ============
+function renderReverseSelect() {
+  var sel = document.getElementById('reverseProduct');
+  if (!sel) return;
+  var prevValue = sel.value;
+  if (products.length === 0) {
+    sel.innerHTML = '<option value="">No products</option>';
+    return;
+  }
+  sel.innerHTML = products.map(function(p) {
+    return '<option value="' + p.id + '">' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
+  }).join('');
+  // restore previous selection if it still exists
+  if (prevValue && products.some(function(p){ return p.id === prevValue; })) {
+    sel.value = prevValue;
+  }
+}
+function renderReverseResult() {
+  var box = document.getElementById('reverseResult');
+  if (!box) return;
+  var pid = document.getElementById('reverseProduct').value;
+  var rawAmt = parseFloat(document.getElementById('reverseRaw').value);
+  var portionSize = parseFloat(document.getElementById('reversePortion').value);
+  var p = products.find(function(x){ return x.id === pid; });
+  if (!p || !(rawAmt > 0) || !(portionSize > 0)) {
+    box.className = 'reverse-result empty';
+    box.textContent = 'Pick a product and enter amounts to see how many portions you get.';
+    return;
+  }
+  var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
+  if (!(ratio > 0)) {
+    box.className = 'reverse-result empty';
+    box.textContent = 'Product has no valid raw/cooked ratio.';
+    return;
+  }
+  var totalCooked = rawAmt / ratio;
+  var portions = totalCooked / portionSize;
+  var u = unitLabel(p.unit);
+  box.className = 'reverse-result';
+  box.innerHTML = '≈ <strong>' + format(portions) + '</strong> portions ' +
+                  '<span style="font-weight:500;font-size:13px;opacity:0.85;">(yields ' + format(totalCooked) + ' ' + escapeHtml(u) + ' cooked)</span>';
+}
+['reverseProduct', 'reverseRaw', 'reversePortion'].forEach(function(elId) {
+  var el = document.getElementById(elId);
+  if (el) {
+    el.addEventListener('input', renderReverseResult);
+    el.addEventListener('change', renderReverseResult);
+  }
 });
 
 // ============ HISTORY ============
@@ -1123,6 +1391,8 @@ function pushHistory(totals) {
   var snapshot = {
     id: id(),
     ts: Date.now(),
+    name: orderMeta.name || '',
+    eventDate: orderMeta.eventDate || '',
     rows: orderRows.map(function(row) {
       var p = products.find(function(x){ return x.id === row.productId; });
       return {
@@ -1134,7 +1404,13 @@ function pushHistory(totals) {
       };
     }).filter(function(r) { return r.portions > 0 && r.portionSize > 0; }),
     totals: totals.map(function(t) {
-      return { productId: t.productId, name: t.name, unit: t.unit, cooked: t.cooked, raw: t.raw };
+      return {
+        productId: t.productId, name: t.name, unit: t.unit,
+        cooked: t.cooked, raw: t.raw,
+        packSize: t.packSize || 0,
+        costPerUnit: t.costPerUnit || 0,
+        unitsPerPot: t.unitsPerPot || 0
+      };
     })
   };
   historyEntries.unshift(snapshot);
@@ -1166,9 +1442,19 @@ function renderHistory() {
     var pills = h.totals.map(function(t) {
       return '<span class="pill">' + escapeHtml(t.name) + ': ' + format(t.raw) + ' ' + escapeHtml(unitLabel(t.unit)) + '</span>';
     }).join('');
+    var titleLine = '';
+    if (h.name) {
+      var dateBit = h.eventDate ? ' · ' + escapeHtml(h.eventDate) : '';
+      titleLine = '<div class="history-meta-name">' + escapeHtml(h.name) + dateBit + '</div>';
+    } else if (h.eventDate) {
+      titleLine = '<div class="history-meta-name">' + escapeHtml(h.eventDate) + '</div>';
+    }
     div.innerHTML =
       '<div class="history-header">' +
-        '<div class="history-time">' + fmtTime(h.ts) + '</div>' +
+        '<div>' +
+          titleLine +
+          '<div class="history-time">' + fmtTime(h.ts) + '</div>' +
+        '</div>' +
         '<div class="history-actions">' +
           '<button class="btn-secondary btn-small" data-load="' + h.id + '">↻ Load</button>' +
           '<button class="btn-danger btn-icon" data-rmhist="' + h.id + '">🗑️</button>' +
@@ -1210,7 +1496,11 @@ function loadHistoryEntry(hid) {
     toast('Products from this entry no longer exist');
     return;
   }
+  orderMeta.name = entry.name || '';
+  orderMeta.eventDate = entry.eventDate || '';
   saveOrder();
+  saveMeta();
+  syncOrderMetaInputs();
   renderOrderRows();
   renderResults(entry.totals);
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1229,11 +1519,12 @@ document.getElementById('clearHistoryBtn').addEventListener('click', function() 
 function exportData() {
   var payload = {
     app: 'portion-calc',
-    version: 2,
+    version: 3,
     exported_at: new Date().toISOString(),
     products: products,
     orderRows: orderRows,
-    historyEntries: historyEntries
+    historyEntries: historyEntries,
+    orderMeta: orderMeta
   };
   var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   var url = URL.createObjectURL(blob);
@@ -1272,13 +1563,20 @@ function importData(file) {
     products = data.products;
     orderRows = Array.isArray(data.orderRows) ? data.orderRows : [];
     historyEntries = Array.isArray(data.historyEntries) ? data.historyEntries : [];
+    orderMeta = (data.orderMeta && typeof data.orderMeta === 'object')
+      ? { name: data.orderMeta.name || '', eventDate: data.orderMeta.eventDate || '' }
+      : { name: '', eventDate: '' };
     saveProducts();
     saveOrder();
     saveHistory();
+    saveMeta();
     productEditingId = null;
+    syncOrderMetaInputs();
     renderProducts();
     renderOrderRows();
     renderHistory();
+    renderReverseSelect();
+    renderReverseResult();
     document.getElementById('results').innerHTML = '';
     toast('Backup restored ✓');
   };
@@ -1344,9 +1642,12 @@ if ('serviceWorker' in navigator) {
 
 // ============ INIT ============
 loadState();
+syncOrderMetaInputs();
 renderProducts();
 renderOrderRows();
 renderHistory();
+renderReverseSelect();
+renderReverseResult();
 </script>
 </body>
 </html>
