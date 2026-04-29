@@ -294,6 +294,50 @@
     border: 1.5px solid #fecaca;
   }
   .btn-clear:hover { background: #fecaca; }
+
+  .product-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .search-row {
+    display: grid;
+    grid-template-columns: 1fr 130px;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .search-row input,
+  .search-row select { padding: 10px 12px; font-size: 14px; }
+  .io-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .io-row button { padding: 12px; font-size: 14px; }
+  .field-help {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .row-controls {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .row-controls button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 13px;
+  }
+  .row-controls button[disabled] { opacity: 0.3; cursor: not-allowed; }
+  .edit-form { padding: 4px 0; }
+  .edit-form .field { margin-bottom: 8px; }
+  .edit-form input,
+  .edit-form select { padding: 10px 12px; font-size: 15px; }
+  .edit-form-buttons { display: flex; gap: 8px; margin-top: 8px; }
+  .edit-form-buttons button { flex: 1; padding: 10px; font-size: 14px; }
+  .product-item.editing { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15,118,110,0.15); }
   .card-title-row {
     display: flex;
     justify-content: space-between;
@@ -476,7 +520,25 @@
 
   <div class="card">
     <div class="card-title">📦 Product List</div>
+    <div class="search-row">
+      <input type="text" id="productSearch" placeholder="🔍 Search products..." autocomplete="off">
+      <select id="productSort">
+        <option value="recent">Recent first</option>
+        <option value="name">Name A→Z</option>
+        <option value="mostused">Most used</option>
+      </select>
+    </div>
     <div id="productsList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💾 Backup &amp; Restore</div>
+    <div class="io-row">
+      <button class="btn-secondary" id="exportBtn">📤 Export JSON</button>
+      <button class="btn-secondary" id="importBtn">📥 Import JSON</button>
+    </div>
+    <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;">
+    <div class="field-help">Save all products and history to a file, or restore from a previous backup.</div>
   </div>
 </section>
 
@@ -502,6 +564,11 @@ var HISTORY_LIMIT = 50;
 var products = [];   // [{id, name, raw, cooked, unit}]
 var orderRows = [];  // [{id, productId, portions, portionSize}]
 var historyEntries = [];    // [{id, ts, rows:[...], totals:[...]}]
+
+// Phase A UI state (not persisted)
+var productSearch = '';
+var productSort = 'recent';
+var productEditingId = null;
 
 // ============ UNITS (US customary) ============
 // unit display names + conversion to a common base for "nicer" alt display.
@@ -582,30 +649,119 @@ document.querySelectorAll('.tab').forEach(function(t) {
 });
 
 // ============ PRODUCTS ============
+function getProductUsageCounts() {
+  var counts = {};
+  historyEntries.forEach(function(h) {
+    h.totals.forEach(function(t) {
+      counts[t.productId] = (counts[t.productId] || 0) + 1;
+    });
+  });
+  return counts;
+}
+
+function filterAndSortProducts() {
+  var q = productSearch.trim().toLowerCase();
+  var arr = products.filter(function(p) {
+    if (!q) return true;
+    return p.name.toLowerCase().indexOf(q) !== -1;
+  });
+  if (productSort === 'name') {
+    arr.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  } else if (productSort === 'mostused') {
+    var counts = getProductUsageCounts();
+    arr.sort(function(a, b) { return (counts[b.id] || 0) - (counts[a.id] || 0); });
+  } else {
+    // 'recent': preserve original insertion order, but reverse so newest first
+    arr.reverse();
+  }
+  return arr;
+}
+
+function buildProductViewCard(p) {
+  var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
+  var per1 = ratio.toFixed(3).replace(/\.?0+$/, '');
+  var u = unitLabel(p.unit);
+  var div = document.createElement('div');
+  div.className = 'product-item';
+  div.innerHTML =
+    '<div class="product-item-header">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="product-detail">' + format(p.raw) + ' ' + escapeHtml(u) + ' raw → ' + format(p.cooked) + ' ' + escapeHtml(u) + ' cooked</div>' +
+        '<div class="product-ratio-badge">Ratio: ' + per1 + ' raw per 1 cooked</div>' +
+      '</div>' +
+      '<div class="product-actions">' +
+        '<button class="btn-secondary btn-icon" data-edit="' + p.id + '" title="Edit">✏️</button>' +
+        '<button class="btn-secondary btn-icon" data-dup="' + p.id + '" title="Duplicate">📋</button>' +
+        '<button class="btn-danger btn-icon" data-del="' + p.id + '" title="Delete">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  return div;
+}
+
+function buildProductEditCard(p) {
+  var div = document.createElement('div');
+  div.className = 'product-item editing';
+  var unitOptions = [
+    { group: 'Weight', items: [['oz','ounces (oz)'], ['lb','pounds (lb)']] },
+    { group: 'Volume', items: [['cup','cups'], ['floz','fluid ounces (fl oz)'], ['qt','quarts (qt)'], ['gal','gallons (gal)']] },
+    { group: 'Count',  items: [['ct','units (count)']] }
+  ];
+  var optsHtml = unitOptions.map(function(g) {
+    return '<optgroup label="' + g.group + '">' +
+      g.items.map(function(it) {
+        var sel = (it[0] === p.unit) ? ' selected' : '';
+        return '<option value="' + it[0] + '"' + sel + '>' + it[1] + '</option>';
+      }).join('') + '</optgroup>';
+  }).join('');
+  div.innerHTML =
+    '<div class="edit-form">' +
+      '<div class="field">' +
+        '<label>Product name</label>' +
+        '<input type="text" data-edit-field="name" data-eid="' + p.id + '" value="' + escapeHtml(p.name) + '">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Unit type</label>' +
+        '<select data-edit-field="unit" data-eid="' + p.id + '">' + optsHtml + '</select>' +
+      '</div>' +
+      '<div class="row-grid">' +
+        '<div class="field">' +
+          '<label>Raw amount</label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="raw" data-eid="' + p.id + '" value="' + p.raw + '">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Cooked amount</label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="cooked" data-eid="' + p.id + '" value="' + p.cooked + '">' +
+        '</div>' +
+      '</div>' +
+      '<div class="edit-form-buttons">' +
+        '<button class="btn-primary" data-savep="' + p.id + '">Save</button>' +
+        '<button class="btn-secondary" data-cancelp="' + p.id + '">Cancel</button>' +
+      '</div>' +
+    '</div>';
+  return div;
+}
+
 function renderProducts() {
   var list = document.getElementById('productsList');
   if (products.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>No products yet. Add one above.</div></div>';
     return;
   }
+  var displayed = filterAndSortProducts();
+  if (displayed.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No products match your search.</div></div>';
+    return;
+  }
   list.innerHTML = '';
-  products.forEach(function(p) {
-    var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
-    var per1 = ratio.toFixed(3).replace(/\.?0+$/, '');
-    var u = unitLabel(p.unit);
-    var div = document.createElement('div');
-    div.className = 'product-item';
-    div.innerHTML =
-      '<div class="product-item-header">' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
-          '<div class="product-detail">' + format(p.raw) + ' ' + escapeHtml(u) + ' raw → ' + format(p.cooked) + ' ' + escapeHtml(u) + ' cooked</div>' +
-          '<div class="product-ratio-badge">Ratio: ' + per1 + ' raw per 1 cooked</div>' +
-        '</div>' +
-        '<button class="btn-danger btn-icon" data-del="' + p.id + '" title="Delete">🗑️</button>' +
-      '</div>';
-    list.appendChild(div);
+  displayed.forEach(function(p) {
+    if (productEditingId === p.id) {
+      list.appendChild(buildProductEditCard(p));
+    } else {
+      list.appendChild(buildProductViewCard(p));
+    }
   });
+
   list.querySelectorAll('[data-del]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var pid = btn.getAttribute('data-del');
@@ -617,7 +773,61 @@ function renderProducts() {
       }
     });
   });
+  list.querySelectorAll('[data-edit]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      productEditingId = btn.getAttribute('data-edit');
+      renderProducts();
+      var nameInput = document.querySelector('[data-edit-field="name"][data-eid="' + productEditingId + '"]');
+      if (nameInput) { nameInput.focus(); nameInput.select(); }
+    });
+  });
+  list.querySelectorAll('[data-dup]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pid = btn.getAttribute('data-dup');
+      var p = products.find(function(x){ return x.id === pid; });
+      if (!p) return;
+      products.push({ id: id(), name: p.name + ' (copy)', raw: p.raw, cooked: p.cooked, unit: p.unit });
+      saveProducts();
+      renderProducts();
+      renderOrderRows();
+      toast('Product duplicated ✓');
+    });
+  });
+  list.querySelectorAll('[data-savep]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pid = btn.getAttribute('data-savep');
+      var p = products.find(function(x){ return x.id === pid; });
+      if (!p) return;
+      var name = document.querySelector('[data-edit-field="name"][data-eid="' + pid + '"]').value.trim();
+      var raw = parseFloat(document.querySelector('[data-edit-field="raw"][data-eid="' + pid + '"]').value);
+      var cooked = parseFloat(document.querySelector('[data-edit-field="cooked"][data-eid="' + pid + '"]').value);
+      var unit = document.querySelector('[data-edit-field="unit"][data-eid="' + pid + '"]').value;
+      if (!name) { toast('Enter a product name'); return; }
+      if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
+      p.name = name; p.raw = raw; p.cooked = cooked; p.unit = unit;
+      saveProducts();
+      productEditingId = null;
+      renderProducts();
+      renderOrderRows();
+      toast('Product updated ✓');
+    });
+  });
+  list.querySelectorAll('[data-cancelp]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      productEditingId = null;
+      renderProducts();
+    });
+  });
 }
+
+document.getElementById('productSearch').addEventListener('input', function(e) {
+  productSearch = e.target.value;
+  renderProducts();
+});
+document.getElementById('productSort').addEventListener('change', function(e) {
+  productSort = e.target.value;
+  renderProducts();
+});
 
 document.getElementById('addProductBtn').addEventListener('click', function() {
   var name = document.getElementById('newProductName').value.trim();
@@ -657,10 +867,17 @@ function renderOrderRows() {
       return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
     }).join('');
 
+    var isFirst = idx === 0;
+    var isLast = idx === orderRows.length - 1;
     div.innerHTML =
       '<div class="row-header">' +
         '<div class="row-header-text">Row #' + (idx+1) + '</div>' +
-        '<button class="btn-danger btn-icon" data-rmrow="' + row.id + '">🗑️</button>' +
+        '<div class="row-controls">' +
+          '<button class="btn-secondary btn-icon" data-mvup="' + row.id + '" title="Move up"' + (isFirst ? ' disabled' : '') + '>▲</button>' +
+          '<button class="btn-secondary btn-icon" data-mvdn="' + row.id + '" title="Move down"' + (isLast ? ' disabled' : '') + '>▼</button>' +
+          '<button class="btn-secondary btn-icon" data-duprow="' + row.id + '" title="Duplicate">📋</button>' +
+          '<button class="btn-danger btn-icon" data-rmrow="' + row.id + '" title="Delete">🗑️</button>' +
+        '</div>' +
       '</div>' +
       '<div class="field">' +
         '<label>Product</label>' +
@@ -698,6 +915,36 @@ function renderOrderRows() {
     btn.addEventListener('click', function() {
       var rid = btn.getAttribute('data-rmrow');
       orderRows = orderRows.filter(function(r){ return r.id !== rid; });
+      saveOrder();
+      renderOrderRows();
+    });
+  });
+  container.querySelectorAll('[data-mvup],[data-mvdn]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (btn.disabled) return;
+      var rid = btn.getAttribute('data-mvup') || btn.getAttribute('data-mvdn');
+      var dir = btn.hasAttribute('data-mvup') ? -1 : 1;
+      var i = orderRows.findIndex(function(r){ return r.id === rid; });
+      if (i < 0) return;
+      var j = i + dir;
+      if (j < 0 || j >= orderRows.length) return;
+      var tmp = orderRows[i]; orderRows[i] = orderRows[j]; orderRows[j] = tmp;
+      saveOrder();
+      renderOrderRows();
+    });
+  });
+  container.querySelectorAll('[data-duprow]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-duprow');
+      var i = orderRows.findIndex(function(r){ return r.id === rid; });
+      if (i < 0) return;
+      var orig = orderRows[i];
+      orderRows.splice(i + 1, 0, {
+        id: id(),
+        productId: orig.productId,
+        portions: orig.portions,
+        portionSize: orig.portionSize
+      });
       saveOrder();
       renderOrderRows();
     });
@@ -897,6 +1144,76 @@ document.getElementById('clearHistoryBtn').addEventListener('click', function() 
   historyEntries = [];
   saveHistory();
   renderHistory();
+});
+
+// ============ BACKUP / RESTORE ============
+function exportData() {
+  var payload = {
+    app: 'portion-calc',
+    version: 2,
+    exported_at: new Date().toISOString(),
+    products: products,
+    orderRows: orderRows,
+    historyEntries: historyEntries
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'portion-calc-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('Backup downloaded ✓');
+}
+
+function importData(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var data;
+    try {
+      data = JSON.parse(e.target.result);
+    } catch(err) {
+      toast('Invalid JSON file');
+      return;
+    }
+    if (!data || !Array.isArray(data.products)) {
+      toast('Invalid backup format');
+      return;
+    }
+    var rowsCount = Array.isArray(data.orderRows) ? data.orderRows.length : 0;
+    var histCount = Array.isArray(data.historyEntries) ? data.historyEntries.length : 0;
+    var msg = 'Replace ALL current data?\n\n' +
+              '• ' + data.products.length + ' products\n' +
+              '• ' + rowsCount + ' order rows\n' +
+              '• ' + histCount + ' history entries\n\n' +
+              'This cannot be undone.';
+    if (!confirm(msg)) return;
+    products = data.products;
+    orderRows = Array.isArray(data.orderRows) ? data.orderRows : [];
+    historyEntries = Array.isArray(data.historyEntries) ? data.historyEntries : [];
+    saveProducts();
+    saveOrder();
+    saveHistory();
+    productEditingId = null;
+    renderProducts();
+    renderOrderRows();
+    renderHistory();
+    document.getElementById('results').innerHTML = '';
+    toast('Backup restored ✓');
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportData);
+document.getElementById('importBtn').addEventListener('click', function() {
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', function(e) {
+  var file = e.target.files && e.target.files[0];
+  if (file) importData(file);
+  e.target.value = '';
 });
 
 // ============ HELPERS ============
