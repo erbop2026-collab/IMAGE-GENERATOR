@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.0</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.1</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1431,12 +1431,27 @@ function altDisplay(value, unit) {
 // ============ STORAGE ============
 function migrateOrderRows(rows) {
   if (!Array.isArray(rows)) return [];
-  // v2.5.5: orders are dishes-only. Drop any kind:'product' or legacy
-  // (no-kind) rows that came from pre-v2.5.3 storage.
+  // v2.6.1: dish rows now use sizes:[{id,portions,portionSize}] (multi-size).
+  // Legacy {portions:N} converts to a single-size: portionSize defaults to
+  // recipe.yieldCooked so the legacy "N meals" math is preserved 1:1.
   return rows.map(function(r) {
     if (!r) return null;
     if (r.kind === 'recipe' && r.recipeId) {
-      return { id: r.id || id(), kind: 'recipe', recipeId: r.recipeId, portions: r.portions || 0 };
+      var sizes;
+      if (Array.isArray(r.sizes) && r.sizes.length > 0) {
+        sizes = r.sizes.map(function(s) {
+          return {
+            id: s.id || id(),
+            portions: s.portions || 0,
+            portionSize: s.portionSize || 0
+          };
+        });
+      } else {
+        var rec = recipes.find(function(x){ return x.id === r.recipeId; });
+        var defaultPortionSize = (rec && rec.yieldCooked > 0) ? rec.yieldCooked : 0;
+        sizes = [{ id: id(), portions: r.portions || 0, portionSize: defaultPortionSize }];
+      }
+      return { id: r.id || id(), kind: 'recipe', recipeId: r.recipeId, sizes: sizes };
     }
     return null;
   }).filter(Boolean);
@@ -1448,24 +1463,25 @@ function loadState() {
     if (p) products = JSON.parse(p);
   } catch(e) { products = []; }
   try {
+    var rc = localStorage.getItem(STORAGE_KEY_RECIPES);
+    if (rc) recipes = JSON.parse(rc);
+  } catch(e) { recipes = []; }
+  // orderRows AFTER recipes — migration looks up recipe.yieldCooked.
+  try {
     var o = localStorage.getItem(STORAGE_KEY_ORDER);
     if (o) {
       var rawRows = JSON.parse(o);
       orderRows = migrateOrderRows(rawRows);
-      // If migration dropped any rows, persist the cleaned state immediately.
-      if (Array.isArray(rawRows) && rawRows.length !== orderRows.length) {
-        localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows));
-      }
+      // Persist if migration changed anything (dropped rows or reshape).
+      var rawJson = JSON.stringify(rawRows);
+      var newJson = JSON.stringify(orderRows);
+      if (rawJson !== newJson) localStorage.setItem(STORAGE_KEY_ORDER, newJson);
     }
   } catch(e) { orderRows = []; }
   try {
     var h = localStorage.getItem(STORAGE_KEY_HISTORY);
     if (h) historyEntries = JSON.parse(h);
   } catch(e) { historyEntries = []; }
-  try {
-    var rc = localStorage.getItem(STORAGE_KEY_RECIPES);
-    if (rc) recipes = JSON.parse(rc);
-  } catch(e) { recipes = []; }
   try {
     var pt = localStorage.getItem(STORAGE_KEY_POTS);
     if (pt) pots = JSON.parse(pt);
@@ -2343,7 +2359,7 @@ function renderOrderRows() {
     var isLast = idx === orderRows.length - 1;
 
     if (row.kind === 'recipe') {
-      // ----- Recipe row -----
+      // ----- Recipe (dish) row with multi-sizes -----
       var recOpts = recipes
         .filter(function(r) {
           if (!q) return true;
@@ -2354,7 +2370,28 @@ function renderOrderRows() {
           var sel = r.id === row.recipeId ? ' selected' : '';
           return '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.name) + '</option>';
         }).join('');
-      if (!recOpts) recOpts = '<option value="">(no recipes — add one in the Recipes tab)</option>';
+      if (!recOpts) recOpts = '<option value="">(no dishes — add one in the Products tab)</option>';
+
+      var dishRec = recipes.find(function(r){ return r.id === row.recipeId; });
+      var dishUnit = (dishRec && dishRec.yieldUnit) ? unitLabel(dishRec.yieldUnit) : 'oz';
+
+      var rsizes = Array.isArray(row.sizes) ? row.sizes : [];
+      var rsizesHtml = rsizes.map(function(sz) {
+        return (
+          '<div class="size-row" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+            '<div class="field">' +
+              '<label>Portions</label>' +
+              '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (sz.portions > 0 ? sz.portions : '') + '" data-size-field="portions" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+            '</div>' +
+            '<div class="field">' +
+              '<label>Portion size (' + escapeHtml(dishUnit) + ' cooked)</label>' +
+              '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 8" value="' + (sz.portionSize > 0 ? sz.portionSize : '') + '" data-size-field="portionSize" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+            '</div>' +
+            '<button class="btn-danger btn-icon" data-rmsize="' + sz.id + '" data-row-id="' + row.id + '" title="Remove this size">🗑️</button>' +
+            '<div class="size-row-summary" id="size-sum-' + sz.id + '"></div>' +
+          '</div>'
+        );
+      }).join('');
 
       div.innerHTML =
         '<div class="row-header">' +
@@ -2370,10 +2407,8 @@ function renderOrderRows() {
           '<label>Dish</label>' +
           '<select data-field="recipeId" data-id="' + row.id + '">' + recOpts + '</select>' +
         '</div>' +
-        '<div class="field">' +
-          '<label>Number of meals</label>' +
-          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (row.portions > 0 ? row.portions : '') + '" data-field="portions" data-id="' + row.id + '">' +
-        '</div>' +
+        rsizesHtml +
+        '<button class="add-size-btn" data-addsize="' + row.id + '">+ Add another size for this dish</button>' +
         '<div class="order-group-totals" id="group-sum-' + row.id + '"></div>';
 
       container.appendChild(div);
@@ -2548,7 +2583,12 @@ function renderOrderRows() {
       var orig = orderRows[i];
       var copy;
       if (orig.kind === 'recipe') {
-        copy = { id: id(), kind: 'recipe', recipeId: orig.recipeId, portions: orig.portions };
+        copy = {
+          id: id(), kind: 'recipe', recipeId: orig.recipeId,
+          sizes: (Array.isArray(orig.sizes) ? orig.sizes : []).map(function(s) {
+            return { id: id(), portions: s.portions, portionSize: s.portionSize };
+          })
+        };
       } else {
         copy = {
           id: id(), kind: 'product', productId: orig.productId,
@@ -2572,13 +2612,31 @@ function updateGroupSummary(rowId) {
   if (row.kind === 'recipe') {
     var r = recipes.find(function(x){ return x.id === row.recipeId; });
     if (!groupEl) return;
-    if (!r || !(row.portions > 0)) { groupEl.textContent = ''; return; }
+    if (!r) { groupEl.textContent = ''; return; }
+    var dishUnit = unitLabel(r.yieldUnit || 'oz');
+    var totalCookedDish = 0;
+    var totalPortionsDish = 0;
+    (row.sizes || []).forEach(function(sz) {
+      var c = sz.portions * sz.portionSize;
+      if (c > 0) { totalCookedDish += c; totalPortionsDish += sz.portions; }
+      var sumEl = document.getElementById('size-sum-' + sz.id);
+      if (sumEl) {
+        if (c > 0) sumEl.textContent = sz.portions + ' × ' + format(sz.portionSize) + ' ' + dishUnit + ' = ' + format(c) + ' ' + dishUnit;
+        else sumEl.textContent = '';
+      }
+    });
+    if (totalCookedDish <= 0) { groupEl.textContent = ''; return; }
+    var batches = (r.yieldCooked > 0) ? (totalCookedDish / r.yieldCooked) : 0;
     var partsList = (r.components || []).map(function(c) {
       var pp = products.find(function(x){ return x.id === c.productId; });
       var ppu = pp ? unitLabel(pp.unit) : '';
-      return format(c.amount * row.portions) + ' ' + ppu + ' ' + (pp ? pp.name : '?');
+      var compAmt = batches > 0 ? format(c.amount * batches) : format(c.amount);
+      return compAmt + ' ' + ppu + ' ' + (pp ? pp.name : '?');
     }).join(' + ');
-    groupEl.textContent = row.portions + ' meals → ' + partsList;
+    var summary = totalPortionsDish + ' portions, ' + format(totalCookedDish) + ' ' + dishUnit + ' cooked';
+    if (r.yieldCooked > 0) summary += ' → ' + format(batches) + ' batches: ' + partsList;
+    else summary += ' (set yield on dish to scale recipe)';
+    groupEl.textContent = summary;
     return;
   }
 
@@ -2607,11 +2665,13 @@ function updateGroupSummary(rowId) {
 
 document.getElementById('addDishRowBtn').addEventListener('click', function() {
   if (recipes.length === 0) { toast('No dishes yet — go to the ⚙️ Products tab and click "+ Add Dish" to create one'); return; }
+  var pickedRecipe = recipes[recipes.length - 1];
+  var defaultPortionSize = (pickedRecipe && pickedRecipe.yieldCooked > 0) ? pickedRecipe.yieldCooked : 0;
   orderRows.push({
     id: id(),
     kind: 'recipe',
-    recipeId: recipes[recipes.length - 1].id,
-    portions: 0
+    recipeId: pickedRecipe.id,
+    sizes: [{ id: id(), portions: 0, portionSize: defaultPortionSize }]
   });
   saveOrder();
   renderOrderRows();
@@ -2674,13 +2734,17 @@ function renderQuickAdd() {
       var rid = btn.getAttribute('data-quickadd-recipe');
       var r = recipes.find(function(x){ return x.id === rid; });
       if (!r) return;
-      orderRows.push({ id: id(), kind: 'recipe', recipeId: rid, portions: 0 });
+      var defaultPortionSize = (r.yieldCooked > 0) ? r.yieldCooked : 0;
+      orderRows.push({
+        id: id(), kind: 'recipe', recipeId: rid,
+        sizes: [{ id: id(), portions: 0, portionSize: defaultPortionSize }]
+      });
       saveOrder();
       calcSearch = '';
       document.getElementById('calcSearch').value = '';
       renderQuickAdd();
       renderOrderRows();
-      toast('Added recipe: ' + r.name);
+      toast('Added dish: ' + r.name);
     });
   });
 }
@@ -2739,20 +2803,29 @@ function computeTotals() {
   orderRows.forEach(function(row) {
     // Recipe row: expand each component into product totals
     if (row.kind === 'recipe') {
-      if (!(row.portions > 0)) return;
       var rec = recipes.find(function(x){ return x.id === row.recipeId; });
       if (!rec) return;
+      // Sum cooked across all sizes; convert to batches via the dish yield.
+      var sizes = Array.isArray(row.sizes) ? row.sizes : [];
+      var totalCookedDish = 0;
+      var totalPortionsDish = 0;
+      sizes.forEach(function(sz) {
+        var c = sz.portions * sz.portionSize;
+        if (c > 0) { totalCookedDish += c; totalPortionsDish += sz.portions; }
+      });
+      if (!(totalCookedDish > 0) || !(rec.yieldCooked > 0)) return;
+      var batches = totalCookedDish / rec.yieldCooked;
       (rec.components || []).forEach(function(comp) {
         var p = products.find(function(x){ return x.id === comp.productId; });
         if (!p || !(comp.amount > 0)) return;
         var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
-        var cooked = row.portions * comp.amount;
+        var cooked = batches * comp.amount;
         var raw = cooked * ratio;
         var t = ensureTotalEntry(totals, p);
         t.cooked += cooked;
         t.raw += raw;
-        t.portionsCount += row.portions;
-        addToSizeBreakdown(t, comp.amount, row.portions, cooked, raw);
+        t.portionsCount += totalPortionsDish;
+        addToSizeBreakdown(t, comp.amount, totalPortionsDish, cooked, raw);
       });
       return;
     }
@@ -3062,7 +3135,10 @@ function pushHistory(totals) {
           kind: 'recipe',
           recipeId: row.recipeId,
           recipeName: rec ? rec.name : '(deleted)',
-          portions: row.portions,
+          yieldCooked: rec ? rec.yieldCooked : null,
+          yieldUnit: rec ? rec.yieldUnit : null,
+          sizes: (row.sizes || []).filter(function(s){ return s.portions > 0 && s.portionSize > 0; })
+                                  .map(function(s){ return { portions: s.portions, portionSize: s.portionSize }; }),
           components: rec ? rec.components.slice() : []
         };
       }
@@ -3076,7 +3152,6 @@ function pushHistory(totals) {
                                 .map(function(s){ return { portions: s.portions, portionSize: s.portionSize }; })
       };
     }).filter(function(r) {
-      if (r.kind === 'recipe') return r.portions > 0;
       return r.sizes && r.sizes.length > 0;
     }),
     totals: totals.map(function(t) {
@@ -3172,9 +3247,19 @@ function loadHistoryEntry(hid) {
   orderRows = entry.rows.map(function(r) {
     if (r.kind === 'recipe') {
       // Restore only if recipe still exists (otherwise drop)
-      var recExists = recipes.some(function(x){ return x.id === r.recipeId; });
-      if (!recExists) return null;
-      return { id: id(), kind: 'recipe', recipeId: r.recipeId, portions: r.portions || 0 };
+      var rec = recipes.find(function(x){ return x.id === r.recipeId; });
+      if (!rec) return null;
+      var sizes;
+      if (Array.isArray(r.sizes) && r.sizes.length > 0) {
+        sizes = r.sizes.map(function(s) {
+          return { id: id(), portions: s.portions || 0, portionSize: s.portionSize || 0 };
+        });
+      } else {
+        // Legacy history with single portions:N — reconstruct one size.
+        var ds = (rec.yieldCooked > 0) ? rec.yieldCooked : 0;
+        sizes = [{ id: id(), portions: r.portions || 0, portionSize: ds }];
+      }
+      return { id: id(), kind: 'recipe', recipeId: r.recipeId, sizes: sizes };
     }
     var stillExists = products.some(function(p){ return p.id === r.productId; });
     if (!stillExists) return null;
