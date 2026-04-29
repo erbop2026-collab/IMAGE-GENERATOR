@@ -745,7 +745,7 @@
 
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
-  <div class="tab" data-tab="products">⚙️ Products</div>
+  <div class="tab" data-tab="products">⚙️ Ingredients</div>
   <div class="tab" data-tab="recipes">🍲 Recipes</div>
   <div class="tab" data-tab="help">❓ Help</div>
 </nav>
@@ -832,20 +832,11 @@
   </div>
 </section>
 
-<!-- ============ TAB: PRODUCTS (placeholder until v2.4) ============ -->
+<!-- ============ TAB: INGREDIENTS ============ -->
 <section class="tab-content" id="tab-products">
   <div class="card">
-    <div class="card-title">⚙️ Products</div>
-    <p style="font-size:13px;color:var(--text);"><strong>A Product</strong> is a sellable dish on your menu — an item the customer orders directly (e.g. "Chicken &amp; Rice plate", "Pasta plate"). Each product will have its own recipe and production fields (pots, packaging, labor).</p>
-    <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">🚧 <strong>Coming next:</strong> manage sellable products here. For now, define your ingredients and recipes in the <strong>🍲 Recipes</strong> tab and use them in the Calculate tab.</p>
-  </div>
-</section>
-
-<!-- ============ TAB: RECIPES (ingredients catalog + recipes) ============ -->
-<section class="tab-content" id="tab-recipes">
-  <div class="card">
     <div class="card-title">➕ Add New Ingredient</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">An ingredient is a raw material with a raw → cooked conversion (e.g. rice, chicken, oil). Combine ingredients into a meal in the Add Recipe form below.</p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">An ingredient is a raw material with a raw → cooked conversion (e.g. rice, chicken, oil). Combine ingredients into a meal in the <strong>🍲 Recipes</strong> tab.</p>
 
     <div class="field">
       <label>Ingredient name</label>
@@ -1000,10 +991,13 @@ Pasta,oz,8,16"></textarea>
     </div>
     <div id="reverseResult" class="reverse-result empty">Pick an ingredient and enter amounts to see how many portions you get.</div>
   </div>
+</section>
 
+<!-- ============ TAB: RECIPES ============ -->
+<section class="tab-content" id="tab-recipes">
   <div class="card">
     <div class="card-title">➕ Add New Recipe</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple ingredients (e.g. <em>Chicken &amp; Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>). When you add the recipe to an order, the app expands it into raw amounts for each component.</p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products (e.g. <em>Chicken & Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>). When you add the recipe to an order, the app expands it into raw amounts for each component.</p>
     <div class="field">
       <label>Recipe name</label>
       <input type="text" id="newRecipeName" placeholder="e.g. Chicken & Rice meal">
@@ -1036,8 +1030,8 @@ Pasta,oz,8,16"></textarea>
 
     <h3>Tabs</h3>
     <p><strong>📊 Calculate</strong> — build the order and see results.<br>
-       <strong>⚙️ Products</strong> — placeholder for now; sellable products come in a future update.<br>
-       <strong>🍲 Recipes</strong> — your ingredient catalog (Add / Bulk import / Reverse Calc) plus recipe definitions.<br>
+       <strong>⚙️ Ingredients</strong> — set up your ingredient catalog and run reverse calculations.<br>
+       <strong>🍲 Recipes</strong> — define composite dishes (one meal = several ingredients).<br>
        <strong>❓ Help</strong> — this page.</p>
 
     <h3>Setting up ingredients</h3>
