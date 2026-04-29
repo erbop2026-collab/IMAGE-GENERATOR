@@ -636,8 +636,13 @@
         <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Cost per unit ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <label>Cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
         <input type="number" id="newProductCost" placeholder="e.g. 1.20" step="any" min="0" inputmode="decimal">
+        <select id="newProductCostMode" style="margin-top:6px;font-size:13px;padding:8px 10px;">
+          <option value="measure">Per measurement unit (oz/lb/cup…)</option>
+          <option value="pack">Per pack</option>
+          <option value="piece">Per piece (count)</option>
+        </select>
       </div>
     </div>
     <div class="field">
@@ -834,7 +839,11 @@ function buildProductViewCard(p) {
   var pillsHtml = '';
   var pillBits = [];
   if (p.packSize > 0)    pillBits.push('<span class="info-pill pack">📦 pack ' + format(p.packSize) + ' ' + escapeHtml(u) + '</span>');
-  if (p.costPerUnit > 0) pillBits.push('<span class="info-pill cost">💰 $' + p.costPerUnit + '/' + escapeHtml(u) + '</span>');
+  if (p.costPerUnit > 0) {
+    var mode = p.costMode || 'measure';
+    var basis = mode === 'pack' ? 'pack' : (mode === 'piece' ? 'piece' : escapeHtml(u));
+    pillBits.push('<span class="info-pill cost">💰 $' + p.costPerUnit + '/' + basis + '</span>');
+  }
   if (p.unitsPerPot > 0) pillBits.push('<span class="info-pill pot">🍲 pot ' + format(p.unitsPerPot) + ' ' + escapeHtml(u) + '</span>');
   if (pillBits.length) pillsHtml = '<div class="product-pills">' + pillBits.join('') + '</div>';
   var div = document.createElement('div');
@@ -873,7 +882,12 @@ function buildProductEditCard(p) {
   }).join('');
   var packVal = (p.packSize > 0) ? p.packSize : '';
   var costVal = (p.costPerUnit > 0) ? p.costPerUnit : '';
+  var costModeVal = p.costMode || 'measure';
   var potVal  = (p.unitsPerPot > 0) ? p.unitsPerPot : '';
+  var costModeOpts =
+    '<option value="measure"' + (costModeVal === 'measure' ? ' selected' : '') + '>Per measurement unit</option>' +
+    '<option value="pack"' + (costModeVal === 'pack' ? ' selected' : '') + '>Per pack</option>' +
+    '<option value="piece"' + (costModeVal === 'piece' ? ' selected' : '') + '>Per piece (count)</option>';
   div.innerHTML =
     '<div class="edit-form">' +
       '<div class="field">' +
@@ -900,8 +914,9 @@ function buildProductEditCard(p) {
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
         '</div>' +
         '<div class="field">' +
-          '<label>Cost per unit ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
+          '<label>Cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="costPerUnit" data-eid="' + p.id + '" value="' + costVal + '">' +
+          '<select data-edit-field="costMode" data-eid="' + p.id + '" style="margin-top:6px;font-size:13px;padding:8px 10px;">' + costModeOpts + '</select>' +
         '</div>' +
       '</div>' +
       '<div class="field">' +
@@ -985,12 +1000,19 @@ function renderProducts() {
       var unit = document.querySelector('[data-edit-field="unit"][data-eid="' + pid + '"]').value;
       var packVal = parseFloat(document.querySelector('[data-edit-field="packSize"][data-eid="' + pid + '"]').value);
       var costVal = parseFloat(document.querySelector('[data-edit-field="costPerUnit"][data-eid="' + pid + '"]').value);
+      var costModeVal = document.querySelector('[data-edit-field="costMode"][data-eid="' + pid + '"]').value;
       var potVal  = parseFloat(document.querySelector('[data-edit-field="unitsPerPot"][data-eid="' + pid + '"]').value);
       if (!name) { toast('Enter a product name'); return; }
       if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
       p.name = name; p.raw = raw; p.cooked = cooked; p.unit = unit;
       if (packVal > 0) p.packSize = packVal; else delete p.packSize;
-      if (costVal > 0) p.costPerUnit = costVal; else delete p.costPerUnit;
+      if (costVal > 0) {
+        p.costPerUnit = costVal;
+        p.costMode = costModeVal || 'measure';
+      } else {
+        delete p.costPerUnit;
+        delete p.costMode;
+      }
       if (potVal  > 0) p.unitsPerPot = potVal; else delete p.unitsPerPot;
       saveProducts();
       productEditingId = null;
@@ -1025,12 +1047,16 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   var unit = document.getElementById('newProductUnit').value;
   var packRaw = parseFloat(document.getElementById('newProductPack').value);
   var costRaw = parseFloat(document.getElementById('newProductCost').value);
+  var costMode = document.getElementById('newProductCostMode').value;
   var potRaw  = parseFloat(document.getElementById('newProductPot').value);
   if (!name) { toast('Enter a product name'); return; }
   if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
   var prod = { id: id(), name: name, raw: raw, cooked: cooked, unit: unit };
   if (packRaw > 0) prod.packSize = packRaw;
-  if (costRaw > 0) prod.costPerUnit = costRaw;
+  if (costRaw > 0) {
+    prod.costPerUnit = costRaw;
+    prod.costMode = costMode || 'measure';
+  }
   if (potRaw  > 0) prod.unitsPerPot = potRaw;
   products.push(prod);
   saveProducts();
@@ -1039,6 +1065,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   document.getElementById('newProductCooked').value = '';
   document.getElementById('newProductPack').value = '';
   document.getElementById('newProductCost').value = '';
+  document.getElementById('newProductCostMode').value = 'measure';
   document.getElementById('newProductPot').value = '';
   renderProducts();
   renderOrderRows();
@@ -1235,6 +1262,7 @@ function computeTotals() {
       cooked: 0, raw: 0,
       packSize: p.packSize || 0,
       costPerUnit: p.costPerUnit || 0,
+      costMode: p.costMode || 'measure',
       unitsPerPot: p.unitsPerPot || 0
     };
     totals[p.id].cooked += cooked;
@@ -1268,10 +1296,28 @@ function renderResults(totalsArr) {
     }
     var lineCost = 0;
     if (t.costPerUnit > 0) {
-      lineCost = t.raw * t.costPerUnit;
+      var mode = t.costMode || 'measure';
+      var costNote = '';
+      if (mode === 'pack') {
+        if (t.packSize > 0) {
+          var packsForCost = Math.ceil(t.raw / t.packSize);
+          lineCost = packsForCost * t.costPerUnit;
+          costNote = ' (' + packsForCost + ' × $' + t.costPerUnit + '/pack)';
+        } else {
+          // pack mode without packSize — fall back to per-measure to avoid silent zero
+          lineCost = t.raw * t.costPerUnit;
+          costNote = ' (no pack size set; charged per ' + escapeHtml(u) + ')';
+        }
+      } else if (mode === 'piece') {
+        lineCost = t.raw * t.costPerUnit;
+        costNote = ' (' + format(t.raw) + ' × $' + t.costPerUnit + '/piece)';
+      } else {
+        lineCost = t.raw * t.costPerUnit;
+        costNote = ' (' + format(t.raw) + ' × $' + t.costPerUnit + '/' + escapeHtml(u) + ')';
+      }
       orderTotalCost += lineCost;
       hasAnyCost = true;
-      extras.push('💰 $' + lineCost.toFixed(2));
+      extras.push('💰 $' + lineCost.toFixed(2) + '<span style="opacity:.7;font-weight:500;">' + costNote + '</span>');
     }
     var extrasHtml = extras.length ? '<div class="result-extra">' + extras.join('<br>') + '</div>' : '';
     html +=
@@ -1409,6 +1455,7 @@ function pushHistory(totals) {
         cooked: t.cooked, raw: t.raw,
         packSize: t.packSize || 0,
         costPerUnit: t.costPerUnit || 0,
+        costMode: t.costMode || 'measure',
         unitsPerPot: t.unitsPerPot || 0
       };
     })
