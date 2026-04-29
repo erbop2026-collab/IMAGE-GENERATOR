@@ -1065,13 +1065,35 @@ Pasta,oz,8,16"></textarea>
 <section class="tab-content" id="tab-recipes">
   <div class="card">
     <div class="card-title">➕ Add New Recipe</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products (e.g. <em>Chicken & Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>). When you add the recipe to an order, the app expands it into raw amounts for each component.</p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products. Mark one component as ⭐ <strong>lead</strong> — its raw weight drives pot sizing in the kitchen view.</p>
     <div class="field">
       <label>Recipe name</label>
       <input type="text" id="newRecipeName" placeholder="e.g. Chicken & Rice meal">
     </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Yield / batch (cooked) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <input type="number" id="newRecipeYield" step="any" min="0" placeholder="e.g. 80" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Yield unit</label>
+        <select id="newRecipeYieldUnit">
+          <option value="oz">oz</option>
+          <option value="lb">lb</option>
+          <option value="floz">fl oz</option>
+          <option value="cup">cup</option>
+          <option value="qt">qt</option>
+          <option value="gal">gal</option>
+          <option value="ct">ct</option>
+        </select>
+      </div>
+    </div>
     <div class="field">
-      <label>Components (per ONE meal)</label>
+      <label>Reference <span style="color:var(--text-muted);font-weight:400;">(optional kitchen note)</span></label>
+      <input type="text" id="newRecipeRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
+    </div>
+    <div class="field">
+      <label>Components (per ONE meal — click ☆ to mark ⭐ lead)</label>
       <div class="component-list" data-component-list="add"></div>
       <button class="btn-secondary btn-small" type="button" data-component-add="add">+ Add ingredient</button>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much of it goes into one meal. The unit is taken from the ingredient.</div>
@@ -1803,7 +1825,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
 });
 
 // ============ RECIPES (composite dishes — one meal = multiple products) ============
-function buildComponentRowHTML(productId, amount) {
+function buildComponentRowHTML(productId, amount, isLead) {
   var opts = '<option value="">-- pick ingredient --</option>' + products.map(function(p) {
     var sel = (p.id === productId) ? ' selected' : '';
     return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
@@ -1811,7 +1833,10 @@ function buildComponentRowHTML(productId, amount) {
   var p = products.find(function(x){ return x.id === productId; });
   var unitText = p ? unitLabel(p.unit) : '';
   var amtAttr = (amount > 0) ? ' value="' + amount + '"' : '';
-  return '<div class="component-row">' +
+  var leadBg = isLead ? '#fef3c7' : 'transparent';
+  var leadColor = isLead ? '#92400e' : '#94a3b8';
+  return '<div class="component-row" data-lead="' + (isLead ? 'true' : 'false') + '">' +
+    '<button class="btn-secondary btn-icon comp-lead-btn" type="button" title="Mark as lead ingredient" style="background:' + leadBg + ';color:' + leadColor + ';font-size:14px;padding:0 8px;">' + (isLead ? '⭐' : '☆') + '</button>' +
     '<select class="comp-product-input">' + opts + '</select>' +
     '<input type="number" step="any" min="0" inputmode="decimal" placeholder="Amount" class="comp-amount-input"' + amtAttr + '>' +
     '<div class="comp-unit-label">' + escapeHtml(unitText) + '</div>' +
@@ -1829,11 +1854,18 @@ function collectComponents(listEl) {
   });
   return comps;
 }
+function collectLeadProductId(listEl) {
+  if (!listEl) return null;
+  var row = listEl.querySelector('.component-row[data-lead="true"]');
+  if (!row) return null;
+  var pid = row.querySelector('.comp-product-input').value;
+  return pid || null;
+}
 
-function setComponentListContent(listEl, comps) {
+function setComponentListContent(listEl, comps, leadProductId) {
   if (!listEl) return;
   listEl.innerHTML = (comps || []).map(function(c) {
-    return buildComponentRowHTML(c.productId, c.amount);
+    return buildComponentRowHTML(c.productId, c.amount, c.productId === leadProductId);
   }).join('');
 }
 
@@ -1843,12 +1875,21 @@ function buildRecipeViewCard(r) {
   var componentLines = (r.components || []).map(function(c) {
     var p = products.find(function(x){ return x.id === c.productId; });
     if (!p) return '<li><em style="color:var(--danger);">deleted product</em></li>';
-    return '<li>' + format(c.amount) + ' ' + escapeHtml(unitLabel(p.unit)) + ' ' + escapeHtml(p.name) + '</li>';
+    var leadMark = (c.productId === r.leadProductId) ? ' <span title="Lead ingredient" style="color:#b45309;">⭐</span>' : '';
+    return '<li>' + format(c.amount) + ' ' + escapeHtml(unitLabel(p.unit)) + ' ' + escapeHtml(p.name) + leadMark + '</li>';
   }).join('');
+  var yieldLine = (r.yieldCooked > 0)
+    ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Yield / batch: ' + format(r.yieldCooked) + ' ' + escapeHtml(unitLabel(r.yieldUnit || 'oz')) + ' cooked</div>'
+    : '';
+  var refLine = r.referenceText
+    ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;font-style:italic;">' + escapeHtml(r.referenceText) + '</div>'
+    : '';
   div.innerHTML =
     '<div class="product-item-header">' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="recipe-name">' + escapeHtml(r.name) + '</div>' +
+        refLine +
+        yieldLine +
         '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Per single meal:</div>' +
         '<ul class="recipe-components-list">' + componentLines + '</ul>' +
       '</div>' +
@@ -1865,16 +1906,35 @@ function buildRecipeEditCard(r) {
   var div = document.createElement('div');
   div.className = 'recipe-item editing';
   var compsHTML = (r.components || []).map(function(c) {
-    return buildComponentRowHTML(c.productId, c.amount);
+    return buildComponentRowHTML(c.productId, c.amount, c.productId === r.leadProductId);
   }).join('');
+  var yieldUnit = r.yieldUnit || 'oz';
+  var yieldUnitOpts = ['oz','lb','floz','cup','qt','gal','ct'].map(function(u) {
+    return '<option value="' + u + '"' + (u === yieldUnit ? ' selected' : '') + '>' + u + '</option>';
+  }).join('');
+  var yieldVal = (r.yieldCooked > 0) ? r.yieldCooked : '';
   div.innerHTML =
     '<div class="edit-form">' +
       '<div class="field">' +
         '<label>Recipe name</label>' +
         '<input type="text" data-recipe-edit="name" data-rid="' + r.id + '" value="' + escapeHtml(r.name) + '">' +
       '</div>' +
+      '<div class="row-grid">' +
+        '<div class="field">' +
+          '<label>Yield / batch (cooked)</label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-recipe-edit="yield" data-rid="' + r.id + '" value="' + yieldVal + '" placeholder="e.g. 80">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Yield unit</label>' +
+          '<select data-recipe-edit="yieldUnit" data-rid="' + r.id + '">' + yieldUnitOpts + '</select>' +
+        '</div>' +
+      '</div>' +
       '<div class="field">' +
-        '<label>Components (per ONE meal)</label>' +
+        '<label>Reference (optional)</label>' +
+        '<input type="text" data-recipe-edit="ref" data-rid="' + r.id + '" value="' + escapeHtml(r.referenceText || '') + '" placeholder=\'e.g. "1 Kugel = 1 pan 9×13"\'>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Components (per ONE meal — click ☆ to mark ⭐ lead)</label>' +
         '<div class="component-list" data-component-list="edit-' + r.id + '">' + compsHTML + '</div>' +
         '<button class="btn-secondary btn-small" type="button" data-component-add="edit-' + r.id + '">+ Add ingredient</button>' +
       '</div>' +
@@ -1910,11 +1970,15 @@ function renderRecipes() {
       var rid = btn.getAttribute('data-dup-recipe');
       var r = recipes.find(function(x){ return x.id === rid; });
       if (!r) return;
-      recipes.push({
+      var copy = {
         id: id(),
         name: r.name + ' (copy)',
         components: r.components.map(function(c){ return { productId: c.productId, amount: c.amount }; })
-      });
+      };
+      if (r.leadProductId) copy.leadProductId = r.leadProductId;
+      if (r.yieldCooked > 0) { copy.yieldCooked = r.yieldCooked; copy.yieldUnit = r.yieldUnit || 'oz'; }
+      if (r.referenceText) copy.referenceText = r.referenceText;
+      recipes.push(copy);
       saveRecipes();
       renderRecipes();
       toast('Recipe duplicated ✓');
@@ -1941,11 +2005,23 @@ function renderRecipes() {
       var r = recipes.find(function(x){ return x.id === rid; });
       if (!r) return;
       var name = document.querySelector('[data-recipe-edit="name"][data-rid="' + rid + '"]').value.trim();
-      var comps = collectComponents(document.querySelector('[data-component-list="edit-' + rid + '"]'));
+      var listEl = document.querySelector('[data-component-list="edit-' + rid + '"]');
+      var comps = collectComponents(listEl);
+      var leadProductId = collectLeadProductId(listEl);
+      var yEl = document.querySelector('[data-recipe-edit="yield"][data-rid="' + rid + '"]');
+      var yuEl = document.querySelector('[data-recipe-edit="yieldUnit"][data-rid="' + rid + '"]');
+      var refEl = document.querySelector('[data-recipe-edit="ref"][data-rid="' + rid + '"]');
+      var yieldCooked = yEl ? parseFloat(yEl.value) : NaN;
+      var yieldUnit = yuEl ? yuEl.value : 'oz';
+      var referenceText = refEl ? (refEl.value || '').trim() : '';
       if (!name) { toast('Enter a recipe name'); return; }
       if (comps.length === 0) { toast('Add at least one ingredient'); return; }
       r.name = name;
       r.components = comps;
+      if (leadProductId) r.leadProductId = leadProductId; else delete r.leadProductId;
+      if (yieldCooked > 0) { r.yieldCooked = yieldCooked; r.yieldUnit = yieldUnit; }
+      else { delete r.yieldCooked; delete r.yieldUnit; }
+      if (referenceText) r.referenceText = referenceText; else delete r.referenceText;
       saveRecipes();
       recipeEditingId = null;
       renderRecipes();
@@ -1963,13 +2039,24 @@ function renderRecipes() {
 
 document.getElementById('addRecipeBtn').addEventListener('click', function() {
   var name = document.getElementById('newRecipeName').value.trim();
-  var comps = collectComponents(document.querySelector('[data-component-list="add"]'));
+  var listEl = document.querySelector('[data-component-list="add"]');
+  var comps = collectComponents(listEl);
+  var leadProductId = collectLeadProductId(listEl);
+  var yieldCooked = parseFloat(document.getElementById('newRecipeYield').value);
+  var yieldUnit = document.getElementById('newRecipeYieldUnit').value || 'oz';
+  var referenceText = (document.getElementById('newRecipeRef').value || '').trim();
   if (!name) { toast('Enter a recipe name'); return; }
   if (comps.length === 0) { toast('Add at least one ingredient'); return; }
-  recipes.push({ id: id(), name: name, components: comps });
+  var recipe = { id: id(), name: name, components: comps };
+  if (leadProductId) recipe.leadProductId = leadProductId;
+  if (yieldCooked > 0) { recipe.yieldCooked = yieldCooked; recipe.yieldUnit = yieldUnit; }
+  if (referenceText) recipe.referenceText = referenceText;
+  recipes.push(recipe);
   saveRecipes();
   document.getElementById('newRecipeName').value = '';
-  setComponentListContent(document.querySelector('[data-component-list="add"]'), []);
+  document.getElementById('newRecipeYield').value = '';
+  document.getElementById('newRecipeRef').value = '';
+  setComponentListContent(listEl, [], null);
   renderRecipes();
   renderOrderRows();
   toast('Recipe added ✓');
@@ -1992,6 +2079,24 @@ document.addEventListener('click', function(e) {
   if (rmBtn) {
     var row = rmBtn.closest('.component-row');
     if (row) row.remove();
+    return;
+  }
+  var leadBtn = e.target.closest && e.target.closest('.comp-lead-btn');
+  if (leadBtn) {
+    var thisRow = leadBtn.closest('.component-row');
+    if (!thisRow) return;
+    var listEl = thisRow.parentElement;
+    var wasLead = thisRow.getAttribute('data-lead') === 'true';
+    listEl.querySelectorAll('.component-row').forEach(function(r) {
+      r.setAttribute('data-lead', 'false');
+      var b = r.querySelector('.comp-lead-btn');
+      if (b) { b.textContent = '☆'; b.style.background = 'transparent'; b.style.color = '#94a3b8'; }
+    });
+    if (!wasLead) {
+      thisRow.setAttribute('data-lead', 'true');
+      var b2 = thisRow.querySelector('.comp-lead-btn');
+      if (b2) { b2.textContent = '⭐'; b2.style.background = '#fef3c7'; b2.style.color = '#92400e'; }
+    }
     return;
   }
 });
