@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.6</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.7</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -837,6 +837,13 @@
 
 <!-- ============ TAB: PRODUCTS ============ -->
 <section class="tab-content" id="tab-products">
+  <div class="card">
+    <div class="card-title">🍲 Dish List</div>
+    <input type="text" id="dishSearch" placeholder="🔍 Search dishes…" autocomplete="off" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+    <div id="dishesList"></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">A dish = composite recipe (Kugel, Rice plate, …). To edit a single ingredient's pricing use the <strong>🥕 Ingredients</strong> tab.</div>
+  </div>
+
   <div class="card" style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 100%);color:white;">
     <div class="card-title" style="color:white;">🍲 Compose a dish from ingredients</div>
     <p style="font-size:13px;color:rgba(255,255,255,0.9);margin-bottom:10px;">Click below to define a new dish (recipe). You'll pick components from the <strong>🥕 Ingredients</strong> catalog, set yield per batch, and mark a ⭐ lead ingredient.</p>
@@ -958,17 +965,17 @@
     <button class="btn-primary" id="addProductBtn">Save Product</button>
   </div>
 
-  <div class="card">
-    <div class="card-title">🍲 Dish List</div>
-    <input type="text" id="dishSearch" placeholder="🔍 Search dishes…" autocomplete="off" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
-    <div id="dishesList"></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">A dish = composite recipe (Kugel, Rice plate, …). To edit a single ingredient's pricing use the <strong>🥕 Ingredients</strong> tab.</div>
-  </div>
-
 </section>
 
 <!-- ============ TAB: INGREDIENTS (v2.3.0) ============ -->
 <section class="tab-content" id="tab-ingredients">
+  <div class="card">
+    <div class="card-title">📋 All ingredients</div>
+    <input type="text" id="ingrSearch" placeholder="Search by name…" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+    <div id="ingredientsTable"></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Edit existing items in the <strong>⚙️ Products</strong> tab (raw / cooked yield, packaging, labor, pots).</div>
+  </div>
+
   <div class="card">
     <div class="card-title">🥕 Add Ingredient (smart pricing)</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A flat catalog of every raw material you buy (oil, eggs, flour, …). Fill any ONE pricing field below — the others auto-derive from pack size.</p>
@@ -1041,13 +1048,6 @@ Pasta,oz,8,16"></textarea>
   </div>
 
   <div class="card">
-    <div class="card-title">📋 All ingredients</div>
-    <input type="text" id="ingrSearch" placeholder="Search by name…" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
-    <div id="ingredientsTable"></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Edit existing items in the <strong>⚙️ Products</strong> tab (raw / cooked yield, packaging, labor, pots).</div>
-  </div>
-
-  <div class="card">
     <div class="card-title">🔄 Reverse Calc — How many portions?</div>
     <div class="field">
       <label>Product</label>
@@ -1069,6 +1069,11 @@ Pasta,oz,8,16"></textarea>
 
 <!-- ============ TAB: POTS (v2.5.4) ============ -->
 <section class="tab-content" id="tab-pots">
+  <div class="card">
+    <div class="card-title">📋 All equipment</div>
+    <div id="potsTable"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">🧰 Add equipment (pot · tray · pan · bucket)</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of every cooking vessel you own — pots, baking trays, pans, buckets. Enter dimensions and the volume auto-fills. Used by dishes (pick a piece to set yield) and the calculator (equipment plan per order).</p>
@@ -1109,15 +1114,15 @@ Pasta,oz,8,16"></textarea>
     <button class="btn-primary" id="addPotBtn">Save equipment</button>
     <div id="potFormMsg" style="font-size:12px;margin-top:8px;"></div>
   </div>
-
-  <div class="card">
-    <div class="card-title">📋 All equipment</div>
-    <div id="potsTable"></div>
-  </div>
 </section>
 
 <!-- ============ TAB: PACKAGING (v2.5.4) ============ -->
 <section class="tab-content" id="tab-packs">
+  <div class="card">
+    <div class="card-title">📋 All packaging</div>
+    <div id="packsTable"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">📦 Add packaging</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of takeout / catering packaging — boxes, trays, cups, lids. Each has a portion size and a unit price. Pick one when costing a dish.</p>
@@ -1153,15 +1158,15 @@ Pasta,oz,8,16"></textarea>
     </div>
     <div id="packFormMsg" style="font-size:12px;margin-top:8px;"></div>
   </div>
-
-  <div class="card">
-    <div class="card-title">📋 All packaging</div>
-    <div id="packsTable"></div>
-  </div>
 </section>
 
 <!-- ============ TAB: RECIPES ============ -->
 <section class="tab-content" id="tab-recipes">
+  <div class="card">
+    <div class="card-title">🍲 Recipe List</div>
+    <div id="recipesList"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">➕ Add New Recipe</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products. Mark one component as ⭐ <strong>lead</strong> — its raw weight drives pot sizing in the kitchen view.</p>
@@ -1206,11 +1211,6 @@ Pasta,oz,8,16"></textarea>
       <div class="pack-multi-list" data-pack-multi="add"></div>
     </div>
     <button class="btn-primary" id="addRecipeBtn">Save Recipe</button>
-  </div>
-
-  <div class="card">
-    <div class="card-title">🍲 Recipe List</div>
-    <div id="recipesList"></div>
   </div>
 </section>
 
