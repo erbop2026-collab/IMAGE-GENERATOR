@@ -53,6 +53,14 @@ A **Cost per single portion** section answers *"how much does ONE 8 oz vs ONE 12
 
 Below that: total order cost and average per portion.
 
+## Recipes (composite dishes)
+
+A recipe is one meal made of several products. Example: *Chicken & Rice = 200 oz rice + 150 oz chicken + 50 oz sauce*. Define recipes in the **🍲 Recipes** tab.
+
+In the order, tap **+ Add Recipe** (or quick-add via search) and enter the number of meals. The app expands each recipe into raw amounts of every component product, summed into the regular product totals — so the kitchen sees one consolidated shopping list and prep plan.
+
+Recipes are **flat**: each component is a basic product, not another recipe. Nesting (recipe-within-recipe) is intentionally not supported in this version.
+
 ## Reverse calculation
 
 On the **Products** tab: pick a product, enter the raw amount you have plus a portion size — the app tells you how many portions you can serve.

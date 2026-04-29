@@ -547,6 +547,51 @@
     padding: 4px 0 6px;
   }
 
+  .component-list { margin-bottom: 6px; }
+  .component-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 60px 36px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .component-row select,
+  .component-row input { padding: 8px 10px; font-size: 14px; }
+  .component-row .comp-unit-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 0 4px;
+  }
+  .component-row .btn-danger { width: 32px; height: 32px; padding: 0; font-size: 14px; }
+  .component-list-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 0 6px;
+    font-style: italic;
+  }
+  .recipe-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .recipe-item.editing { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15,118,110,0.15); }
+  .recipe-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .recipe-components-list {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-top: 6px;
+  }
+  .recipe-components-list li { margin-left: 18px; }
+  .info-pill.recipe { background: #fef3c7; color: #92400e; }
+
   .help-card { line-height: 1.6; font-size: 14px; }
   .help-card p { margin: 8px 0; color: var(--text); }
   .help-card h3 {
@@ -701,6 +746,7 @@
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
   <div class="tab" data-tab="products">⚙️ Products</div>
+  <div class="tab" data-tab="recipes">🍲 Recipes</div>
   <div class="tab" data-tab="help">❓ Help</div>
 </nav>
 
@@ -729,7 +775,10 @@
   <div class="card">
     <div class="card-title">📋 Cooking Order</div>
     <div id="orderRows"></div>
-    <button class="add-row-btn" id="addRowBtn">+ Add Row</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 16px;">
+      <button class="add-row-btn" id="addRowBtn" style="margin:0;">+ Add Product</button>
+      <button class="add-row-btn" id="addRecipeRowBtn" style="margin:0;">+ Add Recipe</button>
+    </div>
     <div class="btn-row">
       <button class="btn-primary" id="calcBtn">Calculate Raw Amounts</button>
       <button class="btn-clear" id="clearBtn" title="Clear all rows">🧹 Clear</button>
@@ -928,6 +977,30 @@
   </div>
 </section>
 
+<!-- ============ TAB: RECIPES ============ -->
+<section class="tab-content" id="tab-recipes">
+  <div class="card">
+    <div class="card-title">➕ Add New Recipe</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products (e.g. <em>Chicken & Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>). When you add the recipe to an order, the app expands it into raw amounts for each component.</p>
+    <div class="field">
+      <label>Recipe name</label>
+      <input type="text" id="newRecipeName" placeholder="e.g. Chicken & Rice meal">
+    </div>
+    <div class="field">
+      <label>Components (per ONE meal)</label>
+      <div class="component-list" data-component-list="add"></div>
+      <button class="btn-secondary btn-small" type="button" data-component-add="add">+ Add ingredient</button>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick a product, enter how much of it goes into one meal. The unit is taken from the product.</div>
+    </div>
+    <button class="btn-primary" id="addRecipeBtn">Save Recipe</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🍲 Recipe List</div>
+    <div id="recipesList"></div>
+  </div>
+</section>
+
 <!-- ============ TAB: HELP ============ -->
 <section class="tab-content" id="tab-help">
   <div class="card help-card">
@@ -937,6 +1010,7 @@
     <h3>Tabs</h3>
     <p><strong>📊 Calculate</strong> — build the order and see results.<br>
        <strong>⚙️ Products</strong> — set up your ingredient catalog and run reverse calculations.<br>
+       <strong>🍲 Recipes</strong> — define composite dishes (one meal = several products).<br>
        <strong>❓ Help</strong> — this page.</p>
 
     <h3>Setting up products</h3>
@@ -971,6 +1045,11 @@
     </ul>
     <p>A <strong>"Cost per single portion"</strong> section answers <em>"how much does ONE 8 oz vs ONE 12 oz portion cost?"</em> using the effective $/cooked-unit so pack-mode rounding flows through correctly.</p>
     <p>Below that: total order cost and average per portion.</p>
+
+    <h3>Recipes (composite dishes)</h3>
+    <p>A recipe is one meal made of several products. Example: <em>Chicken & Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>. Define recipes in the <strong>🍲 Recipes</strong> tab.</p>
+    <p>In the order, tap <strong>+ Add Recipe</strong> (or quick-add via search) and enter the number of meals. The app expands each recipe into raw amounts of every component product, summed into the regular product totals — so the kitchen sees one consolidated shopping list and prep plan.</p>
+    <p>Recipes are <strong>flat</strong>: each component is a basic product, not another recipe. (Nesting is intentionally not supported.)</p>
 
     <h3>Reverse calculation</h3>
     <p>On the Products tab: pick a product, enter the raw amount you have plus a portion size — the app tells you how many portions you can serve.</p>
@@ -1025,17 +1104,20 @@ var STORAGE_KEY_PRODUCTS = 'kitchen_calc_products_v2';
 var STORAGE_KEY_ORDER    = 'kitchen_calc_order_v2';
 var STORAGE_KEY_HISTORY  = 'kitchen_calc_history_v1';
 var STORAGE_KEY_META     = 'kitchen_calc_meta_v1';
+var STORAGE_KEY_RECIPES  = 'kitchen_calc_recipes_v1';
 var HISTORY_LIMIT = 50;
 
-var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, costMode?, unitsPerPot?, packagingCost?, laborHours?, laborWorkers?, laborRate?}]
-var orderRows = [];  // [{id, productId, sizes:[{id, portions, portionSize}, ...]}]
+var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, costMode?, unitsPerPot?, pots?, packagingCost?, laborHours?, laborWorkers?, laborRate?, packLabor*?}]
+var recipes = [];    // [{id, name, components: [{productId, amount}]}]
+var orderRows = [];  // [{id, kind:'product'|'recipe', productId/recipeId, sizes/portions}]
 var historyEntries = [];    // [{id, ts, name?, eventDate?, rows:[...], totals:[...]}]
 var orderMeta = { name: '', eventDate: '' };
 
-// Phase A UI state (not persisted)
+// UI state (not persisted)
 var productSearch = '';
 var productSort = 'recent';
 var productEditingId = null;
+var recipeEditingId = null;
 var calcSearch = '';
 
 // ============ UNITS (US customary) ============
@@ -1078,18 +1160,32 @@ function altDisplay(value, unit) {
 function migrateOrderRows(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.map(function(r) {
-    if (!r || !r.productId) return null;
-    if (Array.isArray(r.sizes)) return r;
-    // Old shape: {id, productId, portions, portionSize} → wrap into sizes[]
-    return {
-      id: r.id || id(),
-      productId: r.productId,
-      sizes: [{
-        id: id(),
-        portions: r.portions || 0,
-        portionSize: r.portionSize || 0
-      }]
-    };
+    if (!r) return null;
+    // Recipe row (already in new shape)
+    if (r.kind === 'recipe' && r.recipeId) {
+      return { id: r.id || id(), kind: 'recipe', recipeId: r.recipeId, portions: r.portions || 0 };
+    }
+    // Product row (with kind set)
+    if (r.kind === 'product' && r.productId) {
+      var sizes = Array.isArray(r.sizes) ? r.sizes : [];
+      if (sizes.length === 0 && r.portions > 0 && r.portionSize > 0) {
+        sizes = [{ id: id(), portions: r.portions, portionSize: r.portionSize }];
+      }
+      return { id: r.id || id(), kind: 'product', productId: r.productId, sizes: sizes };
+    }
+    // Legacy: no kind. Treat as product if productId is set.
+    if (r.productId) {
+      if (Array.isArray(r.sizes)) {
+        return { id: r.id || id(), kind: 'product', productId: r.productId, sizes: r.sizes };
+      }
+      return {
+        id: r.id || id(),
+        kind: 'product',
+        productId: r.productId,
+        sizes: [{ id: id(), portions: r.portions || 0, portionSize: r.portionSize || 0 }]
+      };
+    }
+    return null;
   }).filter(Boolean);
 }
 
@@ -1106,6 +1202,10 @@ function loadState() {
     var h = localStorage.getItem(STORAGE_KEY_HISTORY);
     if (h) historyEntries = JSON.parse(h);
   } catch(e) { historyEntries = []; }
+  try {
+    var rc = localStorage.getItem(STORAGE_KEY_RECIPES);
+    if (rc) recipes = JSON.parse(rc);
+  } catch(e) { recipes = []; }
   try {
     var m = localStorage.getItem(STORAGE_KEY_META);
     if (m) {
@@ -1125,6 +1225,7 @@ function loadState() {
   if (orderRows.length === 0) {
     orderRows = [{
       id: id(),
+      kind: 'product',
       productId: products[0].id,
       sizes: [{ id: id(), portions: 0, portionSize: 0 }]
     }];
@@ -1132,6 +1233,7 @@ function loadState() {
   }
 }
 function saveProducts() { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); }
+function saveRecipes()  { localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes)); }
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
 function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyEntries)); }
 function saveMeta()     { localStorage.setItem(STORAGE_KEY_META, JSON.stringify(orderMeta)); }
@@ -1602,6 +1704,208 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   toast('Product added ✓');
 });
 
+// ============ RECIPES (composite dishes — one meal = multiple products) ============
+function buildComponentRowHTML(productId, amount) {
+  var opts = '<option value="">-- pick product --</option>' + products.map(function(p) {
+    var sel = (p.id === productId) ? ' selected' : '';
+    return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
+  }).join('');
+  var p = products.find(function(x){ return x.id === productId; });
+  var unitText = p ? unitLabel(p.unit) : '';
+  var amtAttr = (amount > 0) ? ' value="' + amount + '"' : '';
+  return '<div class="component-row">' +
+    '<select class="comp-product-input">' + opts + '</select>' +
+    '<input type="number" step="any" min="0" inputmode="decimal" placeholder="Amount" class="comp-amount-input"' + amtAttr + '>' +
+    '<div class="comp-unit-label">' + escapeHtml(unitText) + '</div>' +
+    '<button class="btn-danger btn-icon comp-remove-btn" type="button" title="Remove">🗑</button>' +
+  '</div>';
+}
+
+function collectComponents(listEl) {
+  if (!listEl) return [];
+  var comps = [];
+  listEl.querySelectorAll('.component-row').forEach(function(row) {
+    var pid = row.querySelector('.comp-product-input').value;
+    var amt = parseFloat(row.querySelector('.comp-amount-input').value);
+    if (pid && amt > 0) comps.push({ productId: pid, amount: amt });
+  });
+  return comps;
+}
+
+function setComponentListContent(listEl, comps) {
+  if (!listEl) return;
+  listEl.innerHTML = (comps || []).map(function(c) {
+    return buildComponentRowHTML(c.productId, c.amount);
+  }).join('');
+}
+
+function buildRecipeViewCard(r) {
+  var div = document.createElement('div');
+  div.className = 'recipe-item';
+  var componentLines = (r.components || []).map(function(c) {
+    var p = products.find(function(x){ return x.id === c.productId; });
+    if (!p) return '<li><em style="color:var(--danger);">deleted product</em></li>';
+    return '<li>' + format(c.amount) + ' ' + escapeHtml(unitLabel(p.unit)) + ' ' + escapeHtml(p.name) + '</li>';
+  }).join('');
+  div.innerHTML =
+    '<div class="product-item-header">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="recipe-name">' + escapeHtml(r.name) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Per single meal:</div>' +
+        '<ul class="recipe-components-list">' + componentLines + '</ul>' +
+      '</div>' +
+      '<div class="product-actions">' +
+        '<button class="btn-secondary btn-icon" data-edit-recipe="' + r.id + '" title="Edit">✏️</button>' +
+        '<button class="btn-secondary btn-icon" data-dup-recipe="' + r.id + '" title="Duplicate">📋</button>' +
+        '<button class="btn-danger btn-icon" data-del-recipe="' + r.id + '" title="Delete">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  return div;
+}
+
+function buildRecipeEditCard(r) {
+  var div = document.createElement('div');
+  div.className = 'recipe-item editing';
+  var compsHTML = (r.components || []).map(function(c) {
+    return buildComponentRowHTML(c.productId, c.amount);
+  }).join('');
+  div.innerHTML =
+    '<div class="edit-form">' +
+      '<div class="field">' +
+        '<label>Recipe name</label>' +
+        '<input type="text" data-recipe-edit="name" data-rid="' + r.id + '" value="' + escapeHtml(r.name) + '">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Components (per ONE meal)</label>' +
+        '<div class="component-list" data-component-list="edit-' + r.id + '">' + compsHTML + '</div>' +
+        '<button class="btn-secondary btn-small" type="button" data-component-add="edit-' + r.id + '">+ Add ingredient</button>' +
+      '</div>' +
+      '<div class="edit-form-buttons">' +
+        '<button class="btn-primary" data-save-recipe="' + r.id + '">Save</button>' +
+        '<button class="btn-secondary" data-cancel-recipe="' + r.id + '">Cancel</button>' +
+      '</div>' +
+    '</div>';
+  return div;
+}
+
+function renderRecipes() {
+  var list = document.getElementById('recipesList');
+  if (!list) return;
+  if (recipes.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍲</div><div>No recipes yet. Use the form above to create one.</div></div>';
+    return;
+  }
+  list.innerHTML = '';
+  recipes.slice().reverse().forEach(function(r) {
+    if (recipeEditingId === r.id) list.appendChild(buildRecipeEditCard(r));
+    else list.appendChild(buildRecipeViewCard(r));
+  });
+
+  list.querySelectorAll('[data-edit-recipe]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      recipeEditingId = btn.getAttribute('data-edit-recipe');
+      renderRecipes();
+    });
+  });
+  list.querySelectorAll('[data-dup-recipe]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-dup-recipe');
+      var r = recipes.find(function(x){ return x.id === rid; });
+      if (!r) return;
+      recipes.push({
+        id: id(),
+        name: r.name + ' (copy)',
+        components: r.components.map(function(c){ return { productId: c.productId, amount: c.amount }; })
+      });
+      saveRecipes();
+      renderRecipes();
+      toast('Recipe duplicated ✓');
+    });
+  });
+  list.querySelectorAll('[data-del-recipe]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-del-recipe');
+      var inUse = orderRows.some(function(row){ return row.kind === 'recipe' && row.recipeId === rid; });
+      var msg = inUse ? 'This recipe is used in the current order. Delete anyway?' : 'Delete this recipe?';
+      if (!confirm(msg)) return;
+      recipes = recipes.filter(function(x){ return x.id !== rid; });
+      // Also drop any order rows referencing it
+      orderRows = orderRows.filter(function(row){ return !(row.kind === 'recipe' && row.recipeId === rid); });
+      saveRecipes();
+      saveOrder();
+      renderRecipes();
+      renderOrderRows();
+    });
+  });
+  list.querySelectorAll('[data-save-recipe]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-save-recipe');
+      var r = recipes.find(function(x){ return x.id === rid; });
+      if (!r) return;
+      var name = document.querySelector('[data-recipe-edit="name"][data-rid="' + rid + '"]').value.trim();
+      var comps = collectComponents(document.querySelector('[data-component-list="edit-' + rid + '"]'));
+      if (!name) { toast('Enter a recipe name'); return; }
+      if (comps.length === 0) { toast('Add at least one ingredient'); return; }
+      r.name = name;
+      r.components = comps;
+      saveRecipes();
+      recipeEditingId = null;
+      renderRecipes();
+      renderOrderRows();
+      toast('Recipe updated ✓');
+    });
+  });
+  list.querySelectorAll('[data-cancel-recipe]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      recipeEditingId = null;
+      renderRecipes();
+    });
+  });
+}
+
+document.getElementById('addRecipeBtn').addEventListener('click', function() {
+  var name = document.getElementById('newRecipeName').value.trim();
+  var comps = collectComponents(document.querySelector('[data-component-list="add"]'));
+  if (!name) { toast('Enter a recipe name'); return; }
+  if (comps.length === 0) { toast('Add at least one ingredient'); return; }
+  recipes.push({ id: id(), name: name, components: comps });
+  saveRecipes();
+  document.getElementById('newRecipeName').value = '';
+  setComponentListContent(document.querySelector('[data-component-list="add"]'), []);
+  renderRecipes();
+  renderOrderRows();
+  toast('Recipe added ✓');
+});
+
+// Component row delegation: + Add / 🗑 / unit-label sync on product change
+document.addEventListener('click', function(e) {
+  var addBtn = e.target.closest && e.target.closest('[data-component-add]');
+  if (addBtn) {
+    var key = addBtn.getAttribute('data-component-add');
+    var list = document.querySelector('[data-component-list="' + key + '"]');
+    if (list) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = buildComponentRowHTML('', 0);
+      list.appendChild(wrap.firstChild);
+    }
+    return;
+  }
+  var rmBtn = e.target.closest && e.target.closest('.comp-remove-btn');
+  if (rmBtn) {
+    var row = rmBtn.closest('.component-row');
+    if (row) row.remove();
+    return;
+  }
+});
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.matches && e.target.matches('.comp-product-input')) {
+    var pid = e.target.value;
+    var p = products.find(function(x){ return x.id === pid; });
+    var label = e.target.parentElement.querySelector('.comp-unit-label');
+    if (label) label.textContent = p ? unitLabel(p.unit) : '';
+  }
+});
+
 // ============ ORDER ROWS (grouped: each row = one product with multiple sizes) ============
 function renderOrderRows() {
   var container = document.getElementById('orderRows');
@@ -1619,7 +1923,48 @@ function renderOrderRows() {
   orderRows.forEach(function(row, idx) {
     var div = document.createElement('div');
     div.className = 'order-row';
+    var isFirst = idx === 0;
+    var isLast = idx === orderRows.length - 1;
 
+    if (row.kind === 'recipe') {
+      // ----- Recipe row -----
+      var recOpts = recipes
+        .filter(function(r) {
+          if (!q) return true;
+          if (r.id === row.recipeId) return true;
+          return r.name.toLowerCase().indexOf(q) !== -1;
+        })
+        .map(function(r) {
+          var sel = r.id === row.recipeId ? ' selected' : '';
+          return '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.name) + '</option>';
+        }).join('');
+      if (!recOpts) recOpts = '<option value="">(no recipes — add one in the Recipes tab)</option>';
+
+      div.innerHTML =
+        '<div class="row-header">' +
+          '<div class="row-header-text">🍲 Recipe #' + (idx+1) + '</div>' +
+          '<div class="row-controls">' +
+            '<button class="btn-secondary btn-icon" data-mvup="' + row.id + '" title="Move up"' + (isFirst ? ' disabled' : '') + '>▲</button>' +
+            '<button class="btn-secondary btn-icon" data-mvdn="' + row.id + '" title="Move down"' + (isLast ? ' disabled' : '') + '>▼</button>' +
+            '<button class="btn-secondary btn-icon" data-duprow="' + row.id + '" title="Duplicate">📋</button>' +
+            '<button class="btn-danger btn-icon" data-rmrow="' + row.id + '" title="Delete">🗑️</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Recipe</label>' +
+          '<select data-field="recipeId" data-id="' + row.id + '">' + recOpts + '</select>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Number of meals</label>' +
+          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (row.portions > 0 ? row.portions : '') + '" data-field="portions" data-id="' + row.id + '">' +
+        '</div>' +
+        '<div class="order-group-totals" id="group-sum-' + row.id + '"></div>';
+
+      container.appendChild(div);
+      return;
+    }
+
+    // ----- Product row -----
     var options = products
       .filter(function(p) {
         if (!q) return true;
@@ -1630,9 +1975,6 @@ function renderOrderRows() {
         var sel = p.id === row.productId ? ' selected' : '';
         return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
       }).join('');
-
-    var isFirst = idx === 0;
-    var isLast = idx === orderRows.length - 1;
 
     var sizes = Array.isArray(row.sizes) ? row.sizes : [];
     var sizesHtml = sizes.map(function(sz) {
@@ -1685,6 +2027,30 @@ function renderOrderRows() {
       var row = orderRows.find(function(r){ return r.id === rowId; });
       if (!row) return;
       row.productId = el.value;
+      saveOrder();
+      updateGroupSummary(rowId);
+    });
+  });
+
+  // Recipe selector change
+  container.querySelectorAll('[data-field="recipeId"]').forEach(function(el) {
+    el.addEventListener('change', function() {
+      var rowId = el.getAttribute('data-id');
+      var row = orderRows.find(function(r){ return r.id === rowId; });
+      if (!row) return;
+      row.recipeId = el.value;
+      saveOrder();
+      updateGroupSummary(rowId);
+    });
+  });
+
+  // Recipe portions (meals count)
+  container.querySelectorAll('input[data-field="portions"]').forEach(function(el) {
+    el.addEventListener('input', function() {
+      var rowId = el.getAttribute('data-id');
+      var row = orderRows.find(function(r){ return r.id === rowId; });
+      if (!row || row.kind !== 'recipe') return;
+      row.portions = parseFloat(el.value) || 0;
       saveOrder();
       updateGroupSummary(rowId);
     });
@@ -1764,13 +2130,17 @@ function renderOrderRows() {
       var i = orderRows.findIndex(function(r){ return r.id === rid; });
       if (i < 0) return;
       var orig = orderRows[i];
-      var copy = {
-        id: id(),
-        productId: orig.productId,
-        sizes: orig.sizes.map(function(s) {
-          return { id: id(), portions: s.portions, portionSize: s.portionSize };
-        })
-      };
+      var copy;
+      if (orig.kind === 'recipe') {
+        copy = { id: id(), kind: 'recipe', recipeId: orig.recipeId, portions: orig.portions };
+      } else {
+        copy = {
+          id: id(), kind: 'product', productId: orig.productId,
+          sizes: orig.sizes.map(function(s) {
+            return { id: id(), portions: s.portions, portionSize: s.portionSize };
+          })
+        };
+      }
       orderRows.splice(i + 1, 0, copy);
       saveOrder();
       renderOrderRows();
@@ -1781,6 +2151,21 @@ function renderOrderRows() {
 function updateGroupSummary(rowId) {
   var row = orderRows.find(function(r){ return r.id === rowId; });
   if (!row) return;
+  var groupEl = document.getElementById('group-sum-' + rowId);
+
+  if (row.kind === 'recipe') {
+    var r = recipes.find(function(x){ return x.id === row.recipeId; });
+    if (!groupEl) return;
+    if (!r || !(row.portions > 0)) { groupEl.textContent = ''; return; }
+    var partsList = (r.components || []).map(function(c) {
+      var pp = products.find(function(x){ return x.id === c.productId; });
+      var ppu = pp ? unitLabel(pp.unit) : '';
+      return format(c.amount * row.portions) + ' ' + ppu + ' ' + (pp ? pp.name : '?');
+    }).join(' + ');
+    groupEl.textContent = row.portions + ' meals → ' + partsList;
+    return;
+  }
+
   var p = products.find(function(x){ return x.id === row.productId; });
   if (!p) return;
   var u = unitLabel(p.unit);
@@ -1795,7 +2180,6 @@ function updateGroupSummary(rowId) {
       else sumEl.textContent = '';
     }
   });
-  var groupEl = document.getElementById('group-sum-' + rowId);
   if (groupEl) {
     if (totalCooked > 0) {
       groupEl.textContent = 'Group total: ' + totalPortions + ' portions, ' + format(totalCooked) + ' ' + u + ' cooked';
@@ -1809,8 +2193,21 @@ document.getElementById('addRowBtn').addEventListener('click', function() {
   if (products.length === 0) { toast('Set up products first'); return; }
   orderRows.push({
     id: id(),
+    kind: 'product',
     productId: products[0].id,
     sizes: [{ id: id(), portions: 0, portionSize: 0 }]
+  });
+  saveOrder();
+  renderOrderRows();
+});
+
+document.getElementById('addRecipeRowBtn').addEventListener('click', function() {
+  if (recipes.length === 0) { toast('No recipes yet — create one in the Recipes tab'); return; }
+  orderRows.push({
+    id: id(),
+    kind: 'recipe',
+    recipeId: recipes[recipes.length - 1].id,
+    portions: 0
   });
   saveOrder();
   renderOrderRows();
@@ -1821,33 +2218,40 @@ function renderQuickAdd() {
   var box = document.getElementById('quickAddList');
   var q = calcSearch.trim().toLowerCase();
   if (!q) { box.innerHTML = ''; return; }
-  if (products.length === 0) {
-    box.innerHTML = '<div class="quick-add-empty">No products defined. Add one in the Products tab.</div>';
+  if (products.length === 0 && recipes.length === 0) {
+    box.innerHTML = '<div class="quick-add-empty">No products or recipes defined yet.</div>';
     return;
   }
-  var matches = products.filter(function(p) {
+  var matchedProducts = products.filter(function(p) {
     return p.name.toLowerCase().indexOf(q) !== -1;
-  }).slice(0, 12);
-  if (matches.length === 0) {
-    box.innerHTML = '<div class="quick-add-empty">No matching products.</div>';
+  });
+  var matchedRecipes = recipes.filter(function(r) {
+    return r.name.toLowerCase().indexOf(q) !== -1;
+  });
+  if (matchedProducts.length === 0 && matchedRecipes.length === 0) {
+    box.innerHTML = '<div class="quick-add-empty">No matches.</div>';
     return;
   }
-  box.innerHTML = matches.map(function(p) {
+  var html = matchedRecipes.slice(0, 8).map(function(r) {
+    return '<button class="quick-add-chip" style="background:#fef3c7;color:#92400e;border-color:#92400e;" data-quickadd-recipe="' + r.id + '">+ 🍲 ' + escapeHtml(r.name) + '</button>';
+  }).join('') + matchedProducts.slice(0, 12).map(function(p) {
     return '<button class="quick-add-chip" data-quickadd="' + p.id + '">+ ' + escapeHtml(p.name) + '</button>';
   }).join('');
+  box.innerHTML = html;
+
   box.querySelectorAll('[data-quickadd]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var pid = btn.getAttribute('data-quickadd');
       var p = products.find(function(x){ return x.id === pid; });
       if (!p) return;
-      // If product already exists in the order, add a new empty size to that group
-      var existing = orderRows.find(function(r){ return r.productId === pid; });
+      var existing = orderRows.find(function(r){ return r.kind === 'product' && r.productId === pid; });
       if (existing) {
         existing.sizes.push({ id: id(), portions: 0, portionSize: 0 });
         toast('New size added to ' + p.name);
       } else {
         orderRows.push({
           id: id(),
+          kind: 'product',
           productId: pid,
           sizes: [{ id: id(), portions: 0, portionSize: 0 }]
         });
@@ -1858,6 +2262,21 @@ function renderQuickAdd() {
       document.getElementById('calcSearch').value = '';
       renderQuickAdd();
       renderOrderRows();
+    });
+  });
+
+  box.querySelectorAll('[data-quickadd-recipe]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-quickadd-recipe');
+      var r = recipes.find(function(x){ return x.id === rid; });
+      if (!r) return;
+      orderRows.push({ id: id(), kind: 'recipe', recipeId: rid, portions: 0 });
+      saveOrder();
+      calcSearch = '';
+      document.getElementById('calcSearch').value = '';
+      renderQuickAdd();
+      renderOrderRows();
+      toast('Added recipe: ' + r.name);
     });
   });
 }
@@ -1873,13 +2292,71 @@ document.getElementById('calcSearch').addEventListener('input', function(e) {
 //  - aggregated raw/cooked across all sizes
 //  - sizeBreakdown[]: one entry per unique portionSize seen for this product
 //  - packaging+labor inputs (so renderResults can compute per-portion costs)
+function ensureTotalEntry(totals, p) {
+  if (!totals[p.id]) totals[p.id] = {
+    productId: p.id, name: p.name, unit: p.unit,
+    cooked: 0, raw: 0,
+    portionsCount: 0,
+    packSize: p.packSize || 0,
+    costPerUnit: p.costPerUnit || 0,
+    costMode: p.costMode || 'measure',
+    unitsPerPot: p.unitsPerPot || 0,
+    potSizes: getPotSizes(p),
+    packagingCost: p.packagingCost || 0,
+    laborHours: p.laborHours || 0,
+    laborWorkers: p.laborWorkers || 0,
+    laborRate: p.laborRate || 0,
+    packLaborHours: p.packLaborHours || 0,
+    packLaborWorkers: p.packLaborWorkers || 0,
+    packLaborRate: p.packLaborRate || 0,
+    packLaborBasis: p.packLaborBasis || 'portion',
+    cartonSize: p.cartonSize || 0,
+    sizeBreakdown: []
+  };
+  return totals[p.id];
+}
+
+function addToSizeBreakdown(t, portionSize, portions, cooked, raw) {
+  var key = String(portionSize);
+  var existing = t.sizeBreakdown.find(function(b){ return b.key === key; });
+  if (existing) {
+    existing.portions += portions;
+    existing.cooked += cooked;
+    existing.raw += raw;
+  } else {
+    t.sizeBreakdown.push({
+      key: key, portionSize: portionSize, portions: portions, cooked: cooked, raw: raw
+    });
+  }
+}
+
 function computeTotals() {
   var totals = {};
   orderRows.forEach(function(row) {
+    // Recipe row: expand each component into product totals
+    if (row.kind === 'recipe') {
+      if (!(row.portions > 0)) return;
+      var rec = recipes.find(function(x){ return x.id === row.recipeId; });
+      if (!rec) return;
+      (rec.components || []).forEach(function(comp) {
+        var p = products.find(function(x){ return x.id === comp.productId; });
+        if (!p || !(comp.amount > 0)) return;
+        var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
+        var cooked = row.portions * comp.amount;
+        var raw = cooked * ratio;
+        var t = ensureTotalEntry(totals, p);
+        t.cooked += cooked;
+        t.raw += raw;
+        t.portionsCount += row.portions;
+        addToSizeBreakdown(t, comp.amount, row.portions, cooked, raw);
+      });
+      return;
+    }
+
+    // Product row
     var p = products.find(function(x){ return x.id === row.productId; });
     if (!p) return;
     var sizes = Array.isArray(row.sizes) ? row.sizes : [];
-    // Backward-compat: very old rows (pre-v1.4.0) had portions/portionSize at row level
     if (sizes.length === 0 && row.portions > 0 && row.portionSize > 0) {
       sizes = [{ id: 'compat', portions: row.portions, portionSize: row.portionSize }];
     }
@@ -1888,46 +2365,11 @@ function computeTotals() {
       var cooked = sz.portions * sz.portionSize;
       if (!(cooked > 0)) return;
       var raw = cooked * ratio;
-      if (!totals[p.id]) totals[p.id] = {
-        productId: p.id, name: p.name, unit: p.unit,
-        cooked: 0, raw: 0,
-        portionsCount: 0,
-        packSize: p.packSize || 0,
-        costPerUnit: p.costPerUnit || 0,
-        costMode: p.costMode || 'measure',
-        unitsPerPot: p.unitsPerPot || 0,
-        potSizes: getPotSizes(p),
-        packagingCost: p.packagingCost || 0,
-        laborHours: p.laborHours || 0,
-        laborWorkers: p.laborWorkers || 0,
-        laborRate: p.laborRate || 0,
-        packLaborHours: p.packLaborHours || 0,
-        packLaborWorkers: p.packLaborWorkers || 0,
-        packLaborRate: p.packLaborRate || 0,
-        packLaborBasis: p.packLaborBasis || 'portion',
-        cartonSize: p.cartonSize || 0,
-        sizeBreakdown: []
-      };
-      var t = totals[p.id];
+      var t = ensureTotalEntry(totals, p);
       t.cooked += cooked;
       t.raw += raw;
       t.portionsCount += sz.portions;
-      // Group by portionSize key
-      var key = String(sz.portionSize);
-      var existing = t.sizeBreakdown.find(function(b){ return b.key === key; });
-      if (existing) {
-        existing.portions += sz.portions;
-        existing.cooked += cooked;
-        existing.raw += raw;
-      } else {
-        t.sizeBreakdown.push({
-          key: key,
-          portionSize: sz.portionSize,
-          portions: sz.portions,
-          cooked: cooked,
-          raw: raw
-        });
-      }
+      addToSizeBreakdown(t, sz.portionSize, sz.portions, cooked, raw);
     });
   });
   return Object.keys(totals).map(function(k){ return totals[k]; });
@@ -2210,15 +2652,29 @@ function pushHistory(totals) {
     name: orderMeta.name || '',
     eventDate: orderMeta.eventDate || '',
     rows: orderRows.map(function(row) {
+      if (row.kind === 'recipe') {
+        var rec = recipes.find(function(x){ return x.id === row.recipeId; });
+        return {
+          kind: 'recipe',
+          recipeId: row.recipeId,
+          recipeName: rec ? rec.name : '(deleted)',
+          portions: row.portions,
+          components: rec ? rec.components.slice() : []
+        };
+      }
       var p = products.find(function(x){ return x.id === row.productId; });
       return {
+        kind: 'product',
         productId: row.productId,
         productName: p ? p.name : '(deleted)',
         unit: p ? p.unit : '',
         sizes: (row.sizes || []).filter(function(s){ return s.portions > 0 && s.portionSize > 0; })
                                 .map(function(s){ return { portions: s.portions, portionSize: s.portionSize }; })
       };
-    }).filter(function(r) { return r.sizes.length > 0; }),
+    }).filter(function(r) {
+      if (r.kind === 'recipe') return r.portions > 0;
+      return r.sizes && r.sizes.length > 0;
+    }),
     totals: totals.map(function(t) {
       return {
         productId: t.productId, name: t.name, unit: t.unit,
@@ -2309,14 +2765,19 @@ function renderHistory() {
 function loadHistoryEntry(hid) {
   var entry = historyEntries.find(function(x){ return x.id === hid; });
   if (!entry) return;
-  // Map old productIds to current products. If product no longer exists, skip the row.
   orderRows = entry.rows.map(function(r) {
+    if (r.kind === 'recipe') {
+      // Restore only if recipe still exists (otherwise drop)
+      var recExists = recipes.some(function(x){ return x.id === r.recipeId; });
+      if (!recExists) return null;
+      return { id: id(), kind: 'recipe', recipeId: r.recipeId, portions: r.portions || 0 };
+    }
     var stillExists = products.some(function(p){ return p.id === r.productId; });
     if (!stillExists) return null;
-    // Backward-compat: old history entries had portions/portionSize at row level
     if (Array.isArray(r.sizes)) {
       return {
         id: id(),
+        kind: 'product',
         productId: r.productId,
         sizes: r.sizes.map(function(s) {
           return { id: id(), portions: s.portions, portionSize: s.portionSize };
@@ -2325,6 +2786,7 @@ function loadHistoryEntry(hid) {
     }
     return {
       id: id(),
+      kind: 'product',
       productId: r.productId,
       sizes: [{ id: id(), portions: r.portions || 0, portionSize: r.portionSize || 0 }]
     };
@@ -2492,9 +2954,10 @@ function showExportInArea(text, kind) {
 function buildBackupPayload() {
   return {
     app: 'portion-calc',
-    version: 3,
+    version: 4,
     exported_at: new Date().toISOString(),
     products: products,
+    recipes: recipes,
     orderRows: orderRows,
     historyEntries: historyEntries,
     orderMeta: orderMeta
@@ -2515,18 +2978,22 @@ function applyImportedData(data) {
             'This cannot be undone.';
   if (!confirm(msg)) return false;
   products = data.products;
+  recipes = Array.isArray(data.recipes) ? data.recipes : [];
   orderRows = migrateOrderRows(Array.isArray(data.orderRows) ? data.orderRows : []);
   historyEntries = Array.isArray(data.historyEntries) ? data.historyEntries : [];
   orderMeta = (data.orderMeta && typeof data.orderMeta === 'object')
     ? { name: data.orderMeta.name || '', eventDate: data.orderMeta.eventDate || '' }
     : { name: '', eventDate: '' };
   saveProducts();
+  saveRecipes();
   saveOrder();
   saveHistory();
   saveMeta();
   productEditingId = null;
+  recipeEditingId = null;
   syncOrderMetaInputs();
   renderProducts();
+  renderRecipes();
   renderOrderRows();
   renderHistory();
   renderReverseSelect();
@@ -2854,6 +3321,7 @@ if ('serviceWorker' in navigator) {
 loadState();
 syncOrderMetaInputs();
 renderProducts();
+renderRecipes();
 renderOrderRows();
 renderHistory();
 renderReverseSelect();
