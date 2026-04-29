@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.5.5</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.0</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -907,6 +907,10 @@
           <option value="pack">Per pack</option>
           <option value="piece">Per piece (count)</option>
         </select>
+      </div>
+      <div class="field">
+        <label>Pick from packaging catalog <span style="color:var(--text-muted);font-weight:400;">(or leave blank and type the cost below)</span></label>
+        <select id="newProductPackPick" data-pack-pick="add"><option value="">— manual entry —</option></select>
       </div>
       <div class="field">
         <label>Packaging cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional, per single portion)</span></label>
@@ -1181,6 +1185,10 @@ Pasta,oz,8,16"></textarea>
       </div>
     </div>
     <div class="field">
+      <label>Or pick a pot to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🍳 Pots catalog)</span></label>
+      <select id="newRecipePotPick" data-pot-pick="add"><option value="">— manual entry —</option></select>
+    </div>
+    <div class="field">
       <label>Reference <span style="color:var(--text-muted);font-weight:400;">(optional kitchen note)</span></label>
       <input type="text" id="newRecipeRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
     </div>
@@ -1334,6 +1342,10 @@ Pasta,oz,8,16"></textarea>
           <option value="ct">ct</option>
         </select>
       </div>
+    </div>
+    <div class="field">
+      <label>Or pick a pot to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🍳 Pots catalog)</span></label>
+      <select id="dishModalPotPick" data-pot-pick="modal"><option value="">— manual entry —</option></select>
     </div>
     <div class="field">
       <label>Reference <span style="color:var(--text-muted);font-weight:400;">(optional kitchen note)</span></label>
@@ -2069,6 +2081,10 @@ function buildRecipeEditCard(r) {
         '</div>' +
       '</div>' +
       '<div class="field">' +
+        '<label>Or pick a pot to auto-fill yield</label>' +
+        '<select data-pot-pick="edit-' + r.id + '"><option value="">— manual entry —</option></select>' +
+      '</div>' +
+      '<div class="field">' +
         '<label>Reference (optional)</label>' +
         '<input type="text" data-recipe-edit="ref" data-rid="' + r.id + '" value="' + escapeHtml(r.referenceText || '') + '" placeholder=\'e.g. "1 Kugel = 1 pan 9×13"\'>' +
       '</div>' +
@@ -2097,6 +2113,8 @@ function renderRecipes() {
     if (recipeEditingId === r.id) list.appendChild(buildRecipeEditCard(r));
     else list.appendChild(buildRecipeViewCard(r));
   });
+  // After cards are in the DOM, populate any pot-pick selects inside them.
+  if (typeof populatePotPicks === 'function') populatePotPicks();
 
   list.querySelectorAll('[data-edit-recipe]').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -2210,7 +2228,10 @@ function openDishModal(prefilledName) {
   document.getElementById('dishModalYield').value = '';
   document.getElementById('dishModalYieldUnit').value = 'oz';
   document.getElementById('dishModalRef').value = '';
+  var potPick = document.getElementById('dishModalPotPick');
+  if (potPick) potPick.value = '';
   setComponentListContent(document.querySelector('[data-component-list="modal"]'), [], null);
+  if (typeof populatePotPicks === 'function') populatePotPicks();
   overlay.style.display = 'flex';
   setTimeout(function(){ document.getElementById('dishModalName').focus(); }, 50);
 }
@@ -4290,6 +4311,81 @@ document.getElementById('addPackBtn') && document.getElementById('addPackBtn').a
   renderPacks();
 });
 
+// ============ POT + PACK DROPDOWNS (v2.6.0) ============
+// Repopulate every [data-pot-pick] / [data-pack-pick] select from the catalogs.
+function populatePotPicks() {
+  document.querySelectorAll('[data-pot-pick]').forEach(function(sel) {
+    var current = sel.value;
+    var opts = '<option value="">— manual entry —</option>';
+    pots.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');}).forEach(function(p) {
+      var capLabel;
+      if (p.capacityLb > 0) capLabel = format(p.capacityLb) + ' lb';
+      else if (p.volumeOz > 0) capLabel = (p.volumeOz / 128).toFixed(2) + ' gal';
+      else capLabel = '—';
+      opts += '<option value="' + p.id + '">' + escapeHtml(p.name || '') + ' (' + capLabel + ')</option>';
+    });
+    sel.innerHTML = opts;
+    if (current) sel.value = current;
+  });
+}
+function populatePackPicks() {
+  document.querySelectorAll('[data-pack-pick]').forEach(function(sel) {
+    var current = sel.value;
+    var opts = '<option value="">— manual entry —</option>';
+    packs.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');}).forEach(function(pk) {
+      var priceLabel = pk.price > 0 ? '$' + pk.price.toFixed(2) : 'no price';
+      opts += '<option value="' + pk.id + '">' + escapeHtml(pk.name || '') + ' (' + priceLabel + ')</option>';
+    });
+    sel.innerHTML = opts;
+    if (current) sel.value = current;
+  });
+}
+// Hook saves to refresh picks
+var _origSavePots = savePots; savePots = function() { _origSavePots(); populatePotPicks(); };
+var _origSavePacks = savePacks; savePacks = function() { _origSavePacks(); populatePackPicks(); };
+
+// Pot pick → fill yield + unit
+document.addEventListener('change', function(e) {
+  if (!e.target || !e.target.matches) return;
+  if (e.target.matches('[data-pot-pick]')) {
+    var key = e.target.getAttribute('data-pot-pick');
+    var potId = e.target.value;
+    if (!potId) return;
+    var pot = pots.find(function(p){ return p.id === potId; });
+    if (!pot) return;
+    var yieldEl, unitEl;
+    if (key === 'modal') {
+      yieldEl = document.getElementById('dishModalYield');
+      unitEl = document.getElementById('dishModalYieldUnit');
+    } else if (key === 'add') {
+      yieldEl = document.getElementById('newRecipeYield');
+      unitEl = document.getElementById('newRecipeYieldUnit');
+    } else if (key.indexOf('edit-') === 0) {
+      var rid = key.slice(5);
+      yieldEl = document.querySelector('[data-recipe-edit="yield"][data-rid="' + rid + '"]');
+      unitEl = document.querySelector('[data-recipe-edit="yieldUnit"][data-rid="' + rid + '"]');
+    }
+    if (!yieldEl || !unitEl) return;
+    if (pot.capacityLb > 0) { yieldEl.value = pot.capacityLb; unitEl.value = 'lb'; }
+    else if (pot.volumeOz > 0) { yieldEl.value = pot.volumeOz.toFixed(1); unitEl.value = 'floz'; }
+    return;
+  }
+  if (e.target.matches('[data-pack-pick]')) {
+    var pkKey = e.target.getAttribute('data-pack-pick');
+    var pkId = e.target.value;
+    if (!pkId) return;
+    var pk = packs.find(function(p){ return p.id === pkId; });
+    if (!pk) return;
+    var costEl;
+    if (pkKey === 'add') costEl = document.getElementById('newProductPackaging');
+    else if (pkKey.indexOf('edit-') === 0) {
+      var pid2 = pkKey.slice(5);
+      costEl = document.querySelector('[data-edit="packagingCost"][data-pid="' + pid2 + '"]');
+    }
+    if (costEl && pk.price > 0) costEl.value = pk.price.toFixed(2);
+  }
+});
+
 // ============ INIT ============
 loadState();
 syncOrderMetaInputs();
@@ -4300,6 +4396,8 @@ renderDishesList();
 renderPots();
 renderPacks();
 togglePotShape();
+populatePotPicks();
+populatePackPicks();
 renderOrderRows();
 renderHistory();
 renderReverseSelect();
