@@ -706,16 +706,17 @@
   <div class="card">
     <div class="card-title">➕ Add New Product</div>
 
+    <div class="field">
+      <label>Product name</label>
+      <input type="text" id="newProductName" placeholder="e.g. White rice">
+    </div>
+
     <div class="product-form-tabs" data-form="add">
       <div class="product-form-tab active" data-form-tab="basic">📝 Basic</div>
       <div class="product-form-tab" data-form-tab="advanced">💰 Pricing &amp; Labor</div>
     </div>
 
     <div class="product-form-tab-content active" data-form-tab-content="basic" data-form="add">
-      <div class="field">
-        <label>Product name</label>
-        <input type="text" id="newProductName" placeholder="e.g. White rice">
-      </div>
       <div class="field">
         <label>Unit type</label>
         <select id="newProductUnit">
@@ -1062,15 +1063,15 @@ function buildProductEditCard(p) {
     '<option value="piece"' + (costModeVal === 'piece' ? ' selected' : '') + '>Per piece (count)</option>';
   div.innerHTML =
     '<div class="edit-form">' +
+      '<div class="field">' +
+        '<label>Product name</label>' +
+        '<input type="text" data-edit-field="name" data-eid="' + p.id + '" value="' + escapeHtml(p.name) + '">' +
+      '</div>' +
       '<div class="product-form-tabs" data-form="edit-' + p.id + '">' +
         '<div class="product-form-tab active" data-form-tab="basic">📝 Basic</div>' +
         '<div class="product-form-tab" data-form-tab="advanced">💰 Pricing &amp; Labor</div>' +
       '</div>' +
       '<div class="product-form-tab-content active" data-form-tab-content="basic" data-form="edit-' + p.id + '">' +
-        '<div class="field">' +
-          '<label>Product name</label>' +
-          '<input type="text" data-edit-field="name" data-eid="' + p.id + '" value="' + escapeHtml(p.name) + '">' +
-        '</div>' +
         '<div class="field">' +
           '<label>Unit type</label>' +
           '<select data-edit-field="unit" data-eid="' + p.id + '">' + optsHtml + '</select>' +
