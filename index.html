@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.9</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.0</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1046,8 +1046,9 @@ Pasta,oz,8,16"></textarea>
       <button class="btn-secondary" id="csvFilePickBtn">📁 Pick .csv file</button>
       <button class="btn-secondary" id="csvTemplateBtn">📄 Load template</button>
     </div>
-    <button class="btn-primary" id="csvApplyBtn" style="margin-top:8px;width:100%;">Apply CSV</button>
-    <div class="field-help">Required columns: <code>name, unit, raw, cooked</code>. Existing items with the same name get UPDATED. See Help for the full column list.</div>
+    <button class="btn-primary" id="csvApplyBtn" style="margin-top:8px;width:100%;">Preview & import</button>
+    <div id="csvPreviewBox" style="display:none;"></div>
+    <div class="field-help">Required: <code>name</code> (or <code>item</code> / <code>product</code> / <code>ingredient</code>). All other columns are optional — you can fill them in later from ✏️ Edit. Names matching an existing ingredient UPDATE it.</div>
   </div>
 
   <div class="card">
@@ -3531,8 +3532,8 @@ function normalizeHeader(h) {
 
 // Map of normalized header → ingredient field name
 var CSV_HEADER_MAP = {
-  name: 'name',
-  unit: 'unit',
+  name: 'name', item: 'name', product: 'name', ingredient: 'name', ingredientname: 'name', productname: 'name',
+  unit: 'unit', units: 'unit', uom: 'unit',
   raw: 'raw', rawamount: 'raw',
   cooked: 'cooked', cookedamount: 'cooked',
   packsize: 'packSize',
@@ -3563,21 +3564,30 @@ function csvSampleTemplate() {
   ].join('\n');
 }
 
-function applyCSVImport(text) {
+// v2.7.0: CSV import is now two-stage — parse into records (with row delete UI),
+// then commit. raw/cooked are OPTIONAL (smart-pricing model); leading empty
+// rows are skipped so the first non-empty row becomes the header.
+var csvPendingRecords = []; // [{ name, unit?, raw?, cooked?, packSize?, ... , _error?, _sourceRow }]
+
+function parseCSVRecords(text) {
   var rows = parseCSV(text);
+  // Skip leading rows where every cell is empty (Excel exports often start
+  // with a blank row from header styling). First non-empty row is the header.
+  while (rows.length && rows[0].every(function(c){ return !c || !c.trim(); })) rows.shift();
   if (rows.length < 2) {
-    toast('CSV needs a header row plus at least one data row');
-    return;
+    return { ok: false, error: 'CSV needs a header row plus at least one data row.' };
   }
   var headers = rows[0].map(normalizeHeader);
   var fieldFor = headers.map(function(h) { return CSV_HEADER_MAP[h] || null; });
-  if (fieldFor.indexOf('name') < 0) { toast('CSV must include a "name" column'); return; }
+  if (fieldFor.indexOf('name') < 0) {
+    return { ok: false, error: 'CSV must include a "name" column (or "item" / "product" / "ingredient").' };
+  }
 
-  var added = 0, updated = 0, skipped = 0, errors = [];
+  var records = [];
   for (var ri = 1; ri < rows.length; ri++) {
     var cells = rows[ri];
     if (cells.every(function(c){ return !c || !c.trim(); })) continue;
-    var rec = {};
+    var rec = { _sourceRow: ri + 1 };
     for (var ci = 0; ci < headers.length; ci++) {
       var fld = fieldFor[ci];
       if (!fld) continue;
@@ -3585,22 +3595,43 @@ function applyCSVImport(text) {
       if (!val) continue;
       rec[fld] = val;
     }
-    if (!rec.name) { skipped++; errors.push('row ' + (ri+1) + ': missing name'); continue; }
-    if (rec.unit && !VALID_UNITS[rec.unit.toLowerCase()]) { skipped++; errors.push('row ' + (ri+1) + ': bad unit "' + rec.unit + '"'); continue; }
-    if (rec.unit) rec.unit = rec.unit.toLowerCase();
-    var rawN = rec.raw ? parseFloat(rec.raw) : 0;
-    var cookedN = rec.cooked ? parseFloat(rec.cooked) : 0;
-    if (!(rawN > 0) || !(cookedN > 0)) { skipped++; errors.push('row ' + (ri+1) + ' (' + rec.name + '): raw and cooked must be > 0'); continue; }
+    if (!rec.name) { rec._error = 'missing name'; records.push(rec); continue; }
+    if (rec.unit) {
+      var u = rec.unit.toLowerCase();
+      if (!VALID_UNITS[u]) { rec._error = 'bad unit "' + rec.unit + '"'; records.push(rec); continue; }
+      rec.unit = u;
+    }
+    // raw/cooked are optional now. If only one side is given, that's a soft
+    // error — flag it but keep the record for the user to review.
+    var hasRaw = !!(rec.raw && parseFloat(rec.raw) > 0);
+    var hasCooked = !!(rec.cooked && parseFloat(rec.cooked) > 0);
+    if ((hasRaw && !hasCooked) || (hasCooked && !hasRaw)) {
+      rec._error = 'raw and cooked must both be set, or both blank';
+    }
+    records.push(rec);
+  }
+  return { ok: true, records: records };
+}
 
-    // Build product record
+function commitCSVRecords(records) {
+  var added = 0, updated = 0, skipped = 0, errors = [];
+  records.forEach(function(rec) {
+    if (rec._error) { skipped++; errors.push('row ' + rec._sourceRow + ': ' + rec._error); return; }
     var existing = products.find(function(p){ return p.name.toLowerCase() === rec.name.toLowerCase(); });
     var prod = existing || { id: id(), name: rec.name };
     prod.name = rec.name;
     prod.unit = rec.unit || (existing && existing.unit) || 'oz';
-    prod.raw = rawN;
-    prod.cooked = cookedN;
+    var rawN = rec.raw ? parseFloat(rec.raw) : 0;
+    var cookedN = rec.cooked ? parseFloat(rec.cooked) : 0;
+    if (rawN > 0 && cookedN > 0) {
+      prod.raw = rawN;
+      prod.cooked = cookedN;
+    } else if (!existing) {
+      // Names-only row: blank ingredient, user fills in later via ✏️ Edit.
+      // Don't set raw/cooked at all; downstream code already handles missing
+      // yields by treating raw == cooked.
+    }
 
-    // Optional fields — overwrite when CSV has a value, otherwise leave existing
     if ('packSize' in rec)      { var n = parseFloat(rec.packSize); if (n > 0) prod.packSize = n; else delete prod.packSize; }
     if ('costPerUnit' in rec)   { var n2 = parseFloat(rec.costPerUnit); if (n2 > 0) prod.costPerUnit = n2; else delete prod.costPerUnit; }
     if ('costMode' in rec)      {
@@ -3626,7 +3657,7 @@ function applyCSVImport(text) {
 
     if (existing) updated++;
     else { products.push(prod); added++; }
-  }
+  });
 
   if (added + updated === 0) {
     toast('No valid rows imported');
@@ -3640,11 +3671,73 @@ function applyCSVImport(text) {
   var summary = added + ' added, ' + updated + ' updated';
   if (skipped > 0) summary += ', ' + skipped + ' skipped';
   toast(summary + ' ✓');
-  if (errors.length) {
-    setTimeout(function() {
-      alert('Import summary\n\n' + summary + '\n\nIssues:\n' + errors.slice(0, 20).join('\n') + (errors.length > 20 ? '\n…' : ''));
-    }, 200);
-  }
+}
+
+function renderCSVPreview() {
+  var box = document.getElementById('csvPreviewBox');
+  if (!box) return;
+  if (csvPendingRecords.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  var validCount = csvPendingRecords.filter(function(r){ return !r._error; }).length;
+  var errCount = csvPendingRecords.length - validCount;
+
+  var html = '<div style="margin-top:14px;padding:10px;border:1.5px solid var(--primary);border-radius:10px;background:#f0f9ff;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">' +
+      '<div style="font-weight:700;">Preview — ' + csvPendingRecords.length + ' row' + (csvPendingRecords.length===1?'':'s') +
+        ' (<span style="color:#15803d;">' + validCount + ' OK</span>' +
+        (errCount > 0 ? ', <span style="color:#b91c1c;">' + errCount + ' issues</span>' : '') + ')' +
+      '</div>' +
+      '<div>' +
+        '<button class="btn-secondary" id="csvPreviewCancel">Cancel</button> ' +
+        '<button class="btn-primary" id="csvPreviewConfirm"' + (validCount === 0 ? ' disabled' : '') + '>Confirm import (' + validCount + ')</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Tap 🗑 to drop a row before importing. Issues are highlighted and skipped.</div>' +
+    '<div style="overflow-x:auto;max-height:360px;overflow-y:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+        '<thead><tr style="background:#fff;border-bottom:2px solid var(--border);position:sticky;top:0;">' +
+          '<th style="padding:6px;text-align:left;">Name</th>' +
+          '<th style="padding:6px;text-align:left;">Unit</th>' +
+          '<th style="padding:6px;text-align:right;">Raw</th>' +
+          '<th style="padding:6px;text-align:right;">Cooked</th>' +
+          '<th style="padding:6px;text-align:left;">Issue</th>' +
+          '<th style="padding:6px;width:36px;"></th>' +
+        '</tr></thead><tbody>';
+  csvPendingRecords.forEach(function(rec, idx) {
+    var bg = rec._error ? '#fef2f2' : '#fff';
+    html += '<tr style="border-bottom:1px solid var(--border);background:' + bg + ';">' +
+      '<td style="padding:6px;font-weight:600;">' + escapeHtml(rec.name || '') + '</td>' +
+      '<td style="padding:6px;color:var(--text-muted);">' + escapeHtml(rec.unit || 'oz') + '</td>' +
+      '<td style="padding:6px;text-align:right;">' + escapeHtml(rec.raw || '—') + '</td>' +
+      '<td style="padding:6px;text-align:right;">' + escapeHtml(rec.cooked || '—') + '</td>' +
+      '<td style="padding:6px;color:#b91c1c;">' + (rec._error ? escapeHtml(rec._error) : '') + '</td>' +
+      '<td style="padding:6px;text-align:right;"><button class="btn-danger btn-icon" data-csv-drop="' + idx + '" title="Remove from import">🗑</button></td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+  box.innerHTML = html;
+  box.style.display = '';
+
+  box.querySelectorAll('[data-csv-drop]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var i = parseInt(btn.getAttribute('data-csv-drop'), 10);
+      if (!isNaN(i)) {
+        csvPendingRecords.splice(i, 1);
+        renderCSVPreview();
+      }
+    });
+  });
+  document.getElementById('csvPreviewCancel').addEventListener('click', function() {
+    csvPendingRecords = [];
+    renderCSVPreview();
+  });
+  var confirmBtn = document.getElementById('csvPreviewConfirm');
+  if (confirmBtn) confirmBtn.addEventListener('click', function() {
+    commitCSVRecords(csvPendingRecords);
+    csvPendingRecords = [];
+    renderCSVPreview();
+    document.getElementById('csvInput').value = '';
+  });
 }
 
 // ============ EXPORT / BACKUP / RESTORE ============
@@ -3959,7 +4052,11 @@ document.getElementById('csvFileInput').addEventListener('change', function(e) {
 document.getElementById('csvApplyBtn').addEventListener('click', function() {
   var text = document.getElementById('csvInput').value.trim();
   if (!text) { toast('Paste or pick a CSV first'); return; }
-  applyCSVImport(text);
+  var result = parseCSVRecords(text);
+  if (!result.ok) { toast(result.error); return; }
+  if (result.records.length === 0) { toast('No data rows found'); return; }
+  csvPendingRecords = result.records;
+  renderCSVPreview();
 });
 
 function markBackup() {
@@ -4241,6 +4338,11 @@ function cancelEditIngr() {
 }
 document.getElementById('ingrEditCancel') && document.getElementById('ingrEditCancel').addEventListener('click', cancelEditIngr);
 
+// v2.7.0: ingredients now support multi-select for bulk delete.
+var ingrSelected = {}; // { productId: true }
+
+function ingrSelectedIds() { return Object.keys(ingrSelected).filter(function(k){ return ingrSelected[k]; }); }
+
 function renderIngredients() {
   var container = document.getElementById('ingredientsTable');
   if (!container) return;
@@ -4248,12 +4350,33 @@ function renderIngredients() {
   var rows = products.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
   if (search) rows = rows.filter(function(p){ return (p.name||'').toLowerCase().indexOf(search) !== -1; });
 
+  // Drop selections that no longer exist.
+  Object.keys(ingrSelected).forEach(function(k) {
+    if (!products.some(function(p){ return p.id === k; })) delete ingrSelected[k];
+  });
+
   if (rows.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🥕</div><div>No ingredients yet. Use the form above to add the first one.</div></div>';
     return;
   }
-  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+
+  var visibleIds = rows.map(function(r){ return r.id; });
+  var allSelected = visibleIds.length > 0 && visibleIds.every(function(id){ return ingrSelected[id]; });
+  var selectedCount = ingrSelectedIds().length;
+  var toolbar = '';
+  if (selectedCount > 0) {
+    toolbar = '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:8px;border:1.5px solid var(--primary);border-radius:8px;background:#eff6ff;flex-wrap:wrap;gap:8px;">' +
+      '<div style="font-size:13px;font-weight:600;">' + selectedCount + ' selected</div>' +
+      '<div>' +
+        '<button class="btn-secondary" id="ingrClearSel" style="margin-right:6px;">Clear</button>' +
+        '<button class="btn-danger" id="ingrBulkDel">🗑 Delete selected</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  var html = toolbar + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">' +
     '<thead><tr style="background:#f8fafc;border-bottom:2px solid var(--border);">' +
+      '<th style="padding:8px;width:30px;"><input type="checkbox" id="ingrSelectAll"' + (allSelected ? ' checked' : '') + ' title="Select all"></th>' +
       '<th style="padding:8px;text-align:left;">Name</th>' +
       '<th style="padding:8px;text-align:left;">Unit</th>' +
       '<th style="padding:8px;text-align:right;">Pack</th>' +
@@ -4278,7 +4401,9 @@ function renderIngredients() {
       }
     }
     var isEditing = p.id === ingrEditingId;
-    html += '<tr style="border-bottom:1px solid var(--border);' + (isEditing ? 'background:#fef3c7;' : '') + '">' +
+    var checked = ingrSelected[p.id] ? ' checked' : '';
+    html += '<tr style="border-bottom:1px solid var(--border);' + (isEditing ? 'background:#fef3c7;' : (ingrSelected[p.id] ? 'background:#eff6ff;' : '')) + '">' +
+      '<td style="padding:8px;text-align:center;"><input type="checkbox" data-sel-ingr="' + p.id + '"' + checked + '></td>' +
       '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name) + (isEditing ? ' <span style="color:#b45309;font-size:11px;">(editing)</span>' : '') + '</td>' +
       '<td style="padding:8px;color:var(--text-muted);">' + escapeHtml(info.label) + '</td>' +
       '<td style="padding:8px;text-align:right;">' + packTxt + '</td>' +
@@ -4293,6 +4418,7 @@ function renderIngredients() {
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
+
   container.querySelectorAll('[data-edit-ingr]').forEach(function(btn) {
     btn.addEventListener('click', function() { startEditIngr(btn.getAttribute('data-edit-ingr')); });
   });
@@ -4301,7 +4427,6 @@ function renderIngredients() {
       var pid = btn.getAttribute('data-del-ingr');
       var p = products.find(function(x){ return x.id === pid; });
       if (!p) return;
-      // Block delete if referenced by any recipe component.
       var refRecipes = recipes.filter(function(r) {
         return (r.components || []).some(function(c){ return c.productId === pid; });
       });
@@ -4311,6 +4436,7 @@ function renderIngredients() {
       }
       if (!confirm('Delete ingredient "' + p.name + '"?')) return;
       products = products.filter(function(x){ return x.id !== pid; });
+      delete ingrSelected[pid];
       if (ingrEditingId === pid) cancelEditIngr();
       saveProducts();
       renderIngredients();
@@ -4319,6 +4445,63 @@ function renderIngredients() {
       toast('Ingredient deleted ✓');
     });
   });
+  container.querySelectorAll('[data-sel-ingr]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var pid = cb.getAttribute('data-sel-ingr');
+      if (cb.checked) ingrSelected[pid] = true; else delete ingrSelected[pid];
+      renderIngredients();
+    });
+  });
+  var selAll = document.getElementById('ingrSelectAll');
+  if (selAll) selAll.addEventListener('change', function() {
+    if (selAll.checked) visibleIds.forEach(function(id){ ingrSelected[id] = true; });
+    else visibleIds.forEach(function(id){ delete ingrSelected[id]; });
+    renderIngredients();
+  });
+  var clearBtn = document.getElementById('ingrClearSel');
+  if (clearBtn) clearBtn.addEventListener('click', function() {
+    ingrSelected = {};
+    renderIngredients();
+  });
+  var bulkBtn = document.getElementById('ingrBulkDel');
+  if (bulkBtn) bulkBtn.addEventListener('click', bulkDeleteIngredients);
+}
+
+function bulkDeleteIngredients() {
+  var ids = ingrSelectedIds();
+  if (ids.length === 0) return;
+  var blocked = [];
+  var deletable = [];
+  ids.forEach(function(pid) {
+    var p = products.find(function(x){ return x.id === pid; });
+    if (!p) return;
+    var used = recipes.filter(function(r) {
+      return (r.components || []).some(function(c){ return c.productId === pid; });
+    });
+    if (used.length > 0) blocked.push({ name: p.name, used: used.map(function(r){return r.name;}) });
+    else deletable.push(p);
+  });
+  if (deletable.length === 0) {
+    var msg = 'Nothing to delete — all selected ingredients are in use:\n\n' +
+      blocked.map(function(b){ return '• ' + b.name + ' → ' + b.used.join(', '); }).join('\n');
+    alert(msg);
+    return;
+  }
+  var promptMsg = 'Delete ' + deletable.length + ' ingredient' + (deletable.length===1?'':'s') + '?';
+  if (blocked.length > 0) {
+    promptMsg += '\n\n' + blocked.length + ' will be SKIPPED (used in recipes):\n' +
+      blocked.map(function(b){ return '• ' + b.name; }).join('\n');
+  }
+  if (!confirm(promptMsg)) return;
+  var delIds = deletable.map(function(p){ return p.id; });
+  products = products.filter(function(p){ return delIds.indexOf(p.id) === -1; });
+  delIds.forEach(function(pid){ delete ingrSelected[pid]; });
+  if (delIds.indexOf(ingrEditingId) !== -1) cancelEditIngr();
+  saveProducts();
+  renderIngredients();
+  renderProducts();
+  renderOrderRows && renderOrderRows();
+  toast(deletable.length + ' ingredient' + (deletable.length===1?'':'s') + ' deleted ✓' + (blocked.length>0 ? ' (' + blocked.length + ' skipped)' : ''));
 }
 
 function ingrUpdateLabels() {
