@@ -745,7 +745,7 @@
 
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
-  <div class="tab" data-tab="products">⚙️ Ingredients</div>
+  <div class="tab" data-tab="products">⚙️ Products</div>
   <div class="tab" data-tab="recipes">🍲 Recipes</div>
   <div class="tab" data-tab="help">❓ Help</div>
 </nav>
@@ -1030,7 +1030,7 @@ Pasta,oz,8,16"></textarea>
 
     <h3>Tabs</h3>
     <p><strong>📊 Calculate</strong> — build the order and see results.<br>
-       <strong>⚙️ Ingredients</strong> — set up your ingredient catalog and run reverse calculations.<br>
+       <strong>⚙️ Products</strong> — set up your ingredient catalog and run reverse calculations.<br>
        <strong>🍲 Recipes</strong> — define composite dishes (one meal = several ingredients).<br>
        <strong>❓ Help</strong> — this page.</p>
 
@@ -1937,7 +1937,7 @@ document.addEventListener('change', function(e) {
 function renderOrderRows() {
   var container = document.getElementById('orderRows');
   if (products.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚙️</div><div>First, set up ingredients in the "Ingredients" tab.</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚙️</div><div>First, set up ingredients in the "Products" tab.</div></div>';
     return;
   }
   if (orderRows.length === 0) {
