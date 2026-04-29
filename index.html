@@ -745,6 +745,7 @@
 
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
+  <div class="tab" data-tab="ingredients">🥕 Ingredients</div>
   <div class="tab" data-tab="products">⚙️ Products</div>
   <div class="tab" data-tab="recipes">🍲 Recipes</div>
   <div class="tab" data-tab="help">❓ Help</div>
@@ -990,6 +991,72 @@ Pasta,oz,8,16"></textarea>
       </div>
     </div>
     <div id="reverseResult" class="reverse-result empty">Pick an ingredient and enter amounts to see how many portions you get.</div>
+  </div>
+</section>
+
+<!-- ============ TAB: INGREDIENTS (v2.3.0) ============ -->
+<section class="tab-content" id="tab-ingredients">
+  <div class="card">
+    <div class="card-title">🥕 Add Ingredient (smart pricing)</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A flat catalog of every raw material you buy (oil, eggs, flour, …). Fill any ONE pricing field below — the others auto-derive from pack size.</p>
+
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="ingrName" placeholder="e.g. Pasta">
+    </div>
+
+    <div class="row-grid">
+      <div class="field">
+        <label>Unit</label>
+        <select id="ingrUnit">
+          <optgroup label="Weight">
+            <option value="lb">pounds (lb)</option>
+            <option value="oz">ounces (oz)</option>
+          </optgroup>
+          <optgroup label="Volume">
+            <option value="gal">gallons (gal)</option>
+            <option value="qt">quarts (qt)</option>
+            <option value="cup">cups</option>
+            <option value="floz">fluid ounces (fl oz)</option>
+          </optgroup>
+          <optgroup label="Count">
+            <option value="ct">units (count)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field">
+        <label>Pack size</label>
+        <input type="number" id="ingrPackSize" placeholder="5" step="any" min="0" inputmode="decimal">
+      </div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Fill ANY ONE — others auto-fill from pack size</div>
+      <div class="row-grid-3">
+        <div class="field">
+          <label>Pack price ($)</label>
+          <input type="number" id="ingrPackPrice" placeholder="12.00" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label id="ingrLargeUnitLabel">$/lb</label>
+          <input type="number" id="ingrPriceLarge" placeholder="2.40" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label id="ingrSmallUnitLabel">$/oz</label>
+          <input type="number" id="ingrPriceSmall" placeholder="0.150" step="any" min="0" inputmode="decimal">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="addIngrBtn">Save ingredient</button>
+    <div id="ingrFormMsg" style="font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 All ingredients</div>
+    <input type="text" id="ingrSearch" placeholder="Search by name…" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+    <div id="ingredientsTable"></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Edit existing items in the <strong>⚙️ Products</strong> tab (raw / cooked yield, packaging, labor, pots).</div>
   </div>
 </section>
 
@@ -3523,11 +3590,167 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ============ INGREDIENTS TAB (v2.3.0) ============
+// Same products[] array, presented as a flat ingredient catalog with smart pricing.
+// "perBase" = price per the canonical base unit of the unit's kind:
+//   weight → per oz | volume → per fl oz | count → per ct
+function priceForIngredient(p) {
+  if (!p) return null;
+  var info = UNIT_INFO[p.unit];
+  if (!info || !p.costPerUnit) return null;
+  var mode = p.costMode || 'measure';
+  var perDisplay; // per the user's chosen unit (lb / oz / gal / etc.)
+  if (mode === 'pack') {
+    if (!p.packSize) return null;
+    perDisplay = p.costPerUnit / p.packSize;
+  } else {
+    perDisplay = p.costPerUnit;
+  }
+  return {
+    perBase: perDisplay / info.base,
+    perDisplay: perDisplay,
+    packPrice: (p.packSize ? p.packSize * perDisplay : null)
+  };
+}
+function ingrLargeMult(kind) { return kind === 'weight' ? 16 : kind === 'volume' ? 128 : 1; }
+function ingrSmallLabel(kind) { return kind === 'weight' ? '$/oz' : kind === 'volume' ? '$/floz' : '$/ct'; }
+function ingrLargeLabel(kind) { return kind === 'weight' ? '$/lb' : kind === 'volume' ? '$/gal' : '—'; }
+
+function renderIngredients() {
+  var container = document.getElementById('ingredientsTable');
+  if (!container) return;
+  var search = ((document.getElementById('ingrSearch') || {}).value || '').toLowerCase();
+  var rows = products.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  if (search) rows = rows.filter(function(p){ return (p.name||'').toLowerCase().indexOf(search) !== -1; });
+
+  if (rows.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🥕</div><div>No ingredients yet. Use the form above to add the first one.</div></div>';
+    return;
+  }
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+    '<thead><tr style="background:#f8fafc;border-bottom:2px solid var(--border);">' +
+      '<th style="padding:8px;text-align:left;">Name</th>' +
+      '<th style="padding:8px;text-align:left;">Unit</th>' +
+      '<th style="padding:8px;text-align:right;">Pack</th>' +
+      '<th style="padding:8px;text-align:right;">Pack $</th>' +
+      '<th style="padding:8px;text-align:right;">Large unit</th>' +
+      '<th style="padding:8px;text-align:right;">Base unit</th>' +
+    '</tr></thead><tbody>';
+  rows.forEach(function(p) {
+    var info = UNIT_INFO[p.unit] || { kind:'count', base:1, label:p.unit };
+    var price = priceForIngredient(p);
+    var packTxt = p.packSize ? format(p.packSize) + ' ' + escapeHtml(info.label) : '—';
+    var packPriceTxt = (price && price.packPrice != null) ? '$' + price.packPrice.toFixed(2) : '—';
+    var smallTxt = '—', largeTxt = '—';
+    if (price && price.perBase != null) {
+      var pb = price.perBase;
+      if (info.kind === 'count') {
+        smallTxt = '$' + pb.toFixed(4) + ' /ct';
+      } else {
+        smallTxt = '$' + pb.toFixed(4) + (info.kind === 'weight' ? ' /oz' : ' /floz');
+        largeTxt = '$' + (pb * ingrLargeMult(info.kind)).toFixed(3) + (info.kind === 'weight' ? ' /lb' : ' /gal');
+      }
+    }
+    html += '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name) + '</td>' +
+      '<td style="padding:8px;color:var(--text-muted);">' + escapeHtml(info.label) + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + packTxt + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + packPriceTxt + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + largeTxt + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + smallTxt + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function ingrUpdateLabels() {
+  var unitEl = document.getElementById('ingrUnit'); if (!unitEl) return;
+  var info = UNIT_INFO[unitEl.value] || { kind:'count' };
+  document.getElementById('ingrSmallUnitLabel').textContent = ingrSmallLabel(info.kind);
+  document.getElementById('ingrLargeUnitLabel').textContent = ingrLargeLabel(info.kind);
+}
+function ingrSmartRecalc(source) {
+  var unitEl = document.getElementById('ingrUnit'); if (!unitEl) return;
+  var info = UNIT_INFO[unitEl.value] || { kind:'count', base:1 };
+  var packSize = parseFloat(document.getElementById('ingrPackSize').value);
+  var packEl  = document.getElementById('ingrPackPrice');
+  var largeEl = document.getElementById('ingrPriceLarge');
+  var smallEl = document.getElementById('ingrPriceSmall');
+  var packPrice = parseFloat(packEl.value);
+  var perLarge  = parseFloat(largeEl.value);
+  var perSmall  = parseFloat(smallEl.value);
+  var lm = ingrLargeMult(info.kind);
+
+  var perBase = NaN;
+  if (source === 'pack'  && !isNaN(packPrice) && packSize > 0) perBase = packPrice / (packSize * info.base);
+  else if (source === 'small' && !isNaN(perSmall)) perBase = perSmall;
+  else if (source === 'large' && !isNaN(perLarge) && lm > 0) perBase = perLarge / lm;
+  if (isNaN(perBase)) return;
+
+  if (source !== 'pack' && packSize > 0) packEl.value = (perBase * packSize * info.base).toFixed(2);
+  if (source !== 'small') smallEl.value = perBase.toFixed(4);
+  if (source !== 'large' && info.kind !== 'count') largeEl.value = (perBase * lm).toFixed(3);
+  if (info.kind === 'count') largeEl.value = '';
+}
+
+['ingrPackPrice','ingrPriceLarge','ingrPriceSmall'].forEach(function(elId, idx) {
+  var keys = ['pack','large','small'];
+  var el = document.getElementById(elId);
+  if (el) el.addEventListener('input', function(){ ingrSmartRecalc(keys[idx]); });
+});
+(function() {
+  var unitEl = document.getElementById('ingrUnit');
+  var packSizeEl = document.getElementById('ingrPackSize');
+  if (unitEl) unitEl.addEventListener('change', function() {
+    ingrUpdateLabels();
+    if (document.getElementById('ingrPackPrice').value) ingrSmartRecalc('pack');
+    else if (document.getElementById('ingrPriceSmall').value) ingrSmartRecalc('small');
+    else if (document.getElementById('ingrPriceLarge').value) ingrSmartRecalc('large');
+  });
+  if (packSizeEl) packSizeEl.addEventListener('input', function() {
+    if (document.getElementById('ingrPackPrice').value) ingrSmartRecalc('pack');
+    else if (document.getElementById('ingrPriceSmall').value) ingrSmartRecalc('small');
+    else if (document.getElementById('ingrPriceLarge').value) ingrSmartRecalc('large');
+  });
+})();
+
+document.getElementById('addIngrBtn') && document.getElementById('addIngrBtn').addEventListener('click', function() {
+  var name = (document.getElementById('ingrName').value || '').trim();
+  var unit = document.getElementById('ingrUnit').value;
+  var packSize = parseFloat(document.getElementById('ingrPackSize').value) || 0;
+  var packPrice = parseFloat(document.getElementById('ingrPackPrice').value);
+  var msgEl = document.getElementById('ingrFormMsg');
+  msgEl.textContent = '';
+  if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
+  var newP = { id: id(), name: name, raw: 1, cooked: 1, unit: unit };
+  if (packSize > 0) newP.packSize = packSize;
+  if (!isNaN(packPrice) && packPrice > 0) {
+    newP.costPerUnit = packPrice;
+    newP.costMode = 'pack';
+  }
+  products.push(newP);
+  saveProducts();
+  document.getElementById('ingrName').value = '';
+  document.getElementById('ingrPackSize').value = '';
+  document.getElementById('ingrPackPrice').value = '';
+  document.getElementById('ingrPriceLarge').value = '';
+  document.getElementById('ingrPriceSmall').value = '';
+  msgEl.style.color = '#15803d';
+  msgEl.textContent = 'Saved "' + name + '". Edit raw/cooked yield + advanced fields in the ⚙️ Products tab.';
+  renderIngredients();
+  renderProducts();
+  renderOrderRows && renderOrderRows();
+});
+document.getElementById('ingrSearch') && document.getElementById('ingrSearch').addEventListener('input', renderIngredients);
+ingrUpdateLabels();
+
 // ============ INIT ============
 loadState();
 syncOrderMetaInputs();
 renderProducts();
 renderRecipes();
+renderIngredients();
 renderOrderRows();
 renderHistory();
 renderReverseSelect();
