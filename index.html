@@ -530,6 +530,61 @@
   }
   .info-pill.pkg   { background: #fce7f3; color: #9f1239; }
   .info-pill.labor { background: #d1fae5; color: #065f46; }
+
+  .pot-list { margin-bottom: 6px; }
+  .pot-list-row {
+    display: grid;
+    grid-template-columns: 1fr 110px 36px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .pot-list-row input { padding: 8px 10px; font-size: 14px; }
+  .pot-list-row .btn-danger { width: 32px; height: 32px; padding: 0; font-size: 14px; }
+  .pot-list-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 0 6px;
+  }
+
+  .help-card { line-height: 1.6; font-size: 14px; }
+  .help-card p { margin: 8px 0; color: var(--text); }
+  .help-card h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 18px 0 6px;
+    color: var(--primary-dark);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .help-card h3:first-of-type { border-top: none; padding-top: 0; }
+  .help-card ul, .help-card ol { padding-left: 22px; margin: 6px 0; }
+  .help-card li { margin: 4px 0; }
+  .help-card code {
+    background: #f1f5f9;
+    color: var(--primary-dark);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Menlo', 'Consolas', monospace;
+  }
+  .help-card strong { color: var(--text); }
+  .help-card em { color: var(--text-muted); }
+
+  #printArea { display: none; }
+  @media print {
+    body > *:not(#printArea) { display: none !important; }
+    #printArea {
+      display: block !important;
+      white-space: pre-wrap;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 15mm;
+      color: #000;
+    }
+    @page { margin: 0; }
+  }
   .card-title-row {
     display: flex;
     justify-content: space-between;
@@ -646,6 +701,7 @@
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
   <div class="tab" data-tab="products">⚙️ Products</div>
+  <div class="tab" data-tab="help">❓ Help</div>
 </nav>
 
 <!-- ============ TAB: CALCULATOR ============ -->
@@ -704,10 +760,14 @@
     <div id="exportArea" style="display:none;margin-top:12px;">
       <textarea id="exportJson" readonly style="width:100%;min-height:120px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:monospace;font-size:11px;resize:vertical;background:#f8fafc;"></textarea>
       <div class="io-row" style="margin-top:8px;">
-        <button class="btn-secondary" id="exportCopyBtn">📋 Copy to clipboard</button>
-        <button class="btn-secondary" id="exportDownloadBtn">💾 Download .json</button>
+        <button class="btn-secondary" id="exportCopyBtn">📋 Copy</button>
+        <button class="btn-secondary" id="exportShareBtn">📲 Share (WhatsApp…)</button>
       </div>
-      <div class="field-help">If clipboard / download don't work in your app, just long-press the text above and copy.</div>
+      <div class="io-row" style="margin-top:8px;">
+        <button class="btn-secondary" id="exportDownloadBtn">💾 Download</button>
+        <button class="btn-secondary" id="exportPrintBtn">🖨 Print / PDF</button>
+      </div>
+      <div class="field-help">Share opens your phone's share sheet (WhatsApp, Mail, …). Print also lets you save as PDF.</div>
     </div>
 
     <div id="importArea" style="display:none;margin-top:12px;">
@@ -775,9 +835,10 @@
         <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Pot / Tray capacities <span style="color:var(--text-muted);font-weight:400;">(optional, comma-separated for multiple sizes)</span></label>
-        <input type="text" id="newProductPot" placeholder="e.g. 5  or  5, 10, 20" inputmode="decimal" autocomplete="off">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">List your available pot/tray sizes. The app will fit the order using the largest first.</div>
+        <label>Pot / Tray sizes <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <div class="pot-list" data-pot-list="add"></div>
+        <button class="btn-secondary btn-small" type="button" data-pot-add="add">+ Add pot size</button>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Add one row per size. Name is optional. The app fills with the largest first.</div>
       </div>
       <div class="field">
         <label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
@@ -867,6 +928,84 @@
   </div>
 </section>
 
+<!-- ============ TAB: HELP ============ -->
+<section class="tab-content" id="tab-help">
+  <div class="card help-card">
+    <div class="card-title">❓ Help &amp; Feature Reference</div>
+    <p>Portion Calc helps catering kitchens turn cooked-portion plans into raw shopping lists, prep instructions, and cost breakdowns. Below is everything the app does.</p>
+
+    <h3>Tabs</h3>
+    <p><strong>📊 Calculate</strong> — build the order and see results.<br>
+       <strong>⚙️ Products</strong> — set up your ingredient catalog and run reverse calculations.<br>
+       <strong>❓ Help</strong> — this page.</p>
+
+    <h3>Setting up products</h3>
+    <p>Each product has a <em>Basic</em> tab and a <em>Pricing &amp; Labor</em> tab.</p>
+    <p><strong>Basic:</strong> name, unit (oz / lb / cup / floz / qt / gal / ct), raw amount, cooked amount.<br>
+       Example: <code>12 oz raw rice → 36 oz cooked</code>. The app derives the ratio (3 cooked per 1 raw) and uses it everywhere.</p>
+    <p><strong>Pricing &amp; Labor (all optional):</strong></p>
+    <ul>
+      <li><strong>Pack size</strong> — e.g. 25-lb sack. Lets the results round up to whole packs to buy.</li>
+      <li><strong>Pot / Tray sizes</strong> — list as many as you have, with optional names ("small", "large"). The app fits the order with largest first; overflow goes into the smallest. The total pot count drives cooking labor.</li>
+      <li><strong>Ingredient cost</strong> — value plus a mode: per measurement unit, per pack, or per piece.</li>
+      <li><strong>Packaging cost</strong> — $ per single portion (e.g. takeout box).</li>
+      <li><strong>🍳 Cooking labor</strong> — time to cook ONE pot/tray, plus workers and $/hour. Total = pots needed × hours × workers × rate.</li>
+      <li><strong>📦 Packaging labor</strong> — separate from cooking. Choose basis: per single portion / per carton of N portions / per cooking batch. Total = units × hours × workers × rate.</li>
+    </ul>
+
+    <h3>Building an order</h3>
+    <p>On the Calculate tab:</p>
+    <ol>
+      <li><strong>Order Details</strong> — name and event date stamp into history.</li>
+      <li><strong>Find / Quick-add</strong> — type a product name. Matching chips appear; tap one to add it. The same search filters dropdowns inside existing rows. Tapping a chip for a product already in the order adds another size to the same group instead of duplicating.</li>
+      <li><strong>Cooking Order</strong> — each row is one product. Inside a row you can add multiple sizes ("+ Add another size"). Reorder rows with ▲▼; duplicate a whole group with 📋.</li>
+      <li><strong>Calculate</strong> — generates the results card and stores a snapshot in History.</li>
+    </ol>
+
+    <h3>Reading the results</h3>
+    <p>For each product in the order:</p>
+    <ul>
+      <li>Total raw + total cooked + portion count.</li>
+      <li>Pack rounding ("3 packs of 25 lb"), pot plan ("2 × large (10 oz) + 1 × small (5 oz)").</li>
+      <li>Ingredient / Packaging / Cook labor / Pack labor breakdown, then a subtotal.</li>
+    </ul>
+    <p>A <strong>"Cost per single portion"</strong> section answers <em>"how much does ONE 8 oz vs ONE 12 oz portion cost?"</em> using the effective $/cooked-unit so pack-mode rounding flows through correctly.</p>
+    <p>Below that: total order cost and average per portion.</p>
+
+    <h3>Reverse calculation</h3>
+    <p>On the Products tab: pick a product, enter the raw amount you have plus a portion size — the app tells you how many portions you can serve.</p>
+
+    <h3>Sharing the order</h3>
+    <p>Three export modes plus JSON backup, all in the <strong>Export &amp; Backup</strong> card.</p>
+    <ul>
+      <li><strong>🍳 For Kitchen</strong> — formatted prep sheet: raw amounts, pack/pot counts, portion list. <em>No prices anywhere.</em></li>
+      <li><strong>💼 For Office</strong> — full cost breakdown plus per-portion price.</li>
+      <li><strong>💾 JSON backup</strong> — full state snapshot for restore.</li>
+      <li><strong>📲 Share</strong> — opens your phone's share sheet (WhatsApp, Mail, etc.).</li>
+      <li><strong>🖨 Print / PDF</strong> — print directly or "Save as PDF" from the print dialog.</li>
+      <li><strong>📥 Import</strong> — paste JSON or pick a file. Replaces all data after a confirmation.</li>
+    </ul>
+
+    <h3>History</h3>
+    <p>Every Calculate saves an entry with the order name, date, rows, and totals. Tap <strong>↻ Load</strong> to restore an entry into the editor; tap 🗑 to delete one.</p>
+
+    <h3>Data persistence</h3>
+    <p>Your data is stored in the app's local storage. It survives:</p>
+    <ul>
+      <li>Closing and reopening the app.</li>
+      <li>Restarting the phone.</li>
+      <li>Updating the app to a new version (when installed over the previous build).</li>
+    </ul>
+    <p>Your data is wiped if you:</p>
+    <ul>
+      <li>Uninstall the app (Android removes its data partition).</li>
+      <li>Clear app data from Android settings.</li>
+      <li>Replace your phone.</li>
+    </ul>
+    <p><strong>Best practice:</strong> use 💾 JSON backup periodically and store the file in Drive / WhatsApp / email. The app will gently remind you with a toast if a week passes without a backup. To restore, paste or pick the JSON in the Import field.</p>
+  </div>
+</section>
+
 <div class="install-banner" id="installBanner">
   <span style="font-size:13px;">📲 Install as an app on your home screen</span>
   <div>
@@ -876,6 +1015,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="printArea"></div>
 
 <script>
 'use strict';
@@ -1104,7 +1244,8 @@ function buildProductEditCard(p) {
   var costVal = (p.costPerUnit > 0) ? p.costPerUnit : '';
   var costModeVal = p.costMode || 'measure';
   var potVal  = (p.unitsPerPot > 0) ? p.unitsPerPot : '';
-  var potText = formatPotsText(getPotSizes(p));
+  var currentPots = getPotSizes(p);
+  var potRowsHTML = currentPots.map(function(pp) { return buildPotRowHTML(pp.name, pp.capacity); }).join('');
   var pkgVal  = (p.packagingCost > 0) ? p.packagingCost : '';
   var lhVal   = (p.laborHours > 0) ? p.laborHours : '';
   var lwVal   = (p.laborWorkers > 0) ? p.laborWorkers : '';
@@ -1154,9 +1295,10 @@ function buildProductEditCard(p) {
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
         '</div>' +
         '<div class="field">' +
-          '<label>Pot / Tray capacities <span style="color:var(--text-muted);font-weight:400;">(opt, comma-separated)</span></label>' +
-          '<input type="text" inputmode="decimal" autocomplete="off" data-edit-field="potList" data-eid="' + p.id + '" value="' + escapeHtml(potText) + '" placeholder="e.g. 5  or  5, 10, 20">' +
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Multiple sizes: largest fitted first.</div>' +
+          '<label>Pot / Tray sizes <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
+          '<div class="pot-list" data-pot-list="edit-' + p.id + '">' + potRowsHTML + '</div>' +
+          '<button class="btn-secondary btn-small" type="button" data-pot-add="edit-' + p.id + '">+ Add pot size</button>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Name is optional. Largest size is filled first when planning.</div>' +
         '</div>' +
         '<div class="field">' +
           '<label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
@@ -1277,7 +1419,7 @@ function renderProducts() {
       var packVal = parseFloat(document.querySelector('[data-edit-field="packSize"][data-eid="' + pid + '"]').value);
       var costVal = parseFloat(document.querySelector('[data-edit-field="costPerUnit"][data-eid="' + pid + '"]').value);
       var costModeVal = document.querySelector('[data-edit-field="costMode"][data-eid="' + pid + '"]').value;
-      var potArrVal = parsePots(document.querySelector('[data-edit-field="potList"][data-eid="' + pid + '"]').value);
+      var potArrVal = collectPotsFromList(document.querySelector('[data-pot-list="edit-' + pid + '"]'));
       var pkgVal  = parseFloat(document.querySelector('[data-edit-field="packagingCost"][data-eid="' + pid + '"]').value);
       var lhVal   = parseFloat(document.querySelector('[data-edit-field="laborHours"][data-eid="' + pid + '"]').value);
       var lwVal   = parseFloat(document.querySelector('[data-edit-field="laborWorkers"][data-eid="' + pid + '"]').value);
@@ -1301,8 +1443,7 @@ function renderProducts() {
       }
       delete p.unitsPerPot;
       delete p.pots;
-      if (potArrVal.length === 1) p.unitsPerPot = potArrVal[0];
-      else if (potArrVal.length > 1) p.pots = potArrVal;
+      if (potArrVal.length > 0) p.pots = potArrVal;
       if (pkgVal > 0) p.packagingCost = pkgVal; else delete p.packagingCost;
       if (lhVal > 0)  p.laborHours = lhVal;    else delete p.laborHours;
       if (lwVal > 0)  p.laborWorkers = lwVal;  else delete p.laborWorkers;
@@ -1363,6 +1504,29 @@ document.addEventListener('click', function(e) {
   if (target) target.classList.add('active');
 });
 
+// Pot list editor — Add row / Remove row (event delegation for both Add and Edit forms)
+document.addEventListener('click', function(e) {
+  var addBtn = e.target.closest && e.target.closest('[data-pot-add]');
+  if (addBtn) {
+    var key = addBtn.getAttribute('data-pot-add');
+    var list = document.querySelector('[data-pot-list="' + key + '"]');
+    if (list) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = buildPotRowHTML('', 0);
+      list.appendChild(wrap.firstChild);
+      var nameInput = list.lastElementChild.querySelector('.pot-name-input');
+      if (nameInput) nameInput.focus();
+    }
+    return;
+  }
+  var rmBtn = e.target.closest && e.target.closest('.pot-remove-btn');
+  if (rmBtn) {
+    var row = rmBtn.closest('.pot-list-row');
+    if (row) row.remove();
+    return;
+  }
+});
+
 // Show/hide carton size field based on packLaborBasis dropdown (Add + Edit forms)
 document.getElementById('newProductPackLaborBasis').addEventListener('change', function(e) {
   document.getElementById('newProductCartonSizeWrap').style.display = e.target.value === 'carton' ? '' : 'none';
@@ -1383,7 +1547,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   var packRaw = parseFloat(document.getElementById('newProductPack').value);
   var costRaw = parseFloat(document.getElementById('newProductCost').value);
   var costMode = document.getElementById('newProductCostMode').value;
-  var potArr  = parsePots(document.getElementById('newProductPot').value);
+  var potArr  = collectPotsFromList(document.querySelector('[data-pot-list="add"]'));
   var pkgRaw  = parseFloat(document.getElementById('newProductPackaging').value);
   var lhRaw   = parseFloat(document.getElementById('newProductLaborHours').value);
   var lwRaw   = parseFloat(document.getElementById('newProductLaborWorkers').value);
@@ -1401,8 +1565,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
     prod.costPerUnit = costRaw;
     prod.costMode = costMode || 'measure';
   }
-  if (potArr.length === 1) prod.unitsPerPot = potArr[0];
-  if (potArr.length > 1)   prod.pots = potArr;
+  if (potArr.length > 0) prod.pots = potArr;
   if (pkgRaw  > 0) prod.packagingCost = pkgRaw;
   if (lhRaw > 0)   prod.laborHours = lhRaw;
   if (lwRaw > 0)   prod.laborWorkers = lwRaw;
@@ -1422,7 +1585,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   document.getElementById('newProductPack').value = '';
   document.getElementById('newProductCost').value = '';
   document.getElementById('newProductCostMode').value = 'measure';
-  document.getElementById('newProductPot').value = '';
+  setPotListContent(document.querySelector('[data-pot-list="add"]'), []);
   document.getElementById('newProductPackaging').value = '';
   document.getElementById('newProductLaborHours').value = '';
   document.getElementById('newProductLaborWorkers').value = '';
@@ -1854,7 +2017,9 @@ function renderResults(totalsArr) {
       var plan = packIntoPots(t.cooked, t.potSizes);
       if (plan.length) {
         if (plan.length === 1) {
-          extras.push('🍲 ' + plan[0].count + ' pot' + (plan[0].count !== 1 ? 's' : '') + '/tray' + (plan[0].count !== 1 ? 's' : '') + ' of ' + format(plan[0].capacity) + ' ' + escapeHtml(u));
+          var p0 = plan[0];
+          var lbl = p0.name ? escapeHtml(p0.name) + ' (' + format(p0.capacity) + ' ' + escapeHtml(u) + ')' : format(p0.capacity) + ' ' + escapeHtml(u);
+          extras.push('🍲 ' + p0.count + ' × ' + lbl);
         } else {
           extras.push('🍲 Pot plan: ' + escapeHtml(describePotPlan(plan, u)));
         }
@@ -1952,6 +2117,7 @@ document.getElementById('calcBtn').addEventListener('click', function() {
   if (totals.length > 0) {
     pushHistory(totals);
     toast('Calculation saved to history ✓');
+    setTimeout(checkBackupReminder, 2500);
   }
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
@@ -2223,7 +2389,9 @@ function formatKitchenExport() {
         var plan = packIntoPots(t.cooked, t.potSizes);
         if (plan.length) {
           if (plan.length === 1) {
-            lines.push('  🍲 Cook in ' + plan[0].count + ' pot/tray of ' + format(plan[0].capacity) + ' ' + u);
+            var pp0 = plan[0];
+            var pplbl = pp0.name ? pp0.name + ' (' + format(pp0.capacity) + ' ' + u + ')' : format(pp0.capacity) + ' ' + u;
+            lines.push('  🍲 Cook in ' + pp0.count + ' × ' + pplbl);
           } else {
             lines.push('  🍲 Pot plan: ' + describePotPlan(plan, u));
           }
@@ -2436,10 +2604,57 @@ document.getElementById('exportDownloadBtn').addEventListener('click', function(
     document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
     toast('Download triggered (check your Downloads folder)');
+    if (currentExportKind === 'json') markBackup();
   } catch(e) {
     toast('Download not supported here — copy the text instead');
   }
 });
+
+document.getElementById('exportShareBtn').addEventListener('click', function() {
+  var content = document.getElementById('exportJson').value;
+  if (!content) return;
+  var title = currentExportKind === 'kitchen' ? 'Kitchen Prep Sheet' :
+              currentExportKind === 'office'  ? 'Order Cost Breakdown' :
+                                                'Portion Calc Backup';
+  if (navigator.share) {
+    navigator.share({ title: title, text: content }).then(function() {
+      if (currentExportKind === 'json') markBackup();
+    }).catch(function() { /* user cancelled */ });
+    return;
+  }
+  // Fallback: WhatsApp web link (text only, may truncate at ~64KB)
+  var waUrl = 'https://wa.me/?text=' + encodeURIComponent(content);
+  try { window.open(waUrl, '_blank'); }
+  catch(e) { toast('Share not supported — copy the text instead'); }
+});
+
+document.getElementById('exportPrintBtn').addEventListener('click', function() {
+  var content = document.getElementById('exportJson').value;
+  if (!content) return;
+  var area = document.getElementById('printArea');
+  area.textContent = content;
+  setTimeout(function() {
+    try { window.print(); }
+    catch(e) { toast('Print not supported here'); }
+  }, 50);
+});
+
+function markBackup() {
+  try { localStorage.setItem('kitchen_calc_last_backup', String(Date.now())); } catch(e) {}
+}
+function backupAgeDays() {
+  try {
+    var t = parseInt(localStorage.getItem('kitchen_calc_last_backup') || '0', 10);
+    if (!t) return Infinity;
+    return (Date.now() - t) / 86400000;
+  } catch(e) { return 0; }
+}
+function checkBackupReminder() {
+  if (historyEntries.length < 1) return;
+  if (backupAgeDays() > 7) {
+    toast('💾 Tip: it\'s been a while — consider an Export backup');
+  }
+}
 
 document.getElementById('importBtn').addEventListener('click', function() {
   var area = document.getElementById('importArea');
@@ -2489,51 +2704,111 @@ function format(n) {
   return n.toFixed(2).replace(/\.?0+$/, '');
 }
 
-// ============ POT SIZES (multi-pot support) ============
+// ============ POT SIZES (multi-pot + optional names) ============
+// Input formats accepted:
+//   "5"                    → [{name:'', capacity:5}]
+//   "5, 10, 20"            → 3 unnamed
+//   "small:5, large:10"    → 2 named
+//   "small:5, 10, big:20"  → mix
 function parsePots(str) {
   if (!str) return [];
-  return String(str).split(/[,;\s]+/)
-    .map(function(s) { return parseFloat(s); })
-    .filter(function(n) { return n > 0; });
+  return String(str).split(/[,;]+/).map(function(s) {
+    s = s.trim();
+    if (!s) return null;
+    var idx = s.indexOf(':');
+    if (idx > 0) {
+      var name = s.slice(0, idx).trim();
+      var cap = parseFloat(s.slice(idx + 1));
+      if (cap > 0) return { name: name, capacity: cap };
+      return null;
+    }
+    var cap2 = parseFloat(s);
+    if (cap2 > 0) return { name: '', capacity: cap2 };
+    return null;
+  }).filter(Boolean);
 }
 
 function formatPotsText(arr) {
-  return (arr || []).map(function(n) { return format(n); }).join(', ');
+  return (arr || []).map(function(item) {
+    if (typeof item === 'number') return format(item);
+    if (!item) return '';
+    return (item.name ? item.name + ':' : '') + format(item.capacity);
+  }).filter(Boolean).join(', ');
 }
 
-// Resolve effective pot capacities for a product, with backward-compat for unitsPerPot
+// Resolve effective pots for a product → array of {name, capacity}.
+// Handles legacy formats: number array, plain unitsPerPot.
 function getPotSizes(p) {
-  if (Array.isArray(p.pots) && p.pots.length > 0) return p.pots.filter(function(c){ return c > 0; });
-  if (p.unitsPerPot > 0) return [p.unitsPerPot];
-  return [];
+  var arr = [];
+  if (Array.isArray(p.pots) && p.pots.length > 0) {
+    p.pots.forEach(function(item) {
+      if (typeof item === 'number' && item > 0) arr.push({ name: '', capacity: item });
+      else if (item && item.capacity > 0) arr.push({ name: item.name || '', capacity: item.capacity });
+    });
+  } else if (p.unitsPerPot > 0) {
+    arr.push({ name: '', capacity: p.unitsPerPot });
+  }
+  return arr;
 }
 
 // Greedy fill: largest pots first; if remainder, add one more of smallest.
-// Returns [{capacity, count}, ...] sorted by capacity desc.
+// Returns [{name, capacity, count}, ...] sorted by capacity desc.
 function packIntoPots(totalCooked, potSizes) {
   if (!totalCooked || totalCooked <= 0 || !potSizes || potSizes.length === 0) return [];
-  var sorted = potSizes.slice().sort(function(a, b) { return b - a; });
-  var counts = sorted.map(function(c) { return { capacity: c, count: 0 }; });
+  var sorted = potSizes.slice().sort(function(a, b) { return b.capacity - a.capacity; });
+  var counts = sorted.map(function(p) { return { name: p.name || '', capacity: p.capacity, count: 0 }; });
   var remaining = totalCooked;
   for (var i = 0; i < sorted.length; i++) {
     if (remaining <= 0) break;
-    var n = Math.floor(remaining / sorted[i]);
+    var n = Math.floor(remaining / sorted[i].capacity);
     counts[i].count = n;
-    remaining -= n * sorted[i];
+    remaining -= n * sorted[i].capacity;
   }
-  if (remaining > 0) counts[counts.length - 1].count += 1; // overflow into smallest
+  if (remaining > 0) counts[counts.length - 1].count += 1;
   return counts.filter(function(c){ return c.count > 0; });
 }
 
 function describePotPlan(plan, unitLabelStr) {
   if (!plan.length) return '';
   return plan.map(function(c) {
-    return c.count + ' × ' + format(c.capacity) + ' ' + unitLabelStr;
+    var label = c.name
+      ? c.name + ' (' + format(c.capacity) + ' ' + unitLabelStr + ')'
+      : format(c.capacity) + ' ' + unitLabelStr;
+    return c.count + ' × ' + label;
   }).join(' + ');
 }
 
 function totalPotsFromPlan(plan) {
   return plan.reduce(function(s, c) { return s + c.count; }, 0);
+}
+
+// Structured pot editor (rows of {name, capacity})
+function buildPotRowHTML(name, capacity) {
+  var nameAttr = name ? ' value="' + escapeHtml(name) + '"' : '';
+  var capAttr  = (capacity > 0) ? ' value="' + capacity + '"' : '';
+  return '<div class="pot-list-row">' +
+    '<input type="text" placeholder="Name (optional, e.g. small)" class="pot-name-input"' + nameAttr + '>' +
+    '<input type="number" step="any" min="0" inputmode="decimal" placeholder="Capacity" class="pot-cap-input"' + capAttr + '>' +
+    '<button class="btn-danger btn-icon pot-remove-btn" type="button" title="Remove">🗑</button>' +
+  '</div>';
+}
+
+function collectPotsFromList(listEl) {
+  if (!listEl) return [];
+  var pots = [];
+  listEl.querySelectorAll('.pot-list-row').forEach(function(row) {
+    var nameEl = row.querySelector('.pot-name-input');
+    var capEl  = row.querySelector('.pot-cap-input');
+    var name = (nameEl && nameEl.value || '').trim();
+    var cap = parseFloat(capEl && capEl.value);
+    if (cap > 0) pots.push({ name: name, capacity: cap });
+  });
+  return pots;
+}
+
+function setPotListContent(listEl, pots) {
+  if (!listEl) return;
+  listEl.innerHTML = (pots || []).map(function(p) { return buildPotRowHTML(p.name, p.capacity); }).join('');
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
