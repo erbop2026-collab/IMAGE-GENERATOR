@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.6</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.7</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -3099,6 +3099,80 @@ function computeLaborCost(t) {
   return { cost: c.cost + p.cost, batches: c.batches };
 }
 
+// v2.7.7 — per-recipe equipment + labor based on recipe.equipment[].
+// Re-iterates orderRows so we can produce a per-dish breakdown (independent
+// of the per-ingredient totals that computeTotals returns).
+function computeRecipeSummaries() {
+  var byRecipe = {};
+  orderRows.forEach(function(row) {
+    if (row.kind !== 'recipe') return;
+    var rec = recipes.find(function(x){ return x.id === row.recipeId; });
+    if (!rec) return;
+    var sizes = Array.isArray(row.sizes) ? row.sizes : [];
+    var totalCookedDish = 0, totalPortionsDish = 0;
+    sizes.forEach(function(sz) {
+      var c = sz.portions * sz.portionSize;
+      if (c > 0) { totalCookedDish += c; totalPortionsDish += sz.portions; }
+    });
+    if (!(totalCookedDish > 0) || !(rec.yieldCooked > 0)) return;
+    if (!byRecipe[rec.id]) byRecipe[rec.id] = { rec: rec, totalCookedDish: 0, totalPortionsDish: 0 };
+    byRecipe[rec.id].totalCookedDish += totalCookedDish;
+    byRecipe[rec.id].totalPortionsDish += totalPortionsDish;
+  });
+  return Object.keys(byRecipe).map(function(k){ return byRecipe[k]; });
+}
+
+// Resolves recipe.equipment[] into pot-size objects compatible with packIntoPots.
+function recipeEquipmentSizes(rec) {
+  if (!Array.isArray(rec.equipment)) return [];
+  return rec.equipment.map(function(ent) {
+    var pot = pots.find(function(p){ return p.id === ent.equipmentId; });
+    var capacity = pot && pot.capacityLb > 0 ? pot.capacityLb : (pot && pot.volumeOz > 0 ? pot.volumeOz / 16 : 0);
+    if (!(capacity > 0)) return null;
+    return {
+      name: pot ? pot.name : '',
+      capacity: capacity,
+      _entry: ent
+    };
+  }).filter(Boolean);
+}
+
+// Computes equipment + labor cost for one recipe given its total ordered cooked.
+// Returns { plan, cookCost, packCost, totalCost } or null if no usable equipment.
+function computeRecipeEquipmentCost(rec, totalCookedDish) {
+  var sizes = recipeEquipmentSizes(rec);
+  if (sizes.length === 0) return null;
+  var plan = packIntoPots(totalCookedDish, sizes);
+  if (!plan || plan.length === 0) return null;
+  var cookCost = 0, packCost = 0;
+  plan.forEach(function(item) {
+    // packIntoPots picks by capacity descending; find the original entry
+    // whose capacity matches and pull its labor.
+    var matchSize = sizes.find(function(s){ return s.capacity === item.capacity && s.name === item.name; });
+    var ent = matchSize ? matchSize._entry : null;
+    if (!ent) return;
+    cookCost += item.count * (ent.cookHours||0) * (ent.cookWorkers||0) * (ent.cookRate||0);
+    packCost += item.count * (ent.packHours||0) * (ent.packWorkers||0) * (ent.packRate||0);
+  });
+  return { plan: plan, cookCost: cookCost, packCost: packCost, totalCost: cookCost + packCost };
+}
+
+// Set of productIds owned by recipes that have valid equipment[]. Used to
+// suppress legacy per-ingredient labor lines (would otherwise double-count).
+function productIdsCoveredByRecipeEquipment() {
+  var set = {};
+  recipes.forEach(function(r) {
+    if (!Array.isArray(r.equipment) || r.equipment.length === 0) return;
+    var hasLabor = r.equipment.some(function(e){
+      return (e.cookHours > 0 || e.packHours > 0) && e.equipmentId;
+    });
+    if (!hasLabor) return;
+    (r.components || []).forEach(function(c){ set[c.productId] = true; });
+    if (r.leadProductId) set[r.leadProductId] = true;
+  });
+  return set;
+}
+
 function renderResults(totalsArr) {
   var resEl = document.getElementById('results');
   if (totalsArr.length === 0) {
@@ -3110,18 +3184,54 @@ function renderResults(totalsArr) {
   var hasAnyCost = false;
   var perPortionLines = []; // collect across all products
 
+  // v2.7.7: per-recipe equipment + labor block. When a recipe has
+  // recipe.equipment[] configured, labor for its ingredients comes from
+  // here (not from per-ingredient products[].laborX).
+  var coveredIngredientIds = productIdsCoveredByRecipeEquipment();
+  var recipeSummaries = computeRecipeSummaries();
+  var equipmentSectionHtml = '';
+  recipeSummaries.forEach(function(s) {
+    var eqCost = computeRecipeEquipmentCost(s.rec, s.totalCookedDish);
+    if (!eqCost) return;
+    var u = unitLabel(s.rec.yieldUnit || 'oz');
+    var planTxt = (eqCost.plan || []).map(function(item){
+      var lbl = item.name ? escapeHtml(item.name) + ' (' + format(item.capacity) + ' ' + escapeHtml(u) + ')' : format(item.capacity) + ' ' + escapeHtml(u);
+      return item.count + ' × ' + lbl;
+    }).join(' + ');
+    orderTotalCost += eqCost.totalCost;
+    if (eqCost.totalCost > 0) hasAnyCost = true;
+    equipmentSectionHtml +=
+      '<div class="result-line" style="background:#f0fdfa;border-left:3px solid var(--primary);">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="result-name">🍳 ' + escapeHtml(s.rec.name) + '</div>' +
+          '<div class="result-sub">Total cooked: ' + format(s.totalCookedDish) + ' ' + escapeHtml(u) + ' · ' + s.totalPortionsDish + ' portion' + (s.totalPortionsDish !== 1 ? 's' : '') + '</div>' +
+          '<div class="result-extra">' +
+            '🍲 ' + escapeHtml(planTxt) + '<br>' +
+            (eqCost.cookCost > 0 ? '🍳 Cook labor: $' + eqCost.cookCost.toFixed(2) + '<br>' : '') +
+            (eqCost.packCost > 0 ? '📦 Pack labor: $' + eqCost.packCost.toFixed(2) + '<br>' : '') +
+            '<strong>Subtotal: $' + eqCost.totalCost.toFixed(2) + '</strong>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  });
+  if (equipmentSectionHtml) {
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:10px 0 6px;">Per-dish equipment & labor</div>' + equipmentSectionHtml;
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:14px 0 6px;">Per-ingredient breakdown</div>';
+  }
+
   totalsArr.forEach(function(t) {
     var u = unitLabel(t.unit);
     var rawAlt = altDisplay(t.raw, t.unit);
     var cookedAlt = altDisplay(t.cooked, t.unit);
     var extras = [];
+    var suppressLegacyLabor = !!coveredIngredientIds[t.productId];
 
     if (t.packSize > 0) {
       var packs = Math.ceil(t.raw / t.packSize);
       var totalInPacks = packs * t.packSize;
       extras.push('📦 ' + packs + ' pack' + (packs !== 1 ? 's' : '') + ' of ' + format(t.packSize) + ' ' + escapeHtml(u) + ' = ' + format(totalInPacks) + ' ' + escapeHtml(u));
     }
-    if (t.potSizes && t.potSizes.length) {
+    if (!suppressLegacyLabor && t.potSizes && t.potSizes.length) {
       var plan = packIntoPots(t.cooked, t.potSizes);
       if (plan.length) {
         if (plan.length === 1) {
@@ -3132,15 +3242,15 @@ function renderResults(totalsArr) {
           extras.push('🍲 Pot plan: ' + escapeHtml(describePotPlan(plan, u)));
         }
       }
-    } else if (t.unitsPerPot > 0) {
+    } else if (!suppressLegacyLabor && t.unitsPerPot > 0) {
       var pots = Math.ceil(t.cooked / t.unitsPerPot);
       extras.push('🍲 ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + escapeHtml(u) + ' each)');
     }
 
     var ing = computeIngredientCost(t);
     var packagingTotal = (t.packagingCost > 0) ? t.portionsCount * t.packagingCost : 0;
-    var cookLab = computeCookLaborCost(t);
-    var packLab = computePackLaborCost(t);
+    var cookLab = suppressLegacyLabor ? { cost: 0, batches: 0 } : computeCookLaborCost(t);
+    var packLab = suppressLegacyLabor ? { cost: 0, units: 0, unitLabel: '' } : computePackLaborCost(t);
     var lineCost = ing.cost + packagingTotal + cookLab.cost + packLab.cost;
 
     if (ing.cost > 0)        extras.push('💰 Ingredient: $' + ing.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + ing.note + ')</span>');
