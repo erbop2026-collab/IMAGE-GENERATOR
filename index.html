@@ -770,15 +770,14 @@
     </div>
 
     <div class="product-form-tab-content" data-form-tab-content="advanced" data-form="add">
-      <div class="row-grid">
-        <div class="field">
-          <label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
-          <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label>Pot/Tray capacity <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
-          <input type="number" id="newProductPot" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
-        </div>
+      <div class="field">
+        <label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Pot / Tray capacities <span style="color:var(--text-muted);font-weight:400;">(optional, comma-separated for multiple sizes)</span></label>
+        <input type="text" id="newProductPot" placeholder="e.g. 5  or  5, 10, 20" inputmode="decimal" autocomplete="off">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">List your available pot/tray sizes. The app will fit the order using the largest first.</div>
       </div>
       <div class="field">
         <label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
@@ -794,16 +793,16 @@
         <input type="number" id="newProductPackaging" placeholder="e.g. 0.30" step="any" min="0" inputmode="decimal">
       </div>
       <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🍳 Cooking labor (per batch — uses Pot capacity)</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🍳 Cooking labor (time to cook ONE pot/tray)</div>
         <div class="row-grid-3">
-          <div class="field"><label>Hours/batch</label>
+          <div class="field"><label>Hours/pot</label>
             <input type="number" id="newProductLaborHours" placeholder="0.5" step="any" min="0" inputmode="decimal"></div>
           <div class="field"><label>Workers</label>
             <input type="number" id="newProductLaborWorkers" placeholder="2" step="any" min="0" inputmode="decimal"></div>
           <div class="field"><label>$ / hour</label>
             <input type="number" id="newProductLaborRate" placeholder="20" step="any" min="0" inputmode="decimal"></div>
         </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">batches = ceil(cooked / Pot capacity). Empty Pot ⇒ 1 flat batch.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Cost = (pots needed) × hours × workers × rate. "Pots needed" comes from your Pot capacities above.</div>
       </div>
 
       <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
@@ -1049,7 +1048,10 @@ function buildProductViewCard(p) {
     var basis = mode === 'pack' ? 'pack' : (mode === 'piece' ? 'piece' : escapeHtml(u));
     pillBits.push('<span class="info-pill cost">💰 $' + p.costPerUnit + '/' + basis + '</span>');
   }
-  if (p.unitsPerPot > 0) pillBits.push('<span class="info-pill pot">🍲 pot ' + format(p.unitsPerPot) + ' ' + escapeHtml(u) + '</span>');
+  var potList = getPotSizes(p);
+  if (potList.length > 0) {
+    pillBits.push('<span class="info-pill pot">🍲 pots: ' + escapeHtml(formatPotsText(potList)) + ' ' + escapeHtml(u) + '</span>');
+  }
   if (p.packagingCost > 0) pillBits.push('<span class="info-pill pkg">📦 pkg $' + p.packagingCost + '</span>');
   if (p.laborHours > 0 && p.laborWorkers > 0 && p.laborRate > 0) {
     var perBatch = p.laborHours * p.laborWorkers * p.laborRate;
@@ -1102,6 +1104,7 @@ function buildProductEditCard(p) {
   var costVal = (p.costPerUnit > 0) ? p.costPerUnit : '';
   var costModeVal = p.costMode || 'measure';
   var potVal  = (p.unitsPerPot > 0) ? p.unitsPerPot : '';
+  var potText = formatPotsText(getPotSizes(p));
   var pkgVal  = (p.packagingCost > 0) ? p.packagingCost : '';
   var lhVal   = (p.laborHours > 0) ? p.laborHours : '';
   var lwVal   = (p.laborWorkers > 0) ? p.laborWorkers : '';
@@ -1146,15 +1149,14 @@ function buildProductEditCard(p) {
         '</div>' +
       '</div>' +
       '<div class="product-form-tab-content" data-form-tab-content="advanced" data-form="edit-' + p.id + '">' +
-        '<div class="row-grid">' +
-          '<div class="field">' +
-            '<label>Pack size <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
-            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
-          '</div>' +
-          '<div class="field">' +
-            '<label>Pot capacity <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
-            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="unitsPerPot" data-eid="' + p.id + '" value="' + potVal + '">' +
-          '</div>' +
+        '<div class="field">' +
+          '<label>Pack size <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Pot / Tray capacities <span style="color:var(--text-muted);font-weight:400;">(opt, comma-separated)</span></label>' +
+          '<input type="text" inputmode="decimal" autocomplete="off" data-edit-field="potList" data-eid="' + p.id + '" value="' + escapeHtml(potText) + '" placeholder="e.g. 5  or  5, 10, 20">' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Multiple sizes: largest fitted first.</div>' +
         '</div>' +
         '<div class="field">' +
           '<label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
@@ -1166,15 +1168,16 @@ function buildProductEditCard(p) {
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packagingCost" data-eid="' + p.id + '" value="' + pkgVal + '">' +
         '</div>' +
         '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">' +
-          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🍳 Cooking labor (per batch)</div>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🍳 Cooking labor (time to cook ONE pot/tray)</div>' +
           '<div class="row-grid-3">' +
-            '<div class="field"><label>Hours/batch</label>' +
+            '<div class="field"><label>Hours/pot</label>' +
               '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborHours" data-eid="' + p.id + '" value="' + lhVal + '"></div>' +
             '<div class="field"><label>Workers</label>' +
               '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborWorkers" data-eid="' + p.id + '" value="' + lwVal + '"></div>' +
             '<div class="field"><label>$/hour</label>' +
               '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborRate" data-eid="' + p.id + '" value="' + lrVal + '"></div>' +
           '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Cost = (pots needed) × hours × workers × rate.</div>' +
         '</div>' +
         '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">' +
           '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">📦 Packaging labor</div>' +
@@ -1274,7 +1277,7 @@ function renderProducts() {
       var packVal = parseFloat(document.querySelector('[data-edit-field="packSize"][data-eid="' + pid + '"]').value);
       var costVal = parseFloat(document.querySelector('[data-edit-field="costPerUnit"][data-eid="' + pid + '"]').value);
       var costModeVal = document.querySelector('[data-edit-field="costMode"][data-eid="' + pid + '"]').value;
-      var potVal  = parseFloat(document.querySelector('[data-edit-field="unitsPerPot"][data-eid="' + pid + '"]').value);
+      var potArrVal = parsePots(document.querySelector('[data-edit-field="potList"][data-eid="' + pid + '"]').value);
       var pkgVal  = parseFloat(document.querySelector('[data-edit-field="packagingCost"][data-eid="' + pid + '"]').value);
       var lhVal   = parseFloat(document.querySelector('[data-edit-field="laborHours"][data-eid="' + pid + '"]').value);
       var lwVal   = parseFloat(document.querySelector('[data-edit-field="laborWorkers"][data-eid="' + pid + '"]').value);
@@ -1296,7 +1299,10 @@ function renderProducts() {
         delete p.costPerUnit;
         delete p.costMode;
       }
-      if (potVal > 0) p.unitsPerPot = potVal; else delete p.unitsPerPot;
+      delete p.unitsPerPot;
+      delete p.pots;
+      if (potArrVal.length === 1) p.unitsPerPot = potArrVal[0];
+      else if (potArrVal.length > 1) p.pots = potArrVal;
       if (pkgVal > 0) p.packagingCost = pkgVal; else delete p.packagingCost;
       if (lhVal > 0)  p.laborHours = lhVal;    else delete p.laborHours;
       if (lwVal > 0)  p.laborWorkers = lwVal;  else delete p.laborWorkers;
@@ -1377,7 +1383,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   var packRaw = parseFloat(document.getElementById('newProductPack').value);
   var costRaw = parseFloat(document.getElementById('newProductCost').value);
   var costMode = document.getElementById('newProductCostMode').value;
-  var potRaw  = parseFloat(document.getElementById('newProductPot').value);
+  var potArr  = parsePots(document.getElementById('newProductPot').value);
   var pkgRaw  = parseFloat(document.getElementById('newProductPackaging').value);
   var lhRaw   = parseFloat(document.getElementById('newProductLaborHours').value);
   var lwRaw   = parseFloat(document.getElementById('newProductLaborWorkers').value);
@@ -1395,7 +1401,8 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
     prod.costPerUnit = costRaw;
     prod.costMode = costMode || 'measure';
   }
-  if (potRaw  > 0) prod.unitsPerPot = potRaw;
+  if (potArr.length === 1) prod.unitsPerPot = potArr[0];
+  if (potArr.length > 1)   prod.pots = potArr;
   if (pkgRaw  > 0) prod.packagingCost = pkgRaw;
   if (lhRaw > 0)   prod.laborHours = lhRaw;
   if (lwRaw > 0)   prod.laborWorkers = lwRaw;
@@ -1709,6 +1716,10 @@ function computeTotals() {
     var p = products.find(function(x){ return x.id === row.productId; });
     if (!p) return;
     var sizes = Array.isArray(row.sizes) ? row.sizes : [];
+    // Backward-compat: very old rows (pre-v1.4.0) had portions/portionSize at row level
+    if (sizes.length === 0 && row.portions > 0 && row.portionSize > 0) {
+      sizes = [{ id: 'compat', portions: row.portions, portionSize: row.portionSize }];
+    }
     var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
     sizes.forEach(function(sz) {
       var cooked = sz.portions * sz.portionSize;
@@ -1722,6 +1733,7 @@ function computeTotals() {
         costPerUnit: p.costPerUnit || 0,
         costMode: p.costMode || 'measure',
         unitsPerPot: p.unitsPerPot || 0,
+        potSizes: getPotSizes(p),
         packagingCost: p.packagingCost || 0,
         laborHours: p.laborHours || 0,
         laborWorkers: p.laborWorkers || 0,
@@ -1775,11 +1787,19 @@ function computeIngredientCost(t) {
   return { cost: t.raw * t.costPerUnit, note: format(t.raw) + ' × $' + t.costPerUnit + '/' + u };
 }
 
+function totalPotsForCooked(t) {
+  var sizes = (t.potSizes && t.potSizes.length) ? t.potSizes : (t.unitsPerPot > 0 ? [t.unitsPerPot] : []);
+  if (sizes.length === 0) return 1;  // flat 1 batch when no pot info
+  var plan = packIntoPots(t.cooked, sizes);
+  var n = totalPotsFromPlan(plan);
+  return n > 0 ? n : 1;
+}
+
 function computeCookLaborCost(t) {
   if (!(t.laborHours > 0 && t.laborWorkers > 0 && t.laborRate > 0)) return { cost: 0, batches: 0 };
-  var batches = (t.unitsPerPot > 0) ? Math.ceil(t.cooked / t.unitsPerPot) : 1;
-  var cost = batches * t.laborHours * t.laborWorkers * t.laborRate;
-  return { cost: cost, batches: batches };
+  var pots = totalPotsForCooked(t);
+  var cost = pots * t.laborHours * t.laborWorkers * t.laborRate;
+  return { cost: cost, batches: pots };
 }
 
 function computePackLaborCost(t) {
@@ -1791,8 +1811,8 @@ function computePackLaborCost(t) {
     units = Math.ceil(t.portionsCount / cs);
     label = 'carton' + (units !== 1 ? 's' : '') + ' of ' + cs;
   } else if (basis === 'batch') {
-    units = (t.unitsPerPot > 0) ? Math.ceil(t.cooked / t.unitsPerPot) : 1;
-    label = 'batch' + (units !== 1 ? 'es' : '');
+    units = totalPotsForCooked(t);
+    label = 'pot' + (units !== 1 ? 's' : '') + '/tray' + (units !== 1 ? 's' : '');
   } else {
     units = t.portionsCount;
     label = 'portion' + (units !== 1 ? 's' : '');
@@ -1830,7 +1850,16 @@ function renderResults(totalsArr) {
       var totalInPacks = packs * t.packSize;
       extras.push('📦 ' + packs + ' pack' + (packs !== 1 ? 's' : '') + ' of ' + format(t.packSize) + ' ' + escapeHtml(u) + ' = ' + format(totalInPacks) + ' ' + escapeHtml(u));
     }
-    if (t.unitsPerPot > 0) {
+    if (t.potSizes && t.potSizes.length) {
+      var plan = packIntoPots(t.cooked, t.potSizes);
+      if (plan.length) {
+        if (plan.length === 1) {
+          extras.push('🍲 ' + plan[0].count + ' pot' + (plan[0].count !== 1 ? 's' : '') + '/tray' + (plan[0].count !== 1 ? 's' : '') + ' of ' + format(plan[0].capacity) + ' ' + escapeHtml(u));
+        } else {
+          extras.push('🍲 Pot plan: ' + escapeHtml(describePotPlan(plan, u)));
+        }
+      }
+    } else if (t.unitsPerPot > 0) {
       var pots = Math.ceil(t.cooked / t.unitsPerPot);
       extras.push('🍲 ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + escapeHtml(u) + ' each)');
     }
@@ -2162,52 +2191,78 @@ document.getElementById('clearHistoryBtn').addEventListener('click', function() 
 var currentExportKind = 'json'; // 'json' | 'kitchen' | 'office'
 
 function formatKitchenExport() {
-  var totals = computeTotals();
-  if (!totals.length) return '⚠️ No order to export. Enter portions and tap Calculate first.';
-  var lines = [];
-  lines.push('🍳 KITCHEN PREP SHEET');
-  if (orderMeta.name) lines.push('Order: ' + orderMeta.name);
-  if (orderMeta.eventDate) lines.push('Date:  ' + orderMeta.eventDate);
-  lines.push('Generated: ' + new Date().toLocaleString());
-  lines.push('═════════════════════════');
-  var grandPortions = 0;
-  totals.forEach(function(t) {
-    var u = unitLabel(t.unit);
-    grandPortions += t.portionsCount || 0;
+  try {
+    var totals = computeTotals();
+    var lines = [];
+    lines.push('🍳 KITCHEN PREP SHEET');
+    if (orderMeta && orderMeta.name) lines.push('Order: ' + orderMeta.name);
+    if (orderMeta && orderMeta.eventDate) lines.push('Date:  ' + orderMeta.eventDate);
+    lines.push('Generated: ' + new Date().toLocaleString());
+    lines.push('═════════════════════════');
+
+    if (!totals.length) {
+      lines.push('');
+      lines.push('⚠️ No items to prepare.');
+      lines.push('Make sure you entered Portions and Portion size for each row in the Calculate tab.');
+      return lines.join('\n');
+    }
+
+    var grandPortions = 0;
+    totals.forEach(function(t) {
+      var u = unitLabel(t.unit);
+      grandPortions += t.portionsCount || 0;
+      lines.push('');
+      lines.push('▸ ' + (t.name || '(unnamed)'));
+      lines.push('  Raw needed:   ' + format(t.raw) + ' ' + u);
+      lines.push('  Cooked yield: ' + format(t.cooked) + ' ' + u + '  (' + (t.portionsCount || 0) + ' portions)');
+      if (t.packSize > 0) {
+        var packs = Math.ceil(t.raw / t.packSize);
+        lines.push('  📦 Use ' + packs + ' pack' + (packs !== 1 ? 's' : '') + ' of ' + format(t.packSize) + ' ' + u);
+      }
+      if (t.potSizes && t.potSizes.length) {
+        var plan = packIntoPots(t.cooked, t.potSizes);
+        if (plan.length) {
+          if (plan.length === 1) {
+            lines.push('  🍲 Cook in ' + plan[0].count + ' pot/tray of ' + format(plan[0].capacity) + ' ' + u);
+          } else {
+            lines.push('  🍲 Pot plan: ' + describePotPlan(plan, u));
+          }
+        }
+      } else if (t.unitsPerPot > 0) {
+        var pots = Math.ceil(t.cooked / t.unitsPerPot);
+        lines.push('  🍲 Cook in ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + u + ' each)');
+      }
+      if (t.sizeBreakdown && t.sizeBreakdown.length) {
+        lines.push('  Portions to plate:');
+        t.sizeBreakdown.forEach(function(b) {
+          lines.push('    • ' + b.portions + ' × ' + format(b.portionSize) + ' ' + u);
+        });
+      }
+    });
     lines.push('');
-    lines.push('▸ ' + t.name);
-    lines.push('  Raw needed:  ' + format(t.raw) + ' ' + u);
-    lines.push('  Cooked yield: ' + format(t.cooked) + ' ' + u);
-    if (t.packSize > 0) {
-      var packs = Math.ceil(t.raw / t.packSize);
-      lines.push('  📦 Use ' + packs + ' pack' + (packs !== 1 ? 's' : '') + ' of ' + format(t.packSize) + ' ' + u);
-    }
-    if (t.unitsPerPot > 0) {
-      var pots = Math.ceil(t.cooked / t.unitsPerPot);
-      lines.push('  🍲 Cook in ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + u + ' each)');
-    }
-    if (t.sizeBreakdown && t.sizeBreakdown.length) {
-      lines.push('  Portions to plate:');
-      t.sizeBreakdown.forEach(function(b) {
-        lines.push('    • ' + b.portions + ' × ' + format(b.portionSize) + ' ' + u);
-      });
-    }
-  });
-  lines.push('');
-  lines.push('═════════════════════════');
-  lines.push('📊 Total portions: ' + grandPortions);
-  return lines.join('\n');
+    lines.push('═════════════════════════');
+    lines.push('📊 Total portions: ' + grandPortions);
+    return lines.join('\n');
+  } catch (err) {
+    return '❌ Kitchen export failed: ' + (err && err.message ? err.message : 'unknown error') + '\n\nPlease report this. You can also try the JSON backup or Office export.';
+  }
 }
 
 function formatOfficeExport() {
+  try {
   var totals = computeTotals();
-  if (!totals.length) return '⚠️ No order to export. Enter portions and tap Calculate first.';
   var lines = [];
   lines.push('💼 ORDER COST BREAKDOWN');
-  if (orderMeta.name) lines.push('Order: ' + orderMeta.name);
-  if (orderMeta.eventDate) lines.push('Date:  ' + orderMeta.eventDate);
+  if (orderMeta && orderMeta.name) lines.push('Order: ' + orderMeta.name);
+  if (orderMeta && orderMeta.eventDate) lines.push('Date:  ' + orderMeta.eventDate);
   lines.push('Generated: ' + new Date().toLocaleString());
   lines.push('═════════════════════════');
+  if (!totals.length) {
+    lines.push('');
+    lines.push('⚠️ No items in order.');
+    lines.push('Make sure you entered Portions and Portion size for each row in the Calculate tab.');
+    return lines.join('\n');
+  }
   var grandTotal = 0;
   var grandPortions = 0;
   totals.forEach(function(t) {
@@ -2250,6 +2305,9 @@ function formatOfficeExport() {
     }
   }
   return lines.join('\n');
+  } catch (err) {
+    return '❌ Office export failed: ' + (err && err.message ? err.message : 'unknown error');
+  }
 }
 
 function showExportInArea(text, kind) {
@@ -2429,6 +2487,53 @@ function format(n) {
   if (n >= 1000) return Math.round(n).toLocaleString('en-US');
   if (n >= 100)  return n.toFixed(1).replace(/\.0$/, '');
   return n.toFixed(2).replace(/\.?0+$/, '');
+}
+
+// ============ POT SIZES (multi-pot support) ============
+function parsePots(str) {
+  if (!str) return [];
+  return String(str).split(/[,;\s]+/)
+    .map(function(s) { return parseFloat(s); })
+    .filter(function(n) { return n > 0; });
+}
+
+function formatPotsText(arr) {
+  return (arr || []).map(function(n) { return format(n); }).join(', ');
+}
+
+// Resolve effective pot capacities for a product, with backward-compat for unitsPerPot
+function getPotSizes(p) {
+  if (Array.isArray(p.pots) && p.pots.length > 0) return p.pots.filter(function(c){ return c > 0; });
+  if (p.unitsPerPot > 0) return [p.unitsPerPot];
+  return [];
+}
+
+// Greedy fill: largest pots first; if remainder, add one more of smallest.
+// Returns [{capacity, count}, ...] sorted by capacity desc.
+function packIntoPots(totalCooked, potSizes) {
+  if (!totalCooked || totalCooked <= 0 || !potSizes || potSizes.length === 0) return [];
+  var sorted = potSizes.slice().sort(function(a, b) { return b - a; });
+  var counts = sorted.map(function(c) { return { capacity: c, count: 0 }; });
+  var remaining = totalCooked;
+  for (var i = 0; i < sorted.length; i++) {
+    if (remaining <= 0) break;
+    var n = Math.floor(remaining / sorted[i]);
+    counts[i].count = n;
+    remaining -= n * sorted[i];
+  }
+  if (remaining > 0) counts[counts.length - 1].count += 1; // overflow into smallest
+  return counts.filter(function(c){ return c.count > 0; });
+}
+
+function describePotPlan(plan, unitLabelStr) {
+  if (!plan.length) return '';
+  return plan.map(function(c) {
+    return c.count + ' × ' + format(c.capacity) + ' ' + unitLabelStr;
+  }).join(' + ');
+}
+
+function totalPotsFromPlan(plan) {
+  return plan.reduce(function(s, c) { return s + c.count; }, 0);
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
