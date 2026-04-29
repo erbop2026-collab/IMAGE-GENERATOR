@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.4</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.5</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -4779,7 +4779,90 @@ document.getElementById('ingrSearch') && document.getElementById('ingrSearch').a
 ingrUpdateLabels();
 ingrUpdateTotalPreview();
 
-// ============ DISH LIST (Products tab, v2.5.1) ============
+// ============ DISH LIST + DISH SETUP EDITOR (Products tab, v2.5.1 / v2.7.5) ============
+// Click ✏️ on a dish opens an inline editor for OPERATIONAL fields:
+//   - reference equipment (defines the cooked yield via vessel capacity)
+//   - equipment[] (one or more pots/pans with cook+pack labor each)
+//   - packaging picker (multi-pack)
+// Recipe composition (name, components, raw amounts) stays editable via Recipes tab.
+var dishSetupEditingId = null;
+function startEditDishSetup(rid) {
+  dishSetupEditingId = rid;
+  renderDishesList();
+  setTimeout(function() {
+    var card = document.querySelector('[data-dish-setup-card="' + rid + '"]');
+    if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 60);
+}
+function cancelEditDishSetup() {
+  // Discard any in-memory edits by reloading recipes from storage.
+  try {
+    var rc = localStorage.getItem(STORAGE_KEY_RECIPES);
+    if (rc) recipes = JSON.parse(rc);
+  } catch(e) {}
+  dishSetupEditingId = null;
+  renderDishesList();
+  if (typeof renderRecipes === 'function') renderRecipes();
+}
+
+function equipmentRowHtml(rid, idx, ent) {
+  ent = ent || {};
+  var rowKey = 'dse-' + rid + '-' + idx;
+  return '<div class="dse-equipment-row" data-dse-row="' + idx + '" style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;background:#fff;">' +
+    '<div style="display:grid;grid-template-columns:1fr 36px;gap:6px;align-items:center;margin-bottom:6px;">' +
+      '<select data-pot-pick="' + rowKey + '" data-dse-eqsel="' + idx + '"><option value="">— pick equipment —</option></select>' +
+      '<button class="btn-danger btn-icon" type="button" data-dse-eqdel="' + idx + '" title="Remove">🗑</button>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🍳 Cook labor (per pot)</div>' +
+    '<div class="row-grid-3" style="margin-bottom:6px;">' +
+      '<input type="number" step="any" min="0" inputmode="decimal" placeholder="hours" data-dse-cook="hours" data-idx="' + idx + '" value="' + (ent.cookHours > 0 ? ent.cookHours : '') + '">' +
+      '<input type="number" step="any" min="0" inputmode="decimal" placeholder="workers" data-dse-cook="workers" data-idx="' + idx + '" value="' + (ent.cookWorkers > 0 ? ent.cookWorkers : '') + '">' +
+      '<input type="number" step="any" min="0" inputmode="decimal" placeholder="$/hour" data-dse-cook="rate" data-idx="' + idx + '" value="' + (ent.cookRate > 0 ? ent.cookRate : '') + '">' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">📦 Pack labor (per pot)</div>' +
+    '<div class="row-grid-3">' +
+      '<input type="number" step="any" min="0" inputmode="decimal" placeholder="hours" data-dse-pack="hours" data-idx="' + idx + '" value="' + (ent.packHours > 0 ? ent.packHours : '') + '">' +
+      '<input type="number" step="any" min="0" inputmode="decimal" placeholder="workers" data-dse-pack="workers" data-idx="' + idx + '" value="' + (ent.packWorkers > 0 ? ent.packWorkers : '') + '">' +
+      '<input type="number" step="any" min="0" inputmode="decimal" placeholder="$/hour" data-dse-pack="rate" data-idx="' + idx + '" value="' + (ent.packRate > 0 ? ent.packRate : '') + '">' +
+    '</div>' +
+  '</div>';
+}
+
+function buildDishSetupEditor(r) {
+  var equipmentArr = Array.isArray(r.equipment) ? r.equipment : [];
+  var rowsHtml = equipmentArr.map(function(ent, idx) {
+    return equipmentRowHtml(r.id, idx, ent);
+  }).join('');
+  if (rowsHtml === '') {
+    rowsHtml = '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 8px;">No equipment configured. Click + Add equipment.</div>';
+  }
+  return '<div class="dish-setup-editor" data-dish-setup-card="' + r.id + '" style="margin-top:10px;padding:12px;border:2px solid var(--primary);border-radius:10px;background:#f0f9ff;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">⚙️ Dish setup — "' + escapeHtml(r.name) + '"</div>' +
+
+    '<div class="field">' +
+      '<label>Reference equipment <span style="color:var(--text-muted);font-weight:400;">(vessel that holds 1 batch cooked)</span></label>' +
+      '<select data-pot-pick="dse-ref-' + r.id + '" data-dse-refpick="1"><option value="">— none —</option></select>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Picking auto-fills the yield on the Recipes tab.</div>' +
+    '</div>' +
+
+    '<div class="field">' +
+      '<label>Equipment for cooking + packing <span style="color:var(--text-muted);font-weight:400;">(can have multiple sizes)</span></label>' +
+      '<div data-dse-equipment-rows="1">' + rowsHtml + '</div>' +
+      '<button class="btn-secondary btn-small" type="button" data-dse-add-eq="1">+ Add equipment</button>' +
+    '</div>' +
+
+    '<div class="field">' +
+      '<label>Packaging options <span style="color:var(--text-muted);font-weight:400;">(pick from 📦 Packaging)</span></label>' +
+      '<div class="pack-multi-list" data-pack-multi="dse-' + r.id + '"></div>' +
+    '</div>' +
+
+    '<div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">' +
+      '<button class="btn-primary" data-dse-save="' + r.id + '" style="flex:1;">Save dish setup</button>' +
+      '<button class="btn-secondary" data-dse-cancel="' + r.id + '">Cancel</button>' +
+    '</div>' +
+  '</div>';
+}
+
 function renderDishesList() {
   var container = document.getElementById('dishesList');
   if (!container) return;
@@ -4811,34 +4894,54 @@ function renderDishesList() {
       }).join(' · ');
       packHtml = '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📦 ' + packNames + '</div>';
     }
-    return '<div class="recipe-item">' +
+    var eqCount = Array.isArray(r.equipment) ? r.equipment.filter(function(e){ return e && e.equipmentId; }).length : 0;
+    var eqHtml = eqCount > 0
+      ? '<div style="font-size:12px;color:#15803d;margin-top:2px;">🍳 ' + eqCount + ' equipment configured</div>'
+      : '<div style="font-size:12px;color:#b91c1c;margin-top:2px;">⚠️ no equipment configured</div>';
+    var isEditing = r.id === dishSetupEditingId;
+    var editor = isEditing ? buildDishSetupEditor(r) : '';
+    return '<div class="recipe-item" style="' + (isEditing ? 'border:2px solid var(--primary);' : '') + '">' +
       '<div class="product-item-header">' +
         '<div style="flex:1;min-width:0;">' +
-          '<div class="recipe-name">' + escapeHtml(r.name) + '</div>' +
+          '<div class="recipe-name">' + escapeHtml(r.name) + (isEditing ? ' <span style="color:var(--primary);font-size:12px;">(editing setup)</span>' : '') + '</div>' +
           refStr +
           '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + yieldStr + ' · ' + compCount + ' component' + (compCount === 1 ? '' : 's') + leadHtml + '</div>' +
-          packHtml +
+          packHtml + eqHtml +
         '</div>' +
         '<div class="product-actions">' +
-          '<button class="btn-secondary btn-icon" data-edit-dish="' + r.id + '" title="Edit">✏️</button>' +
+          '<button class="btn-secondary btn-icon" data-edit-dish="' + r.id + '" title="Edit setup">✏️</button>' +
           '<button class="btn-danger btn-icon" data-del-dish="' + r.id + '" title="Delete">🗑️</button>' +
         '</div>' +
       '</div>' +
+      editor +
     '</div>';
   }).join('');
 
+  // Populate equipment dropdowns + reference picker + packaging multi-list inside editor.
+  if (dishSetupEditingId) {
+    if (typeof populatePotPicks === 'function') populatePotPicks();
+    var editingRec = recipes.find(function(x){ return x.id === dishSetupEditingId; });
+    if (editingRec) {
+      // Reference equipment value
+      var refSel = document.querySelector('[data-pot-pick="dse-ref-' + dishSetupEditingId + '"]');
+      if (refSel && editingRec.referenceEquipmentId) refSel.value = editingRec.referenceEquipmentId;
+      // Equipment row dropdowns: set selected per saved equipmentId.
+      (editingRec.equipment || []).forEach(function(ent, idx) {
+        var sel = document.querySelector('[data-dse-eqsel="' + idx + '"]');
+        if (sel && ent.equipmentId) sel.value = ent.equipmentId;
+      });
+      // Packaging multi-list
+      if (typeof populatePackMultiLists === 'function') {
+        var pre = {};
+        pre['dse-' + dishSetupEditingId] = Array.isArray(editingRec.packIds) ? editingRec.packIds.slice() : [];
+        populatePackMultiLists(pre);
+      }
+    }
+  }
+
   container.querySelectorAll('[data-edit-dish]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      var rid = btn.getAttribute('data-edit-dish');
-      // Switch to Recipes tab and open inline edit (full editor with all fields).
-      var recipesTabBtn = document.querySelector('.tab[data-tab="recipes"]');
-      if (recipesTabBtn) recipesTabBtn.click();
-      recipeEditingId = rid;
-      renderRecipes();
-      setTimeout(function() {
-        var card = document.querySelector('.recipe-item.editing');
-        if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 80);
+      startEditDishSetup(btn.getAttribute('data-edit-dish'));
     });
   });
   container.querySelectorAll('[data-del-dish]').forEach(function(btn) {
@@ -4851,12 +4954,89 @@ function renderDishesList() {
       orderRows = orderRows.filter(function(row){ return !(row.kind === 'recipe' && row.recipeId === rid); });
       saveRecipes();
       saveOrder();
+      if (dishSetupEditingId === rid) dishSetupEditingId = null;
       renderRecipes();
+      renderDishesList();
       renderOrderRows();
       toast('Dish deleted ✓');
     });
   });
+
+  // Dish setup editor handlers
+  container.querySelectorAll('[data-dse-cancel]').forEach(function(btn) {
+    btn.addEventListener('click', cancelEditDishSetup);
+  });
+  container.querySelectorAll('[data-dse-add-eq]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (!dishSetupEditingId) return;
+      var r = recipes.find(function(x){ return x.id === dishSetupEditingId; });
+      if (!r) return;
+      // Capture current edits before re-render so they don't get lost.
+      collectDishSetupFromDOM(r);
+      r.equipment = (Array.isArray(r.equipment) ? r.equipment : []).concat([{
+        equipmentId: null, cookHours: 0, cookWorkers: 0, cookRate: 0,
+        packHours: 0, packWorkers: 0, packRate: 0
+      }]);
+      renderDishesList();
+    });
+  });
+  container.querySelectorAll('[data-dse-eqdel]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (!dishSetupEditingId) return;
+      var r = recipes.find(function(x){ return x.id === dishSetupEditingId; });
+      if (!r || !Array.isArray(r.equipment)) return;
+      collectDishSetupFromDOM(r);
+      var idx = parseInt(btn.getAttribute('data-dse-eqdel'), 10);
+      if (!isNaN(idx)) r.equipment.splice(idx, 1);
+      renderDishesList();
+    });
+  });
+  container.querySelectorAll('[data-dse-save]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (!dishSetupEditingId) return;
+      var r = recipes.find(function(x){ return x.id === dishSetupEditingId; });
+      if (!r) return;
+      collectDishSetupFromDOM(r);
+      saveRecipes();
+      cancelEditDishSetup();
+      toast('Dish setup saved ✓');
+    });
+  });
 }
+
+// Pull editor inputs back into the recipe object (used on Add/Remove/Save).
+function collectDishSetupFromDOM(r) {
+  // Reference equipment
+  var refSel = document.querySelector('[data-pot-pick="dse-ref-' + r.id + '"]');
+  if (refSel) {
+    if (refSel.value) r.referenceEquipmentId = refSel.value;
+    else delete r.referenceEquipmentId;
+  }
+  // Equipment rows
+  var rowEls = document.querySelectorAll('[data-dse-row]');
+  if (rowEls.length > 0) {
+    var entries = [];
+    rowEls.forEach(function(rowEl) {
+      var idx = parseInt(rowEl.getAttribute('data-dse-row'), 10);
+      var sel = document.querySelector('[data-dse-eqsel="' + idx + '"]');
+      var ent = {
+        equipmentId: sel && sel.value ? sel.value : null,
+        cookHours: parseFloat((document.querySelector('[data-dse-cook="hours"][data-idx="' + idx + '"]') || {}).value) || 0,
+        cookWorkers: parseFloat((document.querySelector('[data-dse-cook="workers"][data-idx="' + idx + '"]') || {}).value) || 0,
+        cookRate: parseFloat((document.querySelector('[data-dse-cook="rate"][data-idx="' + idx + '"]') || {}).value) || 0,
+        packHours: parseFloat((document.querySelector('[data-dse-pack="hours"][data-idx="' + idx + '"]') || {}).value) || 0,
+        packWorkers: parseFloat((document.querySelector('[data-dse-pack="workers"][data-idx="' + idx + '"]') || {}).value) || 0,
+        packRate: parseFloat((document.querySelector('[data-dse-pack="rate"][data-idx="' + idx + '"]') || {}).value) || 0
+      };
+      entries.push(ent);
+    });
+    r.equipment = entries;
+  }
+  // Packaging
+  var packIds = (typeof collectSelectedPackIds === 'function') ? collectSelectedPackIds('dse-' + r.id) : [];
+  if (packIds.length > 0) r.packIds = packIds; else delete r.packIds;
+}
+
 document.getElementById('dishSearch') && document.getElementById('dishSearch').addEventListener('input', renderDishesList);
 
 // ============ POTS (v2.5.4) ============
