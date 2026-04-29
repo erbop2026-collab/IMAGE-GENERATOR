@@ -740,13 +740,15 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator</h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.5.4</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
   <div class="tab" data-tab="ingredients">🥕 Ingredients</div>
+  <div class="tab" data-tab="pots">🍳 Pots</div>
+  <div class="tab" data-tab="packs">📦 Packaging</div>
   <div class="tab" data-tab="products">⚙️ Products</div>
   <div class="tab" data-tab="recipes">🍲 Recipes</div>
   <div class="tab" data-tab="help">❓ Help</div>
@@ -1061,6 +1063,96 @@ Pasta,oz,8,16"></textarea>
   </div>
 </section>
 
+<!-- ============ TAB: POTS (v2.5.4) ============ -->
+<section class="tab-content" id="tab-pots">
+  <div class="card">
+    <div class="card-title">🍳 Add pot / pan / bucket</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of cooking vessels you own. Enter dimensions and the volume auto-fills. Used by dishes (pick a pot to set yield) and the calculator (pot plan per order).</p>
+
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="potName" placeholder="e.g. Big stock pot">
+    </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Shape</label>
+        <select id="potShape">
+          <option value="round">Round (pot / bucket)</option>
+          <option value="rect">Rectangular (pan / tray)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Inner dimensions (inches)</label>
+        <div id="potDimsRound" class="row-grid">
+          <input type="number" id="potDimD" step="any" min="0" placeholder="Diameter" inputmode="decimal">
+          <input type="number" id="potDimHround" step="any" min="0" placeholder="Height" inputmode="decimal">
+        </div>
+        <div id="potDimsRect" class="row-grid-3" style="display:none;">
+          <input type="number" id="potDimL" step="any" min="0" placeholder="Length" inputmode="decimal">
+          <input type="number" id="potDimW" step="any" min="0" placeholder="Width" inputmode="decimal">
+          <input type="number" id="potDimH" step="any" min="0" placeholder="Height" inputmode="decimal">
+        </div>
+      </div>
+    </div>
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Auto-derived from dimensions:</div>
+      <div id="potVolumeOut" style="font-size:14px;font-weight:600;color:var(--primary);">— fl oz / — gal</div>
+    </div>
+    <div class="field">
+      <label>Capacity override <span style="color:var(--text-muted);font-weight:400;">(cooked food, lb — optional, leave blank to use auto-volume)</span></label>
+      <input type="number" id="potCapLb" step="any" min="0" placeholder="e.g. 50" inputmode="decimal">
+    </div>
+    <button class="btn-primary" id="addPotBtn">Save pot</button>
+    <div id="potFormMsg" style="font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 All pots</div>
+    <div id="potsTable"></div>
+  </div>
+</section>
+
+<!-- ============ TAB: PACKAGING (v2.5.4) ============ -->
+<section class="tab-content" id="tab-packs">
+  <div class="card">
+    <div class="card-title">📦 Add packaging</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of takeout / catering packaging — boxes, trays, cups, lids. Each has a portion size and a unit price. Pick one when costing a dish.</p>
+
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="packName" placeholder="e.g. Small takeout box">
+    </div>
+    <div class="row-grid-3">
+      <div class="field">
+        <label>Capacity</label>
+        <input type="number" id="packSizeQty" step="any" min="0" placeholder="8" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <select id="packSizeUnit">
+          <option value="oz">oz cooked</option>
+          <option value="lb">lb cooked</option>
+          <option value="floz">fl oz</option>
+          <option value="cup">cup</option>
+          <option value="qt">qt</option>
+          <option value="ct">portions</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Price per unit ($)</label>
+        <input type="number" id="packPrice" step="any" min="0" placeholder="0.30" inputmode="decimal">
+      </div>
+    </div>
+    <button class="btn-primary" id="addPackBtn">Save packaging</button>
+    <div id="packFormMsg" style="font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 All packaging</div>
+    <div id="packsTable"></div>
+  </div>
+</section>
+
 <!-- ============ TAB: RECIPES ============ -->
 <section class="tab-content" id="tab-recipes">
   <div class="card">
@@ -1269,10 +1361,14 @@ var STORAGE_KEY_ORDER    = 'kitchen_calc_order_v2';
 var STORAGE_KEY_HISTORY  = 'kitchen_calc_history_v1';
 var STORAGE_KEY_META     = 'kitchen_calc_meta_v1';
 var STORAGE_KEY_RECIPES  = 'kitchen_calc_recipes_v1';
+var STORAGE_KEY_POTS     = 'kitchen_calc_pots_v1';
+var STORAGE_KEY_PACKS    = 'kitchen_calc_packs_v1';
 var HISTORY_LIMIT = 50;
 
 var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, costMode?, unitsPerPot?, pots?, packagingCost?, laborHours?, laborWorkers?, laborRate?, packLabor*?}]
-var recipes = [];    // [{id, name, components: [{productId, amount}]}]
+var recipes = [];    // [{id, name, components: [{productId, amount}], yieldCooked?, yieldUnit?, leadProductId?, referenceText?}]
+var pots = [];       // [{id, name, shape:'round'|'rect', dimD?, dimH?, dimL?, dimW?, volumeOz, capacityLb?}]
+var packs = [];      // [{id, name, sizeQty, sizeUnit, price}]
 var orderRows = [];  // [{id, kind:'product'|'recipe', productId/recipeId, sizes/portions}]
 var historyEntries = [];    // [{id, ts, name?, eventDate?, rows:[...], totals:[...]}]
 var orderMeta = { name: '', eventDate: '' };
@@ -1371,6 +1467,14 @@ function loadState() {
     if (rc) recipes = JSON.parse(rc);
   } catch(e) { recipes = []; }
   try {
+    var pt = localStorage.getItem(STORAGE_KEY_POTS);
+    if (pt) pots = JSON.parse(pt);
+  } catch(e) { pots = []; }
+  try {
+    var pk = localStorage.getItem(STORAGE_KEY_PACKS);
+    if (pk) packs = JSON.parse(pk);
+  } catch(e) { packs = []; }
+  try {
     var m = localStorage.getItem(STORAGE_KEY_META);
     if (m) {
       var parsed = JSON.parse(m);
@@ -1399,6 +1503,8 @@ function saveRecipes()  {
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
 function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyEntries)); }
 function saveMeta()     { localStorage.setItem(STORAGE_KEY_META, JSON.stringify(orderMeta)); }
+function savePots()     { localStorage.setItem(STORAGE_KEY_POTS, JSON.stringify(pots)); }
+function savePacks()    { localStorage.setItem(STORAGE_KEY_PACKS, JSON.stringify(packs)); }
 function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 // ============ TABS ============
@@ -4011,6 +4117,191 @@ function renderDishesList() {
 }
 document.getElementById('dishSearch') && document.getElementById('dishSearch').addEventListener('input', renderDishesList);
 
+// ============ POTS (v2.5.4) ============
+// Volume math (cubic inches → fl oz):  1 in³ ≈ 0.554 fl oz.  1 gal = 128 fl oz.
+function potVolumeOz(p) {
+  if (!p) return 0;
+  if (p.shape === 'rect') {
+    var L = p.dimL || 0, W = p.dimW || 0, H = p.dimH || 0;
+    if (L > 0 && W > 0 && H > 0) return L * W * H * 0.554;
+    return 0;
+  }
+  // round
+  var D = p.dimD || 0, Hr = p.dimH || 0;
+  if (D > 0 && Hr > 0) return Math.PI * Math.pow(D / 2, 2) * Hr * 0.554;
+  return 0;
+}
+function fmtVolume(oz) {
+  if (!(oz > 0)) return '— fl oz / — gal';
+  var gal = oz / 128;
+  return oz.toFixed(1) + ' fl oz · ' + gal.toFixed(2) + ' gal · ' + (oz / 32).toFixed(2) + ' qt';
+}
+function potShapeLabel(p) {
+  if (p.shape === 'rect') return 'Rect ' + format(p.dimL || 0) + '×' + format(p.dimW || 0) + '×' + format(p.dimH || 0) + '"';
+  return 'Round D' + format(p.dimD || 0) + '×H' + format(p.dimH || 0) + '"';
+}
+
+function renderPots() {
+  var container = document.getElementById('potsTable');
+  if (!container) return;
+  if (pots.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍳</div><div>No pots yet. Use the form above to add one.</div></div>';
+    return;
+  }
+  var rows = pots.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+    '<thead><tr style="background:#f8fafc;border-bottom:2px solid var(--border);">' +
+      '<th style="padding:8px;text-align:left;">Name</th>' +
+      '<th style="padding:8px;text-align:left;">Shape · Dims</th>' +
+      '<th style="padding:8px;text-align:right;">Volume</th>' +
+      '<th style="padding:8px;text-align:right;">Capacity</th>' +
+      '<th style="padding:8px;width:36px;"></th>' +
+    '</tr></thead><tbody>';
+  rows.forEach(function(p) {
+    var vol = p.volumeOz || potVolumeOz(p);
+    var cap = (p.capacityLb > 0) ? format(p.capacityLb) + ' lb' : '<span style="color:var(--text-muted);">—</span>';
+    html += '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name || '') + '</td>' +
+      '<td style="padding:8px;color:var(--text-muted);">' + escapeHtml(potShapeLabel(p)) + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + (vol > 0 ? vol.toFixed(1) + ' fl oz<br><span style="color:var(--text-muted);font-size:11px;">' + (vol / 128).toFixed(2) + ' gal</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + cap + '</td>' +
+      '<td style="padding:8px;text-align:right;"><button class="btn-danger btn-icon" data-del-pot="' + p.id + '" title="Delete">🗑️</button></td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+  container.querySelectorAll('[data-del-pot]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pid = btn.getAttribute('data-del-pot');
+      if (!confirm('Delete this pot?')) return;
+      pots = pots.filter(function(x){ return x.id !== pid; });
+      savePots();
+      renderPots();
+      toast('Pot deleted ✓');
+    });
+  });
+}
+
+function updatePotVolumePreview() {
+  var shape = document.getElementById('potShape').value;
+  var p;
+  if (shape === 'rect') {
+    p = {
+      shape: 'rect',
+      dimL: parseFloat(document.getElementById('potDimL').value) || 0,
+      dimW: parseFloat(document.getElementById('potDimW').value) || 0,
+      dimH: parseFloat(document.getElementById('potDimH').value) || 0
+    };
+  } else {
+    p = {
+      shape: 'round',
+      dimD: parseFloat(document.getElementById('potDimD').value) || 0,
+      dimH: parseFloat(document.getElementById('potDimHround').value) || 0
+    };
+  }
+  document.getElementById('potVolumeOut').textContent = fmtVolume(potVolumeOz(p));
+}
+function togglePotShape() {
+  var shape = document.getElementById('potShape').value;
+  document.getElementById('potDimsRound').style.display = (shape === 'round') ? '' : 'none';
+  document.getElementById('potDimsRect').style.display = (shape === 'rect') ? '' : 'none';
+  updatePotVolumePreview();
+}
+document.getElementById('potShape') && document.getElementById('potShape').addEventListener('change', togglePotShape);
+['potDimD','potDimHround','potDimL','potDimW','potDimH'].forEach(function(elId) {
+  var el = document.getElementById(elId);
+  if (el) el.addEventListener('input', updatePotVolumePreview);
+});
+
+document.getElementById('addPotBtn') && document.getElementById('addPotBtn').addEventListener('click', function() {
+  var name = (document.getElementById('potName').value || '').trim();
+  var shape = document.getElementById('potShape').value;
+  var msgEl = document.getElementById('potFormMsg');
+  msgEl.textContent = '';
+  if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
+  var pot = { id: id(), name: name, shape: shape };
+  if (shape === 'rect') {
+    pot.dimL = parseFloat(document.getElementById('potDimL').value) || 0;
+    pot.dimW = parseFloat(document.getElementById('potDimW').value) || 0;
+    pot.dimH = parseFloat(document.getElementById('potDimH').value) || 0;
+  } else {
+    pot.dimD = parseFloat(document.getElementById('potDimD').value) || 0;
+    pot.dimH = parseFloat(document.getElementById('potDimHround').value) || 0;
+  }
+  pot.volumeOz = potVolumeOz(pot);
+  var capLb = parseFloat(document.getElementById('potCapLb').value);
+  if (capLb > 0) pot.capacityLb = capLb;
+  pots.push(pot);
+  savePots();
+  // reset form
+  document.getElementById('potName').value = '';
+  ['potDimD','potDimHround','potDimL','potDimW','potDimH','potCapLb'].forEach(function(eid) {
+    var el = document.getElementById(eid); if (el) el.value = '';
+  });
+  updatePotVolumePreview();
+  msgEl.style.color = '#15803d';
+  msgEl.textContent = 'Pot "' + name + '" saved ✓';
+  renderPots();
+});
+
+// ============ PACKAGING (v2.5.4) ============
+function renderPacks() {
+  var container = document.getElementById('packsTable');
+  if (!container) return;
+  if (packs.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>No packaging yet. Use the form above to add some.</div></div>';
+    return;
+  }
+  var rows = packs.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+    '<thead><tr style="background:#f8fafc;border-bottom:2px solid var(--border);">' +
+      '<th style="padding:8px;text-align:left;">Name</th>' +
+      '<th style="padding:8px;text-align:right;">Capacity</th>' +
+      '<th style="padding:8px;text-align:right;">Price</th>' +
+      '<th style="padding:8px;width:36px;"></th>' +
+    '</tr></thead><tbody>';
+  rows.forEach(function(pk) {
+    html += '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px;font-weight:600;">' + escapeHtml(pk.name || '') + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + format(pk.sizeQty || 0) + ' ' + escapeHtml(unitLabel(pk.sizeUnit || 'oz')) + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + (pk.price > 0 ? '$' + pk.price.toFixed(2) : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
+      '<td style="padding:8px;text-align:right;"><button class="btn-danger btn-icon" data-del-pack="' + pk.id + '" title="Delete">🗑️</button></td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+  container.querySelectorAll('[data-del-pack]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pid = btn.getAttribute('data-del-pack');
+      if (!confirm('Delete this packaging?')) return;
+      packs = packs.filter(function(x){ return x.id !== pid; });
+      savePacks();
+      renderPacks();
+      toast('Packaging deleted ✓');
+    });
+  });
+}
+
+document.getElementById('addPackBtn') && document.getElementById('addPackBtn').addEventListener('click', function() {
+  var name = (document.getElementById('packName').value || '').trim();
+  var sizeQty = parseFloat(document.getElementById('packSizeQty').value) || 0;
+  var sizeUnit = document.getElementById('packSizeUnit').value || 'oz';
+  var price = parseFloat(document.getElementById('packPrice').value);
+  var msgEl = document.getElementById('packFormMsg');
+  msgEl.textContent = '';
+  if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
+  var pk = { id: id(), name: name, sizeQty: sizeQty, sizeUnit: sizeUnit };
+  if (price > 0) pk.price = price;
+  packs.push(pk);
+  savePacks();
+  document.getElementById('packName').value = '';
+  document.getElementById('packSizeQty').value = '';
+  document.getElementById('packPrice').value = '';
+  msgEl.style.color = '#15803d';
+  msgEl.textContent = 'Packaging "' + name + '" saved ✓';
+  renderPacks();
+});
+
 // ============ INIT ============
 loadState();
 syncOrderMetaInputs();
@@ -4018,6 +4309,9 @@ renderProducts();
 renderRecipes();
 renderIngredients();
 renderDishesList();
+renderPots();
+renderPacks();
+togglePotShape();
 renderOrderRows();
 renderHistory();
 renderReverseSelect();
