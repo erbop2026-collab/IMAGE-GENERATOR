@@ -740,14 +740,14 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.1</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.2</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
 <nav class="tabs">
   <div class="tab active" data-tab="calc">📊 Calculate</div>
   <div class="tab" data-tab="ingredients">🥕 Ingredients</div>
-  <div class="tab" data-tab="pots">🍳 Pots</div>
+  <div class="tab" data-tab="pots">🧰 Equipment</div>
   <div class="tab" data-tab="packs">📦 Packaging</div>
   <div class="tab" data-tab="products">⚙️ Products</div>
   <div class="tab" data-tab="recipes">🍲 Recipes</div>
@@ -1070,8 +1070,8 @@ Pasta,oz,8,16"></textarea>
 <!-- ============ TAB: POTS (v2.5.4) ============ -->
 <section class="tab-content" id="tab-pots">
   <div class="card">
-    <div class="card-title">🍳 Add pot / pan / bucket</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of cooking vessels you own. Enter dimensions and the volume auto-fills. Used by dishes (pick a pot to set yield) and the calculator (pot plan per order).</p>
+    <div class="card-title">🧰 Add equipment (pot · tray · pan · bucket)</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of every cooking vessel you own — pots, baking trays, pans, buckets. Enter dimensions and the volume auto-fills. Used by dishes (pick a piece to set yield) and the calculator (equipment plan per order).</p>
 
     <div class="field">
       <label>Name</label>
@@ -1106,12 +1106,12 @@ Pasta,oz,8,16"></textarea>
       <label>Capacity override <span style="color:var(--text-muted);font-weight:400;">(cooked food, lb — optional, leave blank to use auto-volume)</span></label>
       <input type="number" id="potCapLb" step="any" min="0" placeholder="e.g. 50" inputmode="decimal">
     </div>
-    <button class="btn-primary" id="addPotBtn">Save pot</button>
+    <button class="btn-primary" id="addPotBtn">Save equipment</button>
     <div id="potFormMsg" style="font-size:12px;margin-top:8px;"></div>
   </div>
 
   <div class="card">
-    <div class="card-title">📋 All pots</div>
+    <div class="card-title">📋 All equipment</div>
     <div id="potsTable"></div>
   </div>
 </section>
@@ -1185,7 +1185,7 @@ Pasta,oz,8,16"></textarea>
       </div>
     </div>
     <div class="field">
-      <label>Or pick a pot to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🍳 Pots catalog)</span></label>
+      <label>Or pick equipment to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🧰 Equipment catalog)</span></label>
       <select id="newRecipePotPick" data-pot-pick="add"><option value="">— manual entry —</option></select>
     </div>
     <div class="field">
@@ -1344,7 +1344,7 @@ Pasta,oz,8,16"></textarea>
       </div>
     </div>
     <div class="field">
-      <label>Or pick a pot to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🍳 Pots catalog)</span></label>
+      <label>Or pick equipment to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🧰 Equipment catalog)</span></label>
       <select id="dishModalPotPick" data-pot-pick="modal"><option value="">— manual entry —</option></select>
     </div>
     <div class="field">
@@ -2097,7 +2097,7 @@ function buildRecipeEditCard(r) {
         '</div>' +
       '</div>' +
       '<div class="field">' +
-        '<label>Or pick a pot to auto-fill yield</label>' +
+        '<label>Or pick equipment to auto-fill yield</label>' +
         '<select data-pot-pick="edit-' + r.id + '"><option value="">— manual entry —</option></select>' +
       '</div>' +
       '<div class="field">' +
@@ -4239,7 +4239,7 @@ function renderPots() {
   var container = document.getElementById('potsTable');
   if (!container) return;
   if (pots.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍳</div><div>No pots yet. Use the form above to add one.</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧰</div><div>No equipment yet. Use the form above to add a pot, tray, pan, or bucket.</div></div>';
     return;
   }
   var rows = pots.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
@@ -4271,7 +4271,7 @@ function renderPots() {
       pots = pots.filter(function(x){ return x.id !== pid; });
       savePots();
       renderPots();
-      toast('Pot deleted ✓');
+      toast('Equipment deleted ✓');
     });
   });
 }
@@ -4334,7 +4334,7 @@ document.getElementById('addPotBtn') && document.getElementById('addPotBtn').add
   });
   updatePotVolumePreview();
   msgEl.style.color = '#15803d';
-  msgEl.textContent = 'Pot "' + name + '" saved ✓';
+  msgEl.textContent = 'Equipment "' + name + '" saved ✓';
   renderPots();
 });
 
