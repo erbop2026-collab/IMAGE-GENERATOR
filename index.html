@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.7</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.8.0</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1263,10 +1263,10 @@ Pasta,oz,8,16"></textarea>
       <input type="text" id="newRecipeRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
     </div>
     <div class="field">
-      <label>Components (per ONE meal — click ☆ to mark ⭐ lead)</label>
+      <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE meal — click ☆ for ⭐ lead)</span></label>
       <div class="component-list" data-component-list="add"></div>
       <button class="btn-secondary btn-small" type="button" data-component-add="add">+ Add ingredient</button>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much of it goes into one meal. The unit is taken from the ingredient.</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much <strong>raw / uncooked</strong> goes into one meal. The unit is taken from the ingredient. Cooked yield comes from the dish-level <strong>Yield / batch</strong> field above.</div>
     </div>
     <div class="field">
       <label>Default packaging <span style="color:var(--text-muted);font-weight:400;">(pick any from the 📦 Packaging catalog)</span></label>
@@ -1379,6 +1379,13 @@ Pasta,oz,8,16"></textarea>
   </div>
 </div>
 
+<div id="rawFlipBanner" style="display:none;background:#fef3c7;border:1.5px solid #f59e0b;color:#78350f;padding:12px 14px;border-radius:10px;margin:10px 16px;font-size:13px;line-height:1.5;">
+  <strong>v2.8.0 — heads up:</strong> Recipe component amounts are now interpreted as <strong>RAW / uncooked</strong> (not cooked). The numbers in your existing recipes weren't auto-converted — please review each recipe and update the amounts to match raw / uncooked weights as needed. The dish's cooked output is set by <em>Yield / batch</em> (or by picking a reference equipment).
+  <div style="margin-top:8px;text-align:right;">
+    <button class="btn-secondary" id="dismissRawFlip" style="font-size:12px;padding:6px 14px;">Got it</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
 
@@ -1421,10 +1428,10 @@ Pasta,oz,8,16"></textarea>
       <input type="text" id="dishModalRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
     </div>
     <div class="field">
-      <label>Components (per ONE meal — click ☆ to mark ⭐ lead)</label>
+      <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE meal — click ☆ for ⭐ lead)</span></label>
       <div class="component-list" data-component-list="modal"></div>
       <button class="btn-secondary btn-small" type="button" data-component-add="modal">+ Add ingredient</button>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much of it goes into one meal. The unit is taken from the ingredient.</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much <strong>raw / uncooked</strong> goes into one meal. The unit is taken from the ingredient. Cooked yield comes from the dish-level <strong>Yield / batch</strong> field above.</div>
     </div>
     <div class="field">
       <label>Default packaging <span style="color:var(--text-muted);font-weight:400;">(pick any from the 📦 Packaging catalog)</span></label>
@@ -2255,7 +2262,7 @@ function buildRecipeEditCard(r) {
         '<input type="text" data-recipe-edit="ref" data-rid="' + r.id + '" value="' + escapeHtml(r.referenceText || '') + '" placeholder=\'e.g. "1 Kugel = 1 pan 9×13"\'>' +
       '</div>' +
       '<div class="field">' +
-        '<label>Components (per ONE meal — click ☆ to mark ⭐ lead)</label>' +
+        '<label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE meal — click ☆ for ⭐ lead)</span></label>' +
         '<div class="component-list" data-component-list="edit-' + r.id + '">' + compsHTML + '</div>' +
         '<button class="btn-secondary btn-small" type="button" data-component-add="edit-' + r.id + '">+ Add ingredient</button>' +
       '</div>' +
@@ -2823,7 +2830,7 @@ function updateGroupSummary(rowId) {
       return compAmt + ' ' + ppu + ' ' + (pp ? pp.name : '?');
     }).join(' + ');
     var summary = totalPortionsDish + ' portions, ' + format(totalCookedDish) + ' ' + dishUnit + ' cooked';
-    if (r.yieldCooked > 0) summary += ' → ' + format(batches) + ' batches: ' + partsList;
+    if (r.yieldCooked > 0) summary += ' → ' + format(batches) + ' batches, raw needed: ' + partsList;
     else summary += ' (set yield on dish to scale recipe)';
     groupEl.textContent = summary;
     return;
@@ -3007,9 +3014,11 @@ function computeTotals() {
       (rec.components || []).forEach(function(comp) {
         var p = products.find(function(x){ return x.id === comp.productId; });
         if (!p || !(comp.amount > 0)) return;
-        var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
-        var cooked = batches * comp.amount;
-        var raw = cooked * ratio;
+        // v2.8.0: component.amount is RAW. Raw scales linearly with batches.
+        // Cooked is informational only — what you'd get if you cooked this
+        // raw amount alone using the ingredient's raw/cooked yield.
+        var raw = batches * comp.amount;
+        var cooked = (p.raw > 0 && p.cooked > 0) ? raw * (p.cooked / p.raw) : raw;
         var t = ensureTotalEntry(totals, p);
         t.cooked += cooked;
         t.raw += raw;
@@ -5713,6 +5722,21 @@ renderOrderRows();
 renderHistory();
 renderReverseSelect();
 renderReverseResult();
+
+// v2.8.0 RAW-flip banner (one-time, dismissible).
+(function() {
+  var KEY = 'kitchen_calc_v280_acked';
+  if (recipes.length > 0 && !localStorage.getItem(KEY)) {
+    var banner = document.getElementById('rawFlipBanner');
+    if (banner) banner.style.display = '';
+  }
+  var dismissBtn = document.getElementById('dismissRawFlip');
+  if (dismissBtn) dismissBtn.addEventListener('click', function() {
+    localStorage.setItem(KEY, '1');
+    var banner = document.getElementById('rawFlipBanner');
+    if (banner) banner.style.display = 'none';
+  });
+})();
 </script>
 </body>
 </html>
