@@ -947,21 +947,6 @@
   </div>
 
   <div class="card">
-    <div class="card-title">📥 Bulk import (CSV)</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Paste a CSV table or pick a <code>.csv</code> file. From Excel / Google Sheets: <strong>File → Save as → CSV</strong>.</p>
-    <textarea id="csvInput" style="width:100%;min-height:110px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:monospace;font-size:11px;resize:vertical;background:#f8fafc;" placeholder="name,unit,raw,cooked
-White Rice,oz,12,36
-Pasta,oz,8,16"></textarea>
-    <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain" style="display:none">
-    <div class="io-row" style="margin-top:8px;">
-      <button class="btn-secondary" id="csvFilePickBtn">📁 Pick .csv file</button>
-      <button class="btn-secondary" id="csvTemplateBtn">📄 Load template</button>
-    </div>
-    <button class="btn-primary" id="csvApplyBtn" style="margin-top:8px;width:100%;">Apply CSV</button>
-    <div class="field-help">Required columns: <code>name, unit, raw, cooked</code>. Existing ingredients with the same name get UPDATED. See Help for the full column list.</div>
-  </div>
-
-  <div class="card">
     <div class="card-title">📦 Product List</div>
     <div class="search-row">
       <input type="text" id="productSearch" placeholder="🔍 Search products…" autocomplete="off">
@@ -974,24 +959,6 @@ Pasta,oz,8,16"></textarea>
     <div id="productsList"></div>
   </div>
 
-  <div class="card">
-    <div class="card-title">🔄 Reverse Calc — How many portions?</div>
-    <div class="field">
-      <label>Product</label>
-      <select id="reverseProduct"></select>
-    </div>
-    <div class="row-grid">
-      <div class="field">
-        <label>Raw amount you have</label>
-        <input type="number" id="reverseRaw" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
-      </div>
-      <div class="field">
-        <label>Portion size (cooked)</label>
-        <input type="number" id="reversePortion" placeholder="e.g. 8" step="any" min="0" inputmode="decimal">
-      </div>
-    </div>
-    <div id="reverseResult" class="reverse-result empty">Pick a product and enter amounts to see how many portions you get.</div>
-  </div>
 </section>
 
 <!-- ============ TAB: INGREDIENTS (v2.3.0) ============ -->
@@ -1053,10 +1020,44 @@ Pasta,oz,8,16"></textarea>
   </div>
 
   <div class="card">
+    <div class="card-title">📥 Bulk import (CSV)</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Paste a CSV table or pick a <code>.csv</code> file. From Excel / Google Sheets: <strong>File → Save as → CSV</strong>.</p>
+    <textarea id="csvInput" style="width:100%;min-height:110px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:monospace;font-size:11px;resize:vertical;background:#f8fafc;" placeholder="name,unit,raw,cooked
+White Rice,oz,12,36
+Pasta,oz,8,16"></textarea>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain" style="display:none">
+    <div class="io-row" style="margin-top:8px;">
+      <button class="btn-secondary" id="csvFilePickBtn">📁 Pick .csv file</button>
+      <button class="btn-secondary" id="csvTemplateBtn">📄 Load template</button>
+    </div>
+    <button class="btn-primary" id="csvApplyBtn" style="margin-top:8px;width:100%;">Apply CSV</button>
+    <div class="field-help">Required columns: <code>name, unit, raw, cooked</code>. Existing items with the same name get UPDATED. See Help for the full column list.</div>
+  </div>
+
+  <div class="card">
     <div class="card-title">📋 All ingredients</div>
     <input type="text" id="ingrSearch" placeholder="Search by name…" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
     <div id="ingredientsTable"></div>
     <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Edit existing items in the <strong>⚙️ Products</strong> tab (raw / cooked yield, packaging, labor, pots).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔄 Reverse Calc — How many portions?</div>
+    <div class="field">
+      <label>Product</label>
+      <select id="reverseProduct"></select>
+    </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Raw amount you have</label>
+        <input type="number" id="reverseRaw" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Portion size (cooked)</label>
+        <input type="number" id="reversePortion" placeholder="e.g. 8" step="any" min="0" inputmode="decimal">
+      </div>
+    </div>
+    <div id="reverseResult" class="reverse-result empty">Pick a product and enter amounts to see how many portions you get.</div>
   </div>
 </section>
 
@@ -1326,7 +1327,10 @@ function loadState() {
     saveOrder();
   }
 }
-function saveProducts() { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); }
+function saveProducts() {
+  localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+  if (typeof renderIngredients === 'function') renderIngredients();
+}
 function saveRecipes()  { localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes)); }
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
 function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyEntries)); }
