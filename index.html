@@ -946,6 +946,21 @@
   </div>
 
   <div class="card">
+    <div class="card-title">📥 Bulk import (CSV)</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Paste a CSV table or pick a <code>.csv</code> file. From Excel / Google Sheets: <strong>File → Save as → CSV</strong>.</p>
+    <textarea id="csvInput" style="width:100%;min-height:110px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:monospace;font-size:11px;resize:vertical;background:#f8fafc;" placeholder="name,unit,raw,cooked
+White Rice,oz,12,36
+Pasta,oz,8,16"></textarea>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain" style="display:none">
+    <div class="io-row" style="margin-top:8px;">
+      <button class="btn-secondary" id="csvFilePickBtn">📁 Pick .csv file</button>
+      <button class="btn-secondary" id="csvTemplateBtn">📄 Load template</button>
+    </div>
+    <button class="btn-primary" id="csvApplyBtn" style="margin-top:8px;width:100%;">Apply CSV</button>
+    <div class="field-help">Required columns: <code>name, unit, raw, cooked</code>. Existing ingredients with the same name get UPDATED. See Help for the full column list.</div>
+  </div>
+
+  <div class="card">
     <div class="card-title">📦 Ingredient List</div>
     <div class="search-row">
       <input type="text" id="productSearch" placeholder="🔍 Search ingredients…" autocomplete="off">
@@ -1051,6 +1066,12 @@
     </ul>
     <p>A <strong>"Cost per single portion"</strong> section answers <em>"how much does ONE 8 oz vs ONE 12 oz portion cost?"</em> using the effective $/cooked-unit so pack-mode rounding flows through correctly.</p>
     <p>Below that: total order cost and average per portion.</p>
+
+    <h3>Bulk import from Excel / Google Sheets (CSV)</h3>
+    <p>The Ingredients tab has a <strong>📥 Bulk import (CSV)</strong> card. Paste a CSV table or pick a <code>.csv</code> file. From Excel: <em>File → Save as → CSV</em>. Tap <strong>📄 Load template</strong> to see a working sample.</p>
+    <p><strong>Required columns:</strong> <code>name</code>, <code>unit</code>, <code>raw</code>, <code>cooked</code>. Header is case-insensitive; spaces / underscores / dashes are ignored.</p>
+    <p><strong>Optional columns:</strong> <code>packSize</code>, <code>cost</code>, <code>costMode</code> (<em>measure / pack / piece</em>), <code>packagingCost</code>, <code>potSizes</code> (<em>e.g. <code>small:5;large:10</code></em>), <code>laborHours</code>, <code>laborWorkers</code>, <code>laborRate</code>, <code>packLaborHours</code>, <code>packLaborWorkers</code>, <code>packLaborRate</code>, <code>packLaborBasis</code> (<em>portion / carton / batch</em>), <code>cartonSize</code>.</p>
+    <p>Rows whose <code>name</code> matches an existing ingredient are <strong>updated in place</strong>; new names are added. After import you'll see a toast with <em>added / updated / skipped</em> counts; full per-row issues print to the browser console.</p>
 
     <h3>Recipes (composite dishes)</h3>
     <p>A recipe is one meal made of several ingredients. Example: <em>Chicken &amp; Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>. Define recipes in the <strong>🍲 Recipes</strong> tab — each component picks an ingredient from your catalog plus a per-meal amount.</p>
@@ -2820,6 +2841,162 @@ document.getElementById('clearHistoryBtn').addEventListener('click', function() 
   renderHistory();
 });
 
+// ============ CSV BULK IMPORT (ingredients) ============
+// Parses a CSV string into rows of cells. Handles RFC-4180 quoted strings.
+function parseCSV(text) {
+  var rows = [];
+  var row = [];
+  var cur = '';
+  var inQuote = false;
+  var i = 0;
+  while (i < text.length) {
+    var c = text.charAt(i);
+    if (inQuote) {
+      if (c === '"') {
+        if (text.charAt(i + 1) === '"') { cur += '"'; i += 2; continue; }
+        inQuote = false; i++;
+      } else { cur += c; i++; }
+    } else {
+      if (c === '"') { inQuote = true; i++; }
+      else if (c === ',') { row.push(cur); cur = ''; i++; }
+      else if (c === '\r') { i++; }
+      else if (c === '\n') {
+        row.push(cur); cur = '';
+        if (!(row.length === 1 && row[0] === '')) rows.push(row);
+        row = [];
+        i++;
+      } else { cur += c; i++; }
+    }
+  }
+  if (cur !== '' || row.length > 0) {
+    row.push(cur);
+    if (!(row.length === 1 && row[0] === '')) rows.push(row);
+  }
+  return rows;
+}
+
+function normalizeHeader(h) {
+  return String(h || '').toLowerCase().replace(/[\s_\-]/g, '');
+}
+
+// Map of normalized header → ingredient field name
+var CSV_HEADER_MAP = {
+  name: 'name',
+  unit: 'unit',
+  raw: 'raw', rawamount: 'raw',
+  cooked: 'cooked', cookedamount: 'cooked',
+  packsize: 'packSize',
+  cost: 'costPerUnit', ingredientcost: 'costPerUnit', price: 'costPerUnit',
+  costmode: 'costMode',
+  packagingcost: 'packagingCost',
+  potsizes: 'pots', pots: 'pots', potcapacity: 'pots',
+  laborhours: 'laborHours', cooklaborhours: 'laborHours', cookhours: 'laborHours',
+  laborworkers: 'laborWorkers', cooklaborworkers: 'laborWorkers', cookworkers: 'laborWorkers',
+  laborrate: 'laborRate', cooklaborrate: 'laborRate', cookrate: 'laborRate',
+  packlaborhours: 'packLaborHours',
+  packlaborworkers: 'packLaborWorkers',
+  packlaborrate: 'packLaborRate',
+  packlaborbasis: 'packLaborBasis',
+  cartonsize: 'cartonSize'
+};
+
+var VALID_UNITS = { oz:1, lb:1, cup:1, floz:1, qt:1, gal:1, ct:1 };
+var VALID_COST_MODES = { measure:1, pack:1, piece:1 };
+var VALID_PACK_BASIS = { portion:1, carton:1, batch:1 };
+
+function csvSampleTemplate() {
+  return [
+    'name,unit,raw,cooked,packSize,cost,costMode,packagingCost,potSizes,laborHours,laborWorkers,laborRate',
+    'White Rice,oz,12,36,400,0.05,measure,0.30,small:80;large:160,0.5,1,20',
+    'Pasta,oz,8,16,,,,,,,,',
+    'Chicken Breast,ct,1,1,,2.50,piece,,,,,'
+  ].join('\n');
+}
+
+function applyCSVImport(text) {
+  var rows = parseCSV(text);
+  if (rows.length < 2) {
+    toast('CSV needs a header row plus at least one data row');
+    return;
+  }
+  var headers = rows[0].map(normalizeHeader);
+  var fieldFor = headers.map(function(h) { return CSV_HEADER_MAP[h] || null; });
+  if (fieldFor.indexOf('name') < 0) { toast('CSV must include a "name" column'); return; }
+
+  var added = 0, updated = 0, skipped = 0, errors = [];
+  for (var ri = 1; ri < rows.length; ri++) {
+    var cells = rows[ri];
+    if (cells.every(function(c){ return !c || !c.trim(); })) continue;
+    var rec = {};
+    for (var ci = 0; ci < headers.length; ci++) {
+      var fld = fieldFor[ci];
+      if (!fld) continue;
+      var val = (cells[ci] || '').trim();
+      if (!val) continue;
+      rec[fld] = val;
+    }
+    if (!rec.name) { skipped++; errors.push('row ' + (ri+1) + ': missing name'); continue; }
+    if (rec.unit && !VALID_UNITS[rec.unit.toLowerCase()]) { skipped++; errors.push('row ' + (ri+1) + ': bad unit "' + rec.unit + '"'); continue; }
+    if (rec.unit) rec.unit = rec.unit.toLowerCase();
+    var rawN = rec.raw ? parseFloat(rec.raw) : 0;
+    var cookedN = rec.cooked ? parseFloat(rec.cooked) : 0;
+    if (!(rawN > 0) || !(cookedN > 0)) { skipped++; errors.push('row ' + (ri+1) + ' (' + rec.name + '): raw and cooked must be > 0'); continue; }
+
+    // Build product record
+    var existing = products.find(function(p){ return p.name.toLowerCase() === rec.name.toLowerCase(); });
+    var prod = existing || { id: id(), name: rec.name };
+    prod.name = rec.name;
+    prod.unit = rec.unit || (existing && existing.unit) || 'oz';
+    prod.raw = rawN;
+    prod.cooked = cookedN;
+
+    // Optional fields — overwrite when CSV has a value, otherwise leave existing
+    if ('packSize' in rec)      { var n = parseFloat(rec.packSize); if (n > 0) prod.packSize = n; else delete prod.packSize; }
+    if ('costPerUnit' in rec)   { var n2 = parseFloat(rec.costPerUnit); if (n2 > 0) prod.costPerUnit = n2; else delete prod.costPerUnit; }
+    if ('costMode' in rec)      {
+      var cm = rec.costMode.toLowerCase();
+      if (VALID_COST_MODES[cm]) prod.costMode = cm;
+    } else if (prod.costPerUnit > 0 && !prod.costMode) prod.costMode = 'measure';
+    if ('packagingCost' in rec) { var n3 = parseFloat(rec.packagingCost); if (n3 > 0) prod.packagingCost = n3; else delete prod.packagingCost; }
+    if ('pots' in rec) {
+      var ps = parsePots(rec.pots);
+      if (ps.length > 0) prod.pots = ps; else delete prod.pots;
+      delete prod.unitsPerPot;
+    }
+    ['laborHours','laborWorkers','laborRate','packLaborHours','packLaborWorkers','packLaborRate','cartonSize'].forEach(function(k) {
+      if (k in rec) {
+        var nv = parseFloat(rec[k]);
+        if (nv > 0) prod[k] = nv; else delete prod[k];
+      }
+    });
+    if ('packLaborBasis' in rec) {
+      var pb = rec.packLaborBasis.toLowerCase();
+      if (VALID_PACK_BASIS[pb]) prod.packLaborBasis = pb;
+    }
+
+    if (existing) updated++;
+    else { products.push(prod); added++; }
+  }
+
+  if (added + updated === 0) {
+    toast('No valid rows imported');
+    if (errors.length) console.log('CSV import errors:\n' + errors.join('\n'));
+    return;
+  }
+  saveProducts();
+  renderProducts();
+  renderOrderRows();
+  renderReverseSelect();
+  var summary = added + ' added, ' + updated + ' updated';
+  if (skipped > 0) summary += ', ' + skipped + ' skipped';
+  toast(summary + ' ✓');
+  if (errors.length) {
+    setTimeout(function() {
+      alert('Import summary\n\n' + summary + '\n\nIssues:\n' + errors.slice(0, 20).join('\n') + (errors.length > 20 ? '\n…' : ''));
+    }, 200);
+  }
+}
+
 // ============ EXPORT / BACKUP / RESTORE ============
 // Tracks what's currently loaded in the export textarea so Download picks the right extension.
 var currentExportKind = 'json'; // 'json' | 'kitchen' | 'office'
@@ -3110,6 +3287,29 @@ document.getElementById('exportPrintBtn').addEventListener('click', function() {
     try { window.print(); }
     catch(e) { toast('Print not supported here'); }
   }, 50);
+});
+
+document.getElementById('csvTemplateBtn').addEventListener('click', function() {
+  document.getElementById('csvInput').value = csvSampleTemplate();
+});
+document.getElementById('csvFilePickBtn').addEventListener('click', function() {
+  document.getElementById('csvFileInput').click();
+});
+document.getElementById('csvFileInput').addEventListener('change', function(e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('csvInput').value = ev.target.result;
+    toast('File loaded — review and tap Apply');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.getElementById('csvApplyBtn').addEventListener('click', function() {
+  var text = document.getElementById('csvInput').value.trim();
+  if (!text) { toast('Paste or pick a CSV first'); return; }
+  applyCSVImport(text);
 });
 
 function markBackup() {

@@ -38,6 +38,28 @@ Each ingredient has a **Basic** sub-tab and a **Pricing & Labor** sub-tab.
 | **🍳 Cooking labor** | Time to cook ONE pot/tray, plus workers and $/hour. Total cost = pots × hours × workers × rate. |
 | **📦 Packaging labor** | Separate from cooking. Choose basis: per portion / per carton of N portions / per cooking batch. |
 
+## Bulk import from Excel / Google Sheets (CSV)
+
+The Ingredients tab has a **📥 Bulk import (CSV)** card. Paste a CSV table or pick a `.csv` file. From Excel: **File → Save as → CSV**. Tap **📄 Load template** in the app to see a working sample.
+
+**Required columns** (case-insensitive; spaces / underscores / dashes are ignored): `name`, `unit`, `raw`, `cooked`.
+
+**Optional columns:**
+
+| Column | Meaning |
+|---|---|
+| `packSize` | Bag/sack size in the ingredient's unit |
+| `cost` | Numeric cost value |
+| `costMode` | `measure` / `pack` / `piece` |
+| `packagingCost` | $ per single portion |
+| `potSizes` | One or more pots; semicolon-separated names with optional name, e.g. `small:5;large:10` or `5;10;20` |
+| `laborHours`, `laborWorkers`, `laborRate` | Cooking labor (hours/pot, workers, $/h) |
+| `packLaborHours`, `packLaborWorkers`, `packLaborRate` | Packaging labor |
+| `packLaborBasis` | `portion` / `carton` / `batch` |
+| `cartonSize` | Portions per carton (when basis = carton) |
+
+Rows whose `name` matches an existing ingredient are **updated in place**; new names are added. After import you'll see a toast with `added / updated / skipped` counts; full per-row issues print to the browser console.
+
 ## Recipes (composite dishes)
 
 A recipe is one meal made of several ingredients. Define recipes in the **🍲 Recipes** tab — each component picks an ingredient from your catalog plus a per-meal amount.
