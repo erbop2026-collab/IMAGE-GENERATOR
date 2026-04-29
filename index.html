@@ -691,9 +691,13 @@
   </div>
 
   <div class="card">
-    <div class="card-title">💾 Backup &amp; Restore</div>
+    <div class="card-title">📤 Export &amp; Backup</div>
     <div class="io-row">
-      <button class="btn-secondary" id="exportBtn">📤 Export</button>
+      <button class="btn-secondary" id="exportKitchenBtn">🍳 For Kitchen</button>
+      <button class="btn-secondary" id="exportOfficeBtn">💼 For Office</button>
+    </div>
+    <div class="io-row" style="margin-top:8px;">
+      <button class="btn-secondary" id="exportBtn">💾 JSON backup</button>
       <button class="btn-secondary" id="importBtn">📥 Import</button>
     </div>
 
@@ -715,7 +719,7 @@
       <input type="file" id="importFileInput" accept="application/json,.json,text/plain" style="display:none;">
     </div>
 
-    <div class="field-help">Save all products and history, or restore from a previous backup.</div>
+    <div class="field-help">Kitchen / Office: share the current order. JSON backup: save / restore everything.</div>
   </div>
 </section>
 
@@ -2013,7 +2017,110 @@ document.getElementById('clearHistoryBtn').addEventListener('click', function() 
   renderHistory();
 });
 
-// ============ BACKUP / RESTORE (WebView-safe: clipboard + textarea + optional file) ============
+// ============ EXPORT / BACKUP / RESTORE ============
+// Tracks what's currently loaded in the export textarea so Download picks the right extension.
+var currentExportKind = 'json'; // 'json' | 'kitchen' | 'office'
+
+function formatKitchenExport() {
+  var totals = computeTotals();
+  if (!totals.length) return '⚠️ No order to export. Enter portions and tap Calculate first.';
+  var lines = [];
+  lines.push('🍳 KITCHEN PREP SHEET');
+  if (orderMeta.name) lines.push('Order: ' + orderMeta.name);
+  if (orderMeta.eventDate) lines.push('Date:  ' + orderMeta.eventDate);
+  lines.push('Generated: ' + new Date().toLocaleString());
+  lines.push('═════════════════════════');
+  var grandPortions = 0;
+  totals.forEach(function(t) {
+    var u = unitLabel(t.unit);
+    grandPortions += t.portionsCount || 0;
+    lines.push('');
+    lines.push('▸ ' + t.name);
+    lines.push('  Raw needed:  ' + format(t.raw) + ' ' + u);
+    lines.push('  Cooked yield: ' + format(t.cooked) + ' ' + u);
+    if (t.packSize > 0) {
+      var packs = Math.ceil(t.raw / t.packSize);
+      lines.push('  📦 Use ' + packs + ' pack' + (packs !== 1 ? 's' : '') + ' of ' + format(t.packSize) + ' ' + u);
+    }
+    if (t.unitsPerPot > 0) {
+      var pots = Math.ceil(t.cooked / t.unitsPerPot);
+      lines.push('  🍲 Cook in ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + u + ' each)');
+    }
+    if (t.sizeBreakdown && t.sizeBreakdown.length) {
+      lines.push('  Portions to plate:');
+      t.sizeBreakdown.forEach(function(b) {
+        lines.push('    • ' + b.portions + ' × ' + format(b.portionSize) + ' ' + u);
+      });
+    }
+  });
+  lines.push('');
+  lines.push('═════════════════════════');
+  lines.push('📊 Total portions: ' + grandPortions);
+  return lines.join('\n');
+}
+
+function formatOfficeExport() {
+  var totals = computeTotals();
+  if (!totals.length) return '⚠️ No order to export. Enter portions and tap Calculate first.';
+  var lines = [];
+  lines.push('💼 ORDER COST BREAKDOWN');
+  if (orderMeta.name) lines.push('Order: ' + orderMeta.name);
+  if (orderMeta.eventDate) lines.push('Date:  ' + orderMeta.eventDate);
+  lines.push('Generated: ' + new Date().toLocaleString());
+  lines.push('═════════════════════════');
+  var grandTotal = 0;
+  var grandPortions = 0;
+  totals.forEach(function(t) {
+    var u = unitLabel(t.unit);
+    grandPortions += t.portionsCount || 0;
+    var ing = computeIngredientCost(t);
+    var pkg = (t.packagingCost > 0) ? t.portionsCount * t.packagingCost : 0;
+    var lab = computeLaborCost(t);
+    var lineCost = ing.cost + pkg + lab.cost;
+    grandTotal += lineCost;
+    lines.push('');
+    lines.push('▸ ' + t.name);
+    lines.push('  Raw: ' + format(t.raw) + ' ' + u + '  |  Cooked: ' + format(t.cooked) + ' ' + u + '  |  ' + (t.portionsCount || 0) + ' portions');
+    if (t.sizeBreakdown && t.sizeBreakdown.length && lineCost > 0) {
+      var effIng = (t.cooked > 0) ? ing.cost / t.cooked : 0;
+      var laborPP = (t.portionsCount > 0) ? lab.cost / t.portionsCount : 0;
+      lines.push('  Per-portion price:');
+      t.sizeBreakdown.forEach(function(b) {
+        var perIng = b.portionSize * effIng;
+        var perPkg = (t.packagingCost > 0) ? t.packagingCost : 0;
+        var perTotal = perIng + perPkg + laborPP;
+        lines.push('    • ' + b.portions + ' × ' + format(b.portionSize) + ' ' + u + '  →  $' + perTotal.toFixed(2) + ' each');
+      });
+    }
+    if (ing.cost > 0)  lines.push('  Ingredient: $' + ing.cost.toFixed(2).padStart(9, ' ') + '   (' + ing.note + ')');
+    if (pkg > 0)       lines.push('  Packaging:  $' + pkg.toFixed(2).padStart(9, ' ') + '   (' + t.portionsCount + ' × $' + t.packagingCost + ')');
+    if (lab.cost > 0)  lines.push('  Labor:      $' + lab.cost.toFixed(2).padStart(9, ' ') + '   (' + lab.batches + ' batch' + (lab.batches !== 1 ? 'es' : '') + ' × ' + format(t.laborHours) + 'h × ' + format(t.laborWorkers) + 'w × $' + t.laborRate + '/h)');
+    if (lineCost > 0)  lines.push('  ───────────────────');
+    if (lineCost > 0)  lines.push('  Subtotal:   $' + lineCost.toFixed(2).padStart(9, ' '));
+  });
+  lines.push('');
+  lines.push('═════════════════════════');
+  lines.push('📊 Total portions: ' + grandPortions);
+  if (grandTotal > 0) {
+    lines.push('💰 TOTAL ORDER:    $' + grandTotal.toFixed(2));
+    if (grandPortions > 0) {
+      lines.push('   Avg per portion: $' + (grandTotal / grandPortions).toFixed(2));
+    }
+  }
+  return lines.join('\n');
+}
+
+function showExportInArea(text, kind) {
+  currentExportKind = kind;
+  document.getElementById('exportJson').value = text;
+  document.getElementById('importArea').style.display = 'none';
+  document.getElementById('exportArea').style.display = 'block';
+  setTimeout(function() {
+    var ta = document.getElementById('exportJson');
+    ta.focus(); ta.select();
+  }, 50);
+}
+
 function buildBackupPayload() {
   return {
     app: 'portion-calc',
@@ -2087,19 +2194,21 @@ function tryLegacyCopy(text) {
   } catch(e) { return false; }
 }
 
+document.getElementById('exportKitchenBtn').addEventListener('click', function() {
+  showExportInArea(formatKitchenExport(), 'kitchen');
+});
+document.getElementById('exportOfficeBtn').addEventListener('click', function() {
+  showExportInArea(formatOfficeExport(), 'office');
+});
+
 document.getElementById('exportBtn').addEventListener('click', function() {
   var area = document.getElementById('exportArea');
-  var json = JSON.stringify(buildBackupPayload(), null, 2);
-  document.getElementById('exportJson').value = json;
-  // Hide import area, show export
-  document.getElementById('importArea').style.display = 'none';
-  area.style.display = (area.style.display === 'none' || !area.style.display) ? 'block' : 'none';
-  if (area.style.display === 'block') {
-    setTimeout(function() {
-      var ta = document.getElementById('exportJson');
-      ta.focus(); ta.select();
-    }, 50);
+  // If JSON export already showing, toggle off
+  if (currentExportKind === 'json' && area.style.display === 'block') {
+    area.style.display = 'none';
+    return;
   }
+  showExportInArea(JSON.stringify(buildBackupPayload(), null, 2), 'json');
 });
 
 document.getElementById('exportCopyBtn').addEventListener('click', function() {
@@ -2111,13 +2220,17 @@ document.getElementById('exportCopyBtn').addEventListener('click', function() {
 });
 
 document.getElementById('exportDownloadBtn').addEventListener('click', function() {
-  var json = document.getElementById('exportJson').value;
+  var content = document.getElementById('exportJson').value;
+  var ext = currentExportKind === 'json' ? 'json' : 'txt';
+  var mime = currentExportKind === 'json' ? 'application/json' : 'text/plain';
+  var prefix = currentExportKind === 'kitchen' ? 'kitchen-' :
+               currentExportKind === 'office'  ? 'office-'  : 'backup-';
   try {
-    var blob = new Blob([json], { type: 'application/json' });
+    var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'portion-calc-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = 'portion-calc-' + prefix + new Date().toISOString().slice(0, 10) + '.' + ext;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
