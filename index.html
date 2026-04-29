@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.2</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.3</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1455,7 +1455,7 @@ var STORAGE_KEY_PACKS    = 'kitchen_calc_packs_v1';
 var HISTORY_LIMIT = 50;
 
 var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, costMode?, unitsPerPot?, pots?, packagingCost?, laborHours?, laborWorkers?, laborRate?, packLabor*?}]
-var recipes = [];    // [{id, name, components: [{productId, amount}], yieldCooked?, yieldUnit?, leadProductId?, referenceText?}]
+var recipes = [];    // [{id, name, components: [{productId, amount}], yieldCooked?, yieldUnit?, leadProductId?, referenceText?, packIds?, referenceEquipmentId?, equipment?:[{equipmentId, cookHours, cookWorkers, cookRate, packHours, packWorkers, packRate}]}]
 var pots = [];       // [{id, name, shape:'round'|'rect', dimD?, dimH?, dimL?, dimW?, volumeOz, capacityLb?}]
 var packs = [];      // [{id, name, sizeQty, sizeUnit, price}]
 var orderRows = [];  // [{id, kind:'product'|'recipe', productId/recipeId, sizes/portions}]
@@ -1593,6 +1593,48 @@ function loadState() {
     }
   });
   if (prodsDirty) localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+
+  // v2.7.3 migration: dish operational fields move from product (legacy) to
+  // recipe. For each recipe with leadProductId, copy lead product's pots[]
+  // and labor settings into recipe.equipment[]. The lead's pack labor is
+  // duplicated across every equipment entry (legacy stored it once on the
+  // product). Old data stays on products[] untouched (read-only fallback).
+  var recipesDirty = false;
+  recipes.forEach(function(r) {
+    if (Array.isArray(r.equipment)) return; // already migrated
+    if (!r.leadProductId) return;
+    var lead = products.find(function(p){ return p.id === r.leadProductId; });
+    if (!lead) return;
+    var sourcePots = Array.isArray(lead.pots) && lead.pots.length > 0
+      ? lead.pots.slice()
+      : (lead.unitsPerPot > 0 ? [{ name: 'default', capacity: lead.unitsPerPot }] : []);
+    var equipmentList = sourcePots.map(function(pot) {
+      // pot has {name, capacity} from old product schema. Try to match a
+      // pots[] catalog entry by name first; otherwise leave equipmentId null.
+      var match = pots.find(function(eq){ return (eq.name || '').toLowerCase() === (pot.name || '').toLowerCase(); });
+      return {
+        equipmentId: match ? match.id : null,
+        capacityLb: pot.capacity || (match && match.capacityLb) || 0,
+        cookHours: lead.laborHours || 0,
+        cookWorkers: lead.laborWorkers || 0,
+        cookRate: lead.laborRate || 0,
+        packHours: lead.packLaborHours || 0,
+        packWorkers: lead.packLaborWorkers || 0,
+        packRate: lead.packLaborRate || 0
+      };
+    });
+    if (equipmentList.length === 0) {
+      // No pots on lead — still seed an empty list so we know migration ran.
+      equipmentList = [];
+    }
+    r.equipment = equipmentList;
+    // Reference equipment: prefer an exact match in pots[] catalog if any.
+    if (sourcePots.length > 0 && equipmentList[0] && equipmentList[0].equipmentId) {
+      r.referenceEquipmentId = equipmentList[0].equipmentId;
+    }
+    recipesDirty = true;
+  });
+  if (recipesDirty) localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes));
   try {
     var m = localStorage.getItem(STORAGE_KEY_META);
     if (m) {
