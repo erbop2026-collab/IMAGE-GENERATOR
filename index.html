@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.8</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.9</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1131,13 +1131,13 @@ Pasta,oz,8,16"></textarea>
 
   <div class="card">
     <div class="card-title">📦 Add packaging</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of takeout / catering packaging — boxes, trays, cups, lids. Each has a portion size and a unit price. Pick one when costing a dish.</p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A catalog of takeout / catering packaging — boxes, trays, cups, lids. Enter what you actually buy (case quantity + case price); per-unit price is computed automatically.</p>
 
     <div class="field">
       <label>Name</label>
       <input type="text" id="packName" placeholder="e.g. Small takeout box">
     </div>
-    <div class="row-grid-3">
+    <div class="row-grid">
       <div class="field">
         <label>Capacity</label>
         <input type="number" id="packSizeQty" step="any" min="0" placeholder="8" inputmode="decimal">
@@ -1153,12 +1153,53 @@ Pasta,oz,8,16"></textarea>
           <option value="ct">portions</option>
         </select>
       </div>
-      <div class="field">
-        <label>Price per unit ($)</label>
-        <input type="number" id="packPrice" step="any" min="0" placeholder="0.30" inputmode="decimal">
+    </div>
+
+    <div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Box / container</div>
+      <div class="row-grid">
+        <div class="field">
+          <label>Units per case</label>
+          <input type="number" id="packCaseQty" step="any" min="0" placeholder="100" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Case price ($)</label>
+          <input type="number" id="packCasePrice" step="any" min="0" placeholder="50.00" inputmode="decimal">
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
+        Box unit price: <span id="packBoxUnitOut" style="font-weight:600;color:var(--primary);">—</span>
       </div>
     </div>
-    <div style="display:flex;gap:8px;">
+
+    <div style="margin-top:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+        <input type="checkbox" id="packHasLid"> Separate lid (priced and counted on its own)
+      </label>
+    </div>
+
+    <div id="packLidSection" style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;display:none;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Lid</div>
+      <div class="row-grid">
+        <div class="field">
+          <label>Lids per case</label>
+          <input type="number" id="packLidCaseQty" step="any" min="0" placeholder="200" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Case price ($)</label>
+          <input type="number" id="packLidCasePrice" step="any" min="0" placeholder="40.00" inputmode="decimal">
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
+        Lid unit price: <span id="packLidUnitOut" style="font-weight:600;color:var(--primary);">—</span>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;padding:8px 10px;border-radius:8px;background:#ecfdf5;border:1px solid #86efac;">
+      Effective unit price: <span id="packEffectiveOut" style="font-weight:700;color:#15803d;">—</span>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:10px;">
       <button class="btn-primary" id="addPackBtn" style="flex:1;">Save packaging</button>
       <button class="btn-secondary" id="packEditCancel" style="display:none;">Cancel edit</button>
     </div>
@@ -1507,6 +1548,20 @@ function loadState() {
     var pk = localStorage.getItem(STORAGE_KEY_PACKS);
     if (pk) packs = JSON.parse(pk);
   } catch(e) { packs = []; }
+  // v2.6.9 migration: legacy packs had flat `price`. New schema uses
+  // caseQty + casePrice (unit price = casePrice / caseQty), with optional
+  // separate lid (lidCaseQty + lidCasePrice). Convert: caseQty=1,
+  // casePrice=price keeps the same effective unit price.
+  var packsDirty = false;
+  packs.forEach(function(p) {
+    if (typeof p.casePrice === 'undefined' && typeof p.price !== 'undefined') {
+      p.caseQty = 1;
+      p.casePrice = p.price;
+      delete p.price;
+      packsDirty = true;
+    }
+  });
+  if (packsDirty) localStorage.setItem(STORAGE_KEY_PACKS, JSON.stringify(packs));
   try {
     var m = localStorage.getItem(STORAGE_KEY_META);
     if (m) {
@@ -3125,7 +3180,8 @@ function computePackPlanHtml() {
           capLabel = format(pk.sizeQty || 0) + ' ' + escapeHtml(unitLabel(pk.sizeUnit)) + ' (≈ ' + format(conv) + ' ' + escapeHtml(unitLabel(dishUnit)) + ')';
         }
       }
-      var cost = (count !== null && pk.price > 0) ? count * pk.price : null;
+      var packEff = packEffectivePrice(pk);
+      var cost = (count !== null && packEff > 0) ? count * packEff : null;
       return { pk: pk, count: count, capLabel: capLabel, cost: cost, note: note };
     }).filter(Boolean);
     if (plans.length === 0) return;
@@ -4645,8 +4701,53 @@ document.getElementById('addPotBtn') && document.getElementById('addPotBtn').add
   renderPots();
 });
 
-// ============ PACKAGING (v2.5.4) ============
+// ============ PACKAGING (v2.6.9) ============
+// Schema:
+//   pack = { id, name, sizeQty, sizeUnit,
+//            caseQty, casePrice,
+//            hasSeparateLid?, lidCaseQty?, lidCasePrice? }
+// Effective unit price = box(casePrice/caseQty) + (separate lid ? lid(casePrice/caseQty) : 0)
+function packBoxUnitPrice(pk) {
+  if (!pk || !(pk.caseQty > 0) || !(pk.casePrice > 0)) return 0;
+  return pk.casePrice / pk.caseQty;
+}
+function packLidUnitPrice(pk) {
+  if (!pk || !pk.hasSeparateLid) return 0;
+  if (!(pk.lidCaseQty > 0) || !(pk.lidCasePrice > 0)) return 0;
+  return pk.lidCasePrice / pk.lidCaseQty;
+}
+function packEffectivePrice(pk) {
+  return packBoxUnitPrice(pk) + packLidUnitPrice(pk);
+}
+
 var packEditingId = null;
+function packReadForm() {
+  return {
+    name: (document.getElementById('packName').value || '').trim(),
+    sizeQty: parseFloat(document.getElementById('packSizeQty').value) || 0,
+    sizeUnit: document.getElementById('packSizeUnit').value || 'oz',
+    caseQty: parseFloat(document.getElementById('packCaseQty').value) || 0,
+    casePrice: parseFloat(document.getElementById('packCasePrice').value) || 0,
+    hasSeparateLid: !!document.getElementById('packHasLid').checked,
+    lidCaseQty: parseFloat(document.getElementById('packLidCaseQty').value) || 0,
+    lidCasePrice: parseFloat(document.getElementById('packLidCasePrice').value) || 0
+  };
+}
+function packUpdateLivePreview() {
+  var f = packReadForm();
+  var box = (f.caseQty > 0 && f.casePrice > 0) ? f.casePrice / f.caseQty : 0;
+  var lid = (f.hasSeparateLid && f.lidCaseQty > 0 && f.lidCasePrice > 0) ? f.lidCasePrice / f.lidCaseQty : 0;
+  var boxOut = document.getElementById('packBoxUnitOut');
+  var lidOut = document.getElementById('packLidUnitOut');
+  var effOut = document.getElementById('packEffectiveOut');
+  if (boxOut) boxOut.textContent = box > 0 ? '$' + box.toFixed(4).replace(/0+$/,'').replace(/\.$/,'') : '—';
+  if (lidOut) lidOut.textContent = lid > 0 ? '$' + lid.toFixed(4).replace(/0+$/,'').replace(/\.$/,'') : '—';
+  var eff = box + (f.hasSeparateLid ? lid : 0);
+  if (effOut) effOut.textContent = eff > 0 ? '$' + eff.toFixed(4).replace(/0+$/,'').replace(/\.$/,'') : '—';
+  var lidSec = document.getElementById('packLidSection');
+  if (lidSec) lidSec.style.display = f.hasSeparateLid ? '' : 'none';
+}
+
 function startEditPack(packId) {
   var pk = packs.find(function(p){ return p.id === packId; });
   if (!pk) return;
@@ -4654,11 +4755,16 @@ function startEditPack(packId) {
   document.getElementById('packName').value = pk.name || '';
   document.getElementById('packSizeQty').value = pk.sizeQty > 0 ? pk.sizeQty : '';
   document.getElementById('packSizeUnit').value = pk.sizeUnit || 'oz';
-  document.getElementById('packPrice').value = pk.price > 0 ? pk.price : '';
+  document.getElementById('packCaseQty').value = pk.caseQty > 0 ? pk.caseQty : '';
+  document.getElementById('packCasePrice').value = pk.casePrice > 0 ? pk.casePrice : '';
+  document.getElementById('packHasLid').checked = !!pk.hasSeparateLid;
+  document.getElementById('packLidCaseQty').value = pk.lidCaseQty > 0 ? pk.lidCaseQty : '';
+  document.getElementById('packLidCasePrice').value = pk.lidCasePrice > 0 ? pk.lidCasePrice : '';
   document.getElementById('addPackBtn').textContent = 'Update packaging';
   document.getElementById('packEditCancel').style.display = '';
   document.getElementById('packFormMsg').style.color = 'var(--primary)';
   document.getElementById('packFormMsg').textContent = '✏️ Editing "' + pk.name + '" — change fields and click Update.';
+  packUpdateLivePreview();
   document.getElementById('packName').scrollIntoView({behavior:'smooth', block:'center'});
   renderPacks();
 }
@@ -4666,11 +4772,16 @@ function cancelEditPack() {
   packEditingId = null;
   document.getElementById('packName').value = '';
   document.getElementById('packSizeQty').value = '';
-  document.getElementById('packPrice').value = '';
   document.getElementById('packSizeUnit').value = 'oz';
+  document.getElementById('packCaseQty').value = '';
+  document.getElementById('packCasePrice').value = '';
+  document.getElementById('packHasLid').checked = false;
+  document.getElementById('packLidCaseQty').value = '';
+  document.getElementById('packLidCasePrice').value = '';
   document.getElementById('addPackBtn').textContent = 'Save packaging';
   document.getElementById('packEditCancel').style.display = 'none';
   document.getElementById('packFormMsg').textContent = '';
+  packUpdateLivePreview();
   renderPacks();
 }
 
@@ -4686,15 +4797,34 @@ function renderPacks() {
     '<thead><tr style="background:#f8fafc;border-bottom:2px solid var(--border);">' +
       '<th style="padding:8px;text-align:left;">Name</th>' +
       '<th style="padding:8px;text-align:right;">Capacity</th>' +
-      '<th style="padding:8px;text-align:right;">Price</th>' +
+      '<th style="padding:8px;text-align:right;">Box (qty / case $)</th>' +
+      '<th style="padding:8px;text-align:right;">Lid</th>' +
+      '<th style="padding:8px;text-align:right;">Unit $</th>' +
       '<th style="padding:8px;width:80px;"></th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(pk) {
     var isEditing = pk.id === packEditingId;
+    var boxTxt = (pk.caseQty > 0 && pk.casePrice > 0)
+      ? format(pk.caseQty) + ' / $' + pk.casePrice.toFixed(2)
+      : '<span style="color:var(--text-muted);">—</span>';
+    var lidTxt;
+    if (pk.hasSeparateLid && pk.lidCaseQty > 0 && pk.lidCasePrice > 0) {
+      lidTxt = '✓ ' + format(pk.lidCaseQty) + ' / $' + pk.lidCasePrice.toFixed(2);
+    } else if (pk.hasSeparateLid) {
+      lidTxt = '<span style="color:#b45309;">✓ (incomplete)</span>';
+    } else {
+      lidTxt = '<span style="color:var(--text-muted);">—</span>';
+    }
+    var eff = packEffectivePrice(pk);
+    var effTxt = eff > 0
+      ? '<strong>$' + eff.toFixed(2) + '</strong>'
+      : '<span style="color:var(--text-muted);">—</span>';
     html += '<tr style="border-bottom:1px solid var(--border);' + (isEditing ? 'background:#fef3c7;' : '') + '">' +
       '<td style="padding:8px;font-weight:600;">' + escapeHtml(pk.name || '') + (isEditing ? ' <span style="color:#b45309;font-size:11px;">(editing)</span>' : '') + '</td>' +
       '<td style="padding:8px;text-align:right;">' + format(pk.sizeQty || 0) + ' ' + escapeHtml(unitLabel(pk.sizeUnit || 'oz')) + '</td>' +
-      '<td style="padding:8px;text-align:right;">' + (pk.price > 0 ? '$' + pk.price.toFixed(2) : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + boxTxt + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + lidTxt + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + effTxt + '</td>' +
       '<td style="padding:8px;text-align:right;white-space:nowrap;">' +
         '<button class="btn-secondary btn-icon" data-edit-pack="' + pk.id + '" title="Edit">✏️</button> ' +
         '<button class="btn-danger btn-icon" data-del-pack="' + pk.id + '" title="Delete">🗑️</button>' +
@@ -4719,38 +4849,52 @@ function renderPacks() {
   });
 }
 
+// Live unit-price preview as the user types.
+['packCaseQty','packCasePrice','packLidCaseQty','packLidCasePrice'].forEach(function(eid) {
+  var el = document.getElementById(eid);
+  if (el) el.addEventListener('input', packUpdateLivePreview);
+});
+var packHasLidEl = document.getElementById('packHasLid');
+if (packHasLidEl) packHasLidEl.addEventListener('change', packUpdateLivePreview);
+
 document.getElementById('packEditCancel') && document.getElementById('packEditCancel').addEventListener('click', cancelEditPack);
 
 document.getElementById('addPackBtn') && document.getElementById('addPackBtn').addEventListener('click', function() {
-  var name = (document.getElementById('packName').value || '').trim();
-  var sizeQty = parseFloat(document.getElementById('packSizeQty').value) || 0;
-  var sizeUnit = document.getElementById('packSizeUnit').value || 'oz';
-  var price = parseFloat(document.getElementById('packPrice').value);
+  var f = packReadForm();
   var msgEl = document.getElementById('packFormMsg');
   msgEl.textContent = '';
-  if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
+  if (!f.name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
+  function applyFields(target) {
+    target.name = f.name;
+    target.sizeQty = f.sizeQty;
+    target.sizeUnit = f.sizeUnit;
+    if (f.caseQty > 0)   target.caseQty = f.caseQty;     else delete target.caseQty;
+    if (f.casePrice > 0) target.casePrice = f.casePrice; else delete target.casePrice;
+    if (f.hasSeparateLid) {
+      target.hasSeparateLid = true;
+      if (f.lidCaseQty > 0)   target.lidCaseQty = f.lidCaseQty;     else delete target.lidCaseQty;
+      if (f.lidCasePrice > 0) target.lidCasePrice = f.lidCasePrice; else delete target.lidCasePrice;
+    } else {
+      delete target.hasSeparateLid;
+      delete target.lidCaseQty;
+      delete target.lidCasePrice;
+    }
+  }
   if (packEditingId) {
     var existing = packs.find(function(p){ return p.id === packEditingId; });
-    if (existing) {
-      existing.name = name;
-      existing.sizeQty = sizeQty;
-      existing.sizeUnit = sizeUnit;
-      if (price > 0) existing.price = price; else delete existing.price;
-    }
+    if (existing) applyFields(existing);
     savePacks();
     cancelEditPack();
     msgEl.style.color = '#15803d';
-    msgEl.textContent = 'Packaging "' + name + '" updated ✓';
+    msgEl.textContent = 'Packaging "' + f.name + '" updated ✓';
   } else {
-    var pk = { id: id(), name: name, sizeQty: sizeQty, sizeUnit: sizeUnit };
-    if (price > 0) pk.price = price;
+    var pk = { id: id() };
+    applyFields(pk);
     packs.push(pk);
     savePacks();
-    document.getElementById('packName').value = '';
-    document.getElementById('packSizeQty').value = '';
-    document.getElementById('packPrice').value = '';
+    cancelEditPack();
     msgEl.style.color = '#15803d';
-    msgEl.textContent = 'Packaging "' + name + '" saved ✓';
+    msgEl.textContent = 'Packaging "' + f.name + '" saved ✓';
   }
   renderPacks();
 });
@@ -4777,7 +4921,8 @@ function populatePackPicks() {
     var current = sel.value;
     var opts = '<option value="">— manual entry —</option>';
     packs.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');}).forEach(function(pk) {
-      var priceLabel = pk.price > 0 ? '$' + pk.price.toFixed(2) : 'no price';
+      var eff = packEffectivePrice(pk);
+      var priceLabel = eff > 0 ? '$' + eff.toFixed(2) : 'no price';
       opts += '<option value="' + pk.id + '">' + escapeHtml(pk.name || '') + ' (' + priceLabel + ')</option>';
     });
     sel.innerHTML = opts;
@@ -4792,7 +4937,8 @@ function packPickRowHtml(selectedId) {
   var opts = '<option value="">— pick packaging —</option>' + sorted.map(function(pk) {
     var unitTxt = pk.sizeUnit === 'ct' ? 'portions' : unitLabel(pk.sizeUnit || 'oz');
     var sizeTxt = pk.sizeQty > 0 ? format(pk.sizeQty) + ' ' + unitTxt : '—';
-    var priceTxt = pk.price > 0 ? '$' + pk.price.toFixed(2) : 'no price';
+    var eff = packEffectivePrice(pk);
+    var priceTxt = eff > 0 ? '$' + eff.toFixed(2) : 'no price';
     var sel = pk.id === selectedId ? ' selected' : '';
     return '<option value="' + pk.id + '"' + sel + '>' + escapeHtml(pk.name || '') + ' · ' + sizeTxt + ' · ' + priceTxt + '</option>';
   }).join('');
@@ -4890,16 +5036,17 @@ document.addEventListener('change', function(e) {
       var pid2 = pkKey.slice(5);
       costEl = document.querySelector('[data-edit="packagingCost"][data-pid="' + pid2 + '"]');
     }
-    if (costEl && pk.price > 0) {
+    var packEff = packEffectivePrice(pk);
+    if (costEl && packEff > 0) {
       // The form field is "$ per single portion". For count-based packs
-      // (e.g. "Box for 4 portions, $1.20"), divide price by sizeQty so
-      // the field shows the per-portion amount ($0.30) — not the pack price.
+      // (e.g. "Box holds 4 portions, $1.20 effective unit price"), divide
+      // by sizeQty so the field shows the per-portion amount ($0.30).
       // For other units (oz/lb/floz/...) we don't know the dish's portion
-      // size at this point, so use the raw pack price and let the user
+      // size here, so use the raw effective unit price and let the user
       // adjust manually if needed.
-      var perPortion = pk.price;
+      var perPortion = packEff;
       if (pk.sizeUnit === 'ct' && pk.sizeQty > 0) {
-        perPortion = pk.price / pk.sizeQty;
+        perPortion = packEff / pk.sizeQty;
       }
       costEl.value = perPortion.toFixed(2);
     }
