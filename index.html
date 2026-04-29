@@ -281,6 +281,67 @@
     font-size: 14px;
     font-weight: 600;
   }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-row .btn-primary { flex: 1; }
+  .btn-clear {
+    background: #fee2e2;
+    color: var(--danger);
+    padding: 14px 18px;
+    font-size: 14px;
+    border: 1.5px solid #fecaca;
+  }
+  .btn-clear:hover { background: #fecaca; }
+  .card-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .history-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+  .history-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-dark);
+  }
+  .history-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .history-summary {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .history-summary .pill {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px 4px 2px 0;
+  }
   .order-summary {
     font-size: 13px;
     color: var(--text-muted);
@@ -357,10 +418,21 @@
     <div class="card-title">📋 Cooking Order</div>
     <div id="orderRows"></div>
     <button class="add-row-btn" id="addRowBtn">+ Add Row</button>
-    <button class="btn-primary" id="calcBtn">Calculate Raw Amounts</button>
+    <div class="btn-row">
+      <button class="btn-primary" id="calcBtn">Calculate Raw Amounts</button>
+      <button class="btn-clear" id="clearBtn" title="Clear all rows">🧹 Clear</button>
+    </div>
   </div>
 
   <div id="results"></div>
+
+  <div class="card" id="historyCard">
+    <div class="card-title-row">
+      <div class="card-title" style="margin-bottom:0;">🕘 History</div>
+      <button class="btn-secondary btn-small" id="clearHistoryBtn">Clear all</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
 </section>
 
 <!-- ============ TAB: PRODUCTS ============ -->
@@ -424,9 +496,12 @@
 // ============ STATE ============
 var STORAGE_KEY_PRODUCTS = 'kitchen_calc_products_v2';
 var STORAGE_KEY_ORDER    = 'kitchen_calc_order_v2';
+var STORAGE_KEY_HISTORY  = 'kitchen_calc_history_v1';
+var HISTORY_LIMIT = 50;
 
 var products = [];   // [{id, name, raw, cooked, unit}]
 var orderRows = [];  // [{id, productId, portions, portionSize}]
+var history = [];    // [{id, ts, rows:[{productId,productName,portions,portionSize,unit}], totals:[{productId,name,unit,cooked,raw}]}]
 
 // ============ UNITS (US customary) ============
 // unit display names + conversion to a common base for "nicer" alt display.
@@ -474,6 +549,10 @@ function loadState() {
     var o = localStorage.getItem(STORAGE_KEY_ORDER);
     if (o) orderRows = JSON.parse(o);
   } catch(e) { orderRows = []; }
+  try {
+    var h = localStorage.getItem(STORAGE_KEY_HISTORY);
+    if (h) history = JSON.parse(h);
+  } catch(e) { history = []; }
 
   if (products.length === 0) {
     products = [
@@ -483,12 +562,13 @@ function loadState() {
     saveProducts();
   }
   if (orderRows.length === 0) {
-    orderRows = [{ id: id(), productId: products[0].id, portions: 100, portionSize: 18 }];
+    orderRows = [{ id: id(), productId: products[0].id, portions: 0, portionSize: 0 }];
     saveOrder();
   }
 }
 function saveProducts() { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); }
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
+function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history)); }
 function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 // ============ TABS ============
@@ -589,11 +669,11 @@ function renderOrderRows() {
       '<div class="row-grid">' +
         '<div class="field">' +
           '<label>Number of portions</label>' +
-          '<input type="number" min="0" step="any" inputmode="decimal" value="' + row.portions + '" data-field="portions" data-id="' + row.id + '">' +
+          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (row.portions > 0 ? row.portions : '') + '" data-field="portions" data-id="' + row.id + '">' +
         '</div>' +
         '<div class="field">' +
           '<label>Portion size (cooked)</label>' +
-          '<input type="number" min="0" step="any" inputmode="decimal" value="' + row.portionSize + '" data-field="portionSize" data-id="' + row.id + '">' +
+          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 8" value="' + (row.portionSize > 0 ? row.portionSize : '') + '" data-field="portionSize" data-id="' + row.id + '">' +
         '</div>' +
       '</div>' +
       '<div class="order-summary" id="sum-' + row.id + '"></div>';
@@ -631,7 +711,11 @@ function updateRowSummary(rowId) {
   var el = document.getElementById('sum-' + rowId);
   if (!el || !p) return;
   var totalCooked = row.portions * row.portionSize;
-  el.textContent = 'Row total cooked: ' + format(totalCooked) + ' ' + unitLabel(p.unit);
+  if (totalCooked > 0) {
+    el.textContent = 'Row total cooked: ' + format(totalCooked) + ' ' + unitLabel(p.unit);
+  } else {
+    el.textContent = '';
+  }
 }
 
 document.getElementById('addRowBtn').addEventListener('click', function() {
@@ -642,8 +726,7 @@ document.getElementById('addRowBtn').addEventListener('click', function() {
 });
 
 // ============ CALCULATION ============
-document.getElementById('calcBtn').addEventListener('click', function() {
-  if (orderRows.length === 0) { toast('No rows to calculate'); return; }
+function computeTotals() {
   var totals = {};
   orderRows.forEach(function(row) {
     var p = products.find(function(x){ return x.id === row.productId; });
@@ -652,20 +735,21 @@ document.getElementById('calcBtn').addEventListener('click', function() {
     if (!(cooked > 0)) return;
     var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
     var raw = cooked * ratio;
-    if (!totals[p.id]) totals[p.id] = { name: p.name, unit: p.unit, cooked: 0, raw: 0 };
+    if (!totals[p.id]) totals[p.id] = { productId: p.id, name: p.name, unit: p.unit, cooked: 0, raw: 0 };
     totals[p.id].cooked += cooked;
     totals[p.id].raw += raw;
   });
+  return Object.keys(totals).map(function(k){ return totals[k]; });
+}
 
-  var keys = Object.keys(totals);
+function renderResults(totalsArr) {
   var resEl = document.getElementById('results');
-  if (keys.length === 0) {
+  if (totalsArr.length === 0) {
     resEl.innerHTML = '<div class="card"><div class="empty-state"><div class="empty-state-icon">🤔</div><div>Nothing to calculate.<br>Make sure you entered portions and portion size.</div></div></div>';
     return;
   }
   var html = '<div class="results-card"><h3>✅ Raw Amounts to Cook</h3>';
-  keys.forEach(function(k) {
-    var t = totals[k];
+  totalsArr.forEach(function(t) {
     var u = unitLabel(t.unit);
     var rawAlt = altDisplay(t.raw, t.unit);
     var cookedAlt = altDisplay(t.cooked, t.unit);
@@ -684,7 +768,135 @@ document.getElementById('calcBtn').addEventListener('click', function() {
   });
   html += '</div>';
   resEl.innerHTML = html;
-  resEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('calcBtn').addEventListener('click', function() {
+  if (orderRows.length === 0) { toast('No rows to calculate'); return; }
+  var totals = computeTotals();
+  renderResults(totals);
+  if (totals.length > 0) {
+    pushHistory(totals);
+    toast('Calculation saved to history ✓');
+  }
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// ============ CLEAR ============
+document.getElementById('clearBtn').addEventListener('click', function() {
+  if (orderRows.length === 0) { toast('Already empty'); return; }
+  if (!confirm('Clear all rows?')) return;
+  orderRows = [];
+  saveOrder();
+  document.getElementById('results').innerHTML = '';
+  renderOrderRows();
+  toast('Cleared ✓');
+});
+
+// ============ HISTORY ============
+function pushHistory(totals) {
+  var snapshot = {
+    id: id(),
+    ts: Date.now(),
+    rows: orderRows.map(function(row) {
+      var p = products.find(function(x){ return x.id === row.productId; });
+      return {
+        productId: row.productId,
+        productName: p ? p.name : '(deleted)',
+        unit: p ? p.unit : '',
+        portions: row.portions,
+        portionSize: row.portionSize
+      };
+    }).filter(function(r) { return r.portions > 0 && r.portionSize > 0; }),
+    totals: totals.map(function(t) {
+      return { productId: t.productId, name: t.name, unit: t.unit, cooked: t.cooked, raw: t.raw };
+    })
+  };
+  history.unshift(snapshot);
+  if (history.length > HISTORY_LIMIT) history.length = HISTORY_LIMIT;
+  saveHistory();
+  renderHistory();
+}
+
+function fmtTime(ts) {
+  var d = new Date(ts);
+  var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+         ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function renderHistory() {
+  var list = document.getElementById('historyList');
+  var card = document.getElementById('historyCard');
+  if (history.length === 0) {
+    card.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  card.style.display = '';
+  list.innerHTML = '';
+  history.forEach(function(h) {
+    var div = document.createElement('div');
+    div.className = 'history-item';
+    var pills = h.totals.map(function(t) {
+      return '<span class="pill">' + escapeHtml(t.name) + ': ' + format(t.raw) + ' ' + escapeHtml(unitLabel(t.unit)) + '</span>';
+    }).join('');
+    div.innerHTML =
+      '<div class="history-header">' +
+        '<div class="history-time">' + fmtTime(h.ts) + '</div>' +
+        '<div class="history-actions">' +
+          '<button class="btn-secondary btn-small" data-load="' + h.id + '">↻ Load</button>' +
+          '<button class="btn-danger btn-icon" data-rmhist="' + h.id + '">🗑️</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="history-summary">' + pills + '</div>';
+    list.appendChild(div);
+  });
+  list.querySelectorAll('[data-load]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      loadHistoryEntry(btn.getAttribute('data-load'));
+    });
+  });
+  list.querySelectorAll('[data-rmhist]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var hid = btn.getAttribute('data-rmhist');
+      history = history.filter(function(x){ return x.id !== hid; });
+      saveHistory();
+      renderHistory();
+    });
+  });
+}
+
+function loadHistoryEntry(hid) {
+  var entry = history.find(function(x){ return x.id === hid; });
+  if (!entry) return;
+  // Map old productIds to current products. If product no longer exists, skip the row.
+  orderRows = entry.rows.map(function(r) {
+    var stillExists = products.some(function(p){ return p.id === r.productId; });
+    if (!stillExists) return null;
+    return {
+      id: id(),
+      productId: r.productId,
+      portions: r.portions,
+      portionSize: r.portionSize
+    };
+  }).filter(Boolean);
+  if (orderRows.length === 0) {
+    toast('Products from this entry no longer exist');
+    return;
+  }
+  saveOrder();
+  renderOrderRows();
+  renderResults(entry.totals);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('Loaded ✓');
+}
+
+document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+  if (history.length === 0) return;
+  if (!confirm('Delete all history?')) return;
+  history = [];
+  saveHistory();
+  renderHistory();
 });
 
 // ============ HELPERS ============
@@ -738,6 +950,7 @@ if ('serviceWorker' in navigator) {
 loadState();
 renderProducts();
 renderOrderRows();
+renderHistory();
 </script>
 </body>
 </html>
