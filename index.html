@@ -501,7 +501,7 @@ var HISTORY_LIMIT = 50;
 
 var products = [];   // [{id, name, raw, cooked, unit}]
 var orderRows = [];  // [{id, productId, portions, portionSize}]
-var history = [];    // [{id, ts, rows:[{productId,productName,portions,portionSize,unit}], totals:[{productId,name,unit,cooked,raw}]}]
+var historyEntries = [];    // [{id, ts, rows:[...], totals:[...]}]
 
 // ============ UNITS (US customary) ============
 // unit display names + conversion to a common base for "nicer" alt display.
@@ -551,8 +551,8 @@ function loadState() {
   } catch(e) { orderRows = []; }
   try {
     var h = localStorage.getItem(STORAGE_KEY_HISTORY);
-    if (h) history = JSON.parse(h);
-  } catch(e) { history = []; }
+    if (h) historyEntries = JSON.parse(h);
+  } catch(e) { historyEntries = []; }
 
   if (products.length === 0) {
     products = [
@@ -568,7 +568,7 @@ function loadState() {
 }
 function saveProducts() { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); }
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
-function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history)); }
+function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyEntries)); }
 function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 // ============ TABS ============
@@ -811,8 +811,8 @@ function pushHistory(totals) {
       return { productId: t.productId, name: t.name, unit: t.unit, cooked: t.cooked, raw: t.raw };
     })
   };
-  history.unshift(snapshot);
-  if (history.length > HISTORY_LIMIT) history.length = HISTORY_LIMIT;
+  historyEntries.unshift(snapshot);
+  if (historyEntries.length > HISTORY_LIMIT) historyEntries.length = HISTORY_LIMIT;
   saveHistory();
   renderHistory();
 }
@@ -827,14 +827,14 @@ function fmtTime(ts) {
 function renderHistory() {
   var list = document.getElementById('historyList');
   var card = document.getElementById('historyCard');
-  if (history.length === 0) {
+  if (historyEntries.length === 0) {
     card.style.display = 'none';
     list.innerHTML = '';
     return;
   }
   card.style.display = '';
   list.innerHTML = '';
-  history.forEach(function(h) {
+  historyEntries.forEach(function(h) {
     var div = document.createElement('div');
     div.className = 'history-item';
     var pills = h.totals.map(function(t) {
@@ -859,7 +859,7 @@ function renderHistory() {
   list.querySelectorAll('[data-rmhist]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var hid = btn.getAttribute('data-rmhist');
-      history = history.filter(function(x){ return x.id !== hid; });
+      historyEntries = historyEntries.filter(function(x){ return x.id !== hid; });
       saveHistory();
       renderHistory();
     });
@@ -867,7 +867,7 @@ function renderHistory() {
 }
 
 function loadHistoryEntry(hid) {
-  var entry = history.find(function(x){ return x.id === hid; });
+  var entry = historyEntries.find(function(x){ return x.id === hid; });
   if (!entry) return;
   // Map old productIds to current products. If product no longer exists, skip the row.
   orderRows = entry.rows.map(function(r) {
@@ -892,9 +892,9 @@ function loadHistoryEntry(hid) {
 }
 
 document.getElementById('clearHistoryBtn').addEventListener('click', function() {
-  if (history.length === 0) return;
-  if (!confirm('Delete all history?')) return;
-  history = [];
+  if (historyEntries.length === 0) return;
+  if (!confirm('Delete all historyEntries?')) return;
+  historyEntries = [];
   saveHistory();
   renderHistory();
 });
