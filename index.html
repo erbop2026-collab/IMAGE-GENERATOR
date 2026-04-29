@@ -423,6 +423,113 @@
     color: var(--text);
     margin-bottom: 2px;
   }
+
+  .product-form-tabs {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 14px;
+    background: var(--border);
+    padding: 3px;
+    border-radius: 10px;
+  }
+  .product-form-tab {
+    flex: 1;
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-radius: 7px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .product-form-tab.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow);
+  }
+  .product-form-tab-content { display: none; }
+  .product-form-tab-content.active { display: block; }
+
+  .size-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 36px;
+    gap: 8px;
+    align-items: end;
+    padding: 8px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
+  .size-row .field { margin: 0; }
+  .size-row label { font-size: 11px; }
+  .size-row input { padding: 8px 10px; font-size: 14px; }
+  .size-row .btn-danger { width: 32px; height: 32px; padding: 0; font-size: 14px; }
+  .size-row-summary {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .add-size-btn {
+    background: white;
+    border: 1.5px dashed var(--primary);
+    color: var(--primary);
+    width: 100%;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .order-group-totals {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 6px 4px 0;
+    border-top: 1px dashed var(--border);
+    margin-top: 4px;
+  }
+
+  .per-portion-section {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 12px;
+  }
+  .per-portion-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    opacity: 0.95;
+  }
+  .per-portion-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    gap: 8px;
+  }
+  .per-portion-line:last-child { border-bottom: none; }
+  .per-portion-name { font-weight: 600; flex: 1; }
+  .per-portion-amount {
+    font-weight: 700;
+    background: rgba(255,255,255,0.2);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .per-portion-breakdown {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 2px;
+    font-weight: 500;
+  }
+  .info-pill.pkg   { background: #fce7f3; color: #9f1239; }
+  .info-pill.labor { background: #d1fae5; color: #065f46; }
   .card-title-row {
     display: flex;
     justify-content: space-between;
@@ -598,45 +705,60 @@
 <section class="tab-content" id="tab-products">
   <div class="card">
     <div class="card-title">➕ Add New Product</div>
-    <div class="field">
-      <label>Product name</label>
-      <input type="text" id="newProductName" placeholder="e.g. White rice">
+
+    <div class="product-form-tabs" data-form="add">
+      <div class="product-form-tab active" data-form-tab="basic">📝 Basic</div>
+      <div class="product-form-tab" data-form-tab="advanced">💰 Pricing &amp; Labor</div>
     </div>
-    <div class="field">
-      <label>Unit type</label>
-      <select id="newProductUnit">
-        <optgroup label="Weight">
-          <option value="oz">ounces (oz)</option>
-          <option value="lb">pounds (lb)</option>
-        </optgroup>
-        <optgroup label="Volume">
-          <option value="cup">cups</option>
-          <option value="floz">fluid ounces (fl oz)</option>
-          <option value="qt">quarts (qt)</option>
-          <option value="gal">gallons (gal)</option>
-        </optgroup>
-        <optgroup label="Count">
-          <option value="ct">units (count)</option>
-        </optgroup>
-      </select>
-    </div>
-    <div class="row-grid">
+
+    <div class="product-form-tab-content active" data-form-tab-content="basic" data-form="add">
       <div class="field">
-        <label>Raw amount</label>
-        <input type="number" id="newProductRaw" placeholder="12" step="any" min="0" inputmode="decimal">
+        <label>Product name</label>
+        <input type="text" id="newProductName" placeholder="e.g. White rice">
       </div>
       <div class="field">
-        <label>Cooked amount</label>
-        <input type="number" id="newProductCooked" placeholder="36" step="any" min="0" inputmode="decimal">
+        <label>Unit type</label>
+        <select id="newProductUnit">
+          <optgroup label="Weight">
+            <option value="oz">ounces (oz)</option>
+            <option value="lb">pounds (lb)</option>
+          </optgroup>
+          <optgroup label="Volume">
+            <option value="cup">cups</option>
+            <option value="floz">fluid ounces (fl oz)</option>
+            <option value="qt">quarts (qt)</option>
+            <option value="gal">gallons (gal)</option>
+          </optgroup>
+          <optgroup label="Count">
+            <option value="ct">units (count)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="row-grid">
+        <div class="field">
+          <label>Raw amount</label>
+          <input type="number" id="newProductRaw" placeholder="12" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Cooked amount</label>
+          <input type="number" id="newProductCooked" placeholder="36" step="any" min="0" inputmode="decimal">
+        </div>
       </div>
     </div>
-    <div class="row-grid">
-      <div class="field">
-        <label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
-        <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
+
+    <div class="product-form-tab-content" data-form-tab-content="advanced" data-form="add">
+      <div class="row-grid">
+        <div class="field">
+          <label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+          <input type="number" id="newProductPack" placeholder="e.g. 25" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Pot/Tray capacity <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+          <input type="number" id="newProductPot" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
+        </div>
       </div>
       <div class="field">
-        <label>Cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
         <input type="number" id="newProductCost" placeholder="e.g. 1.20" step="any" min="0" inputmode="decimal">
         <select id="newProductCostMode" style="margin-top:6px;font-size:13px;padding:8px 10px;">
           <option value="measure">Per measurement unit (oz/lb/cup…)</option>
@@ -644,11 +766,30 @@
           <option value="piece">Per piece (count)</option>
         </select>
       </div>
+      <div class="field">
+        <label>Packaging cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional, per single portion)</span></label>
+        <input type="number" id="newProductPackaging" placeholder="e.g. 0.30" step="any" min="0" inputmode="decimal">
+      </div>
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">👥 Labor (per batch — uses Pot capacity above)</div>
+        <div class="row-grid-3">
+          <div class="field">
+            <label>Hours / batch</label>
+            <input type="number" id="newProductLaborHours" placeholder="0.5" step="any" min="0" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>Workers</label>
+            <input type="number" id="newProductLaborWorkers" placeholder="2" step="any" min="0" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>$ / hour</label>
+            <input type="number" id="newProductLaborRate" placeholder="20" step="any" min="0" inputmode="decimal">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Labor cost = batches × hours × workers × rate. If Pot capacity is empty, labor is treated as 1 flat batch.</div>
+      </div>
     </div>
-    <div class="field">
-      <label>Pot/Tray capacity <span style="color:var(--text-muted);font-weight:400;">(optional, cooked amount per pot)</span></label>
-      <input type="number" id="newProductPot" placeholder="e.g. 5" step="any" min="0" inputmode="decimal">
-    </div>
+
     <button class="btn-primary" id="addProductBtn">Save Product</button>
   </div>
 
@@ -705,8 +846,8 @@ var STORAGE_KEY_HISTORY  = 'kitchen_calc_history_v1';
 var STORAGE_KEY_META     = 'kitchen_calc_meta_v1';
 var HISTORY_LIMIT = 50;
 
-var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, unitsPerPot?}]
-var orderRows = [];  // [{id, productId, portions, portionSize}]
+var products = [];   // [{id, name, raw, cooked, unit, packSize?, costPerUnit?, costMode?, unitsPerPot?, packagingCost?, laborHours?, laborWorkers?, laborRate?}]
+var orderRows = [];  // [{id, productId, sizes:[{id, portions, portionSize}, ...]}]
 var historyEntries = [];    // [{id, ts, name?, eventDate?, rows:[...], totals:[...]}]
 var orderMeta = { name: '', eventDate: '' };
 
@@ -753,6 +894,24 @@ function altDisplay(value, unit) {
 }
 
 // ============ STORAGE ============
+function migrateOrderRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(function(r) {
+    if (!r || !r.productId) return null;
+    if (Array.isArray(r.sizes)) return r;
+    // Old shape: {id, productId, portions, portionSize} → wrap into sizes[]
+    return {
+      id: r.id || id(),
+      productId: r.productId,
+      sizes: [{
+        id: id(),
+        portions: r.portions || 0,
+        portionSize: r.portionSize || 0
+      }]
+    };
+  }).filter(Boolean);
+}
+
 function loadState() {
   try {
     var p = localStorage.getItem(STORAGE_KEY_PRODUCTS);
@@ -760,7 +919,7 @@ function loadState() {
   } catch(e) { products = []; }
   try {
     var o = localStorage.getItem(STORAGE_KEY_ORDER);
-    if (o) orderRows = JSON.parse(o);
+    if (o) orderRows = migrateOrderRows(JSON.parse(o));
   } catch(e) { orderRows = []; }
   try {
     var h = localStorage.getItem(STORAGE_KEY_HISTORY);
@@ -783,7 +942,11 @@ function loadState() {
     saveProducts();
   }
   if (orderRows.length === 0) {
-    orderRows = [{ id: id(), productId: products[0].id, portions: 0, portionSize: 0 }];
+    orderRows = [{
+      id: id(),
+      productId: products[0].id,
+      sizes: [{ id: id(), portions: 0, portionSize: 0 }]
+    }];
     saveOrder();
   }
 }
@@ -845,6 +1008,11 @@ function buildProductViewCard(p) {
     pillBits.push('<span class="info-pill cost">💰 $' + p.costPerUnit + '/' + basis + '</span>');
   }
   if (p.unitsPerPot > 0) pillBits.push('<span class="info-pill pot">🍲 pot ' + format(p.unitsPerPot) + ' ' + escapeHtml(u) + '</span>');
+  if (p.packagingCost > 0) pillBits.push('<span class="info-pill pkg">📦 pkg $' + p.packagingCost + '</span>');
+  if (p.laborHours > 0 && p.laborWorkers > 0 && p.laborRate > 0) {
+    var perBatch = p.laborHours * p.laborWorkers * p.laborRate;
+    pillBits.push('<span class="info-pill labor">👥 $' + perBatch.toFixed(2) + '/batch</span>');
+  }
   if (pillBits.length) pillsHtml = '<div class="product-pills">' + pillBits.join('') + '</div>';
   var div = document.createElement('div');
   div.className = 'product-item';
@@ -884,44 +1052,71 @@ function buildProductEditCard(p) {
   var costVal = (p.costPerUnit > 0) ? p.costPerUnit : '';
   var costModeVal = p.costMode || 'measure';
   var potVal  = (p.unitsPerPot > 0) ? p.unitsPerPot : '';
+  var pkgVal  = (p.packagingCost > 0) ? p.packagingCost : '';
+  var lhVal   = (p.laborHours > 0) ? p.laborHours : '';
+  var lwVal   = (p.laborWorkers > 0) ? p.laborWorkers : '';
+  var lrVal   = (p.laborRate > 0) ? p.laborRate : '';
   var costModeOpts =
     '<option value="measure"' + (costModeVal === 'measure' ? ' selected' : '') + '>Per measurement unit</option>' +
     '<option value="pack"' + (costModeVal === 'pack' ? ' selected' : '') + '>Per pack</option>' +
     '<option value="piece"' + (costModeVal === 'piece' ? ' selected' : '') + '>Per piece (count)</option>';
   div.innerHTML =
     '<div class="edit-form">' +
-      '<div class="field">' +
-        '<label>Product name</label>' +
-        '<input type="text" data-edit-field="name" data-eid="' + p.id + '" value="' + escapeHtml(p.name) + '">' +
+      '<div class="product-form-tabs" data-form="edit-' + p.id + '">' +
+        '<div class="product-form-tab active" data-form-tab="basic">📝 Basic</div>' +
+        '<div class="product-form-tab" data-form-tab="advanced">💰 Pricing &amp; Labor</div>' +
       '</div>' +
-      '<div class="field">' +
-        '<label>Unit type</label>' +
-        '<select data-edit-field="unit" data-eid="' + p.id + '">' + optsHtml + '</select>' +
-      '</div>' +
-      '<div class="row-grid">' +
+      '<div class="product-form-tab-content active" data-form-tab-content="basic" data-form="edit-' + p.id + '">' +
         '<div class="field">' +
-          '<label>Raw amount</label>' +
-          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="raw" data-eid="' + p.id + '" value="' + p.raw + '">' +
+          '<label>Product name</label>' +
+          '<input type="text" data-edit-field="name" data-eid="' + p.id + '" value="' + escapeHtml(p.name) + '">' +
         '</div>' +
         '<div class="field">' +
-          '<label>Cooked amount</label>' +
-          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="cooked" data-eid="' + p.id + '" value="' + p.cooked + '">' +
+          '<label>Unit type</label>' +
+          '<select data-edit-field="unit" data-eid="' + p.id + '">' + optsHtml + '</select>' +
+        '</div>' +
+        '<div class="row-grid">' +
+          '<div class="field">' +
+            '<label>Raw amount</label>' +
+            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="raw" data-eid="' + p.id + '" value="' + p.raw + '">' +
+          '</div>' +
+          '<div class="field">' +
+            '<label>Cooked amount</label>' +
+            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="cooked" data-eid="' + p.id + '" value="' + p.cooked + '">' +
+          '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="row-grid">' +
-        '<div class="field">' +
-          '<label>Pack size <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
-          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
+      '<div class="product-form-tab-content" data-form-tab-content="advanced" data-form="edit-' + p.id + '">' +
+        '<div class="row-grid">' +
+          '<div class="field">' +
+            '<label>Pack size <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
+            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packSize" data-eid="' + p.id + '" value="' + packVal + '">' +
+          '</div>' +
+          '<div class="field">' +
+            '<label>Pot capacity <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
+            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="unitsPerPot" data-eid="' + p.id + '" value="' + potVal + '">' +
+          '</div>' +
         '</div>' +
         '<div class="field">' +
-          '<label>Cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
+          '<label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="costPerUnit" data-eid="' + p.id + '" value="' + costVal + '">' +
           '<select data-edit-field="costMode" data-eid="' + p.id + '" style="margin-top:6px;font-size:13px;padding:8px 10px;">' + costModeOpts + '</select>' +
         '</div>' +
-      '</div>' +
-      '<div class="field">' +
-        '<label>Pot/Tray capacity <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
-        '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="unitsPerPot" data-eid="' + p.id + '" value="' + potVal + '">' +
+        '<div class="field">' +
+          '<label>Packaging cost ($) <span style="color:var(--text-muted);font-weight:400;">(opt, per portion)</span></label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packagingCost" data-eid="' + p.id + '" value="' + pkgVal + '">' +
+        '</div>' +
+        '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">👥 Labor (per batch)</div>' +
+          '<div class="row-grid-3">' +
+            '<div class="field"><label>Hours/batch</label>' +
+              '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborHours" data-eid="' + p.id + '" value="' + lhVal + '"></div>' +
+            '<div class="field"><label>Workers</label>' +
+              '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborWorkers" data-eid="' + p.id + '" value="' + lwVal + '"></div>' +
+            '<div class="field"><label>$/hour</label>' +
+              '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborRate" data-eid="' + p.id + '" value="' + lrVal + '"></div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       '<div class="edit-form-buttons">' +
         '<button class="btn-primary" data-savep="' + p.id + '">Save</button>' +
@@ -1002,6 +1197,10 @@ function renderProducts() {
       var costVal = parseFloat(document.querySelector('[data-edit-field="costPerUnit"][data-eid="' + pid + '"]').value);
       var costModeVal = document.querySelector('[data-edit-field="costMode"][data-eid="' + pid + '"]').value;
       var potVal  = parseFloat(document.querySelector('[data-edit-field="unitsPerPot"][data-eid="' + pid + '"]').value);
+      var pkgVal  = parseFloat(document.querySelector('[data-edit-field="packagingCost"][data-eid="' + pid + '"]').value);
+      var lhVal   = parseFloat(document.querySelector('[data-edit-field="laborHours"][data-eid="' + pid + '"]').value);
+      var lwVal   = parseFloat(document.querySelector('[data-edit-field="laborWorkers"][data-eid="' + pid + '"]').value);
+      var lrVal   = parseFloat(document.querySelector('[data-edit-field="laborRate"][data-eid="' + pid + '"]').value);
       if (!name) { toast('Enter a product name'); return; }
       if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
       p.name = name; p.raw = raw; p.cooked = cooked; p.unit = unit;
@@ -1013,7 +1212,11 @@ function renderProducts() {
         delete p.costPerUnit;
         delete p.costMode;
       }
-      if (potVal  > 0) p.unitsPerPot = potVal; else delete p.unitsPerPot;
+      if (potVal > 0) p.unitsPerPot = potVal; else delete p.unitsPerPot;
+      if (pkgVal > 0) p.packagingCost = pkgVal; else delete p.packagingCost;
+      if (lhVal > 0)  p.laborHours = lhVal;    else delete p.laborHours;
+      if (lwVal > 0)  p.laborWorkers = lwVal;  else delete p.laborWorkers;
+      if (lrVal > 0)  p.laborRate = lrVal;     else delete p.laborRate;
       saveProducts();
       productEditingId = null;
       renderProducts();
@@ -1040,6 +1243,25 @@ document.getElementById('productSort').addEventListener('change', function(e) {
   renderProducts();
 });
 
+// Product form sub-tabs (Basic / Pricing & Labor) — event delegation since edit cards are rebuilt
+document.addEventListener('click', function(e) {
+  var tab = e.target.closest && e.target.closest('.product-form-tab');
+  if (!tab) return;
+  var tabsHost = tab.parentElement;
+  var formName = tabsHost.getAttribute('data-form');
+  var which = tab.getAttribute('data-form-tab');
+  if (!formName || !which) return;
+  document.querySelectorAll('.product-form-tab[data-form-tab]').forEach(function(t) {
+    if (t.parentElement.getAttribute('data-form') === formName) t.classList.remove('active');
+  });
+  document.querySelectorAll('.product-form-tab-content').forEach(function(c) {
+    if (c.getAttribute('data-form') === formName) c.classList.remove('active');
+  });
+  tab.classList.add('active');
+  var target = document.querySelector('.product-form-tab-content[data-form="' + formName + '"][data-form-tab-content="' + which + '"]');
+  if (target) target.classList.add('active');
+});
+
 document.getElementById('addProductBtn').addEventListener('click', function() {
   var name = document.getElementById('newProductName').value.trim();
   var raw = parseFloat(document.getElementById('newProductRaw').value);
@@ -1049,6 +1271,10 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   var costRaw = parseFloat(document.getElementById('newProductCost').value);
   var costMode = document.getElementById('newProductCostMode').value;
   var potRaw  = parseFloat(document.getElementById('newProductPot').value);
+  var pkgRaw  = parseFloat(document.getElementById('newProductPackaging').value);
+  var lhRaw   = parseFloat(document.getElementById('newProductLaborHours').value);
+  var lwRaw   = parseFloat(document.getElementById('newProductLaborWorkers').value);
+  var lrRaw   = parseFloat(document.getElementById('newProductLaborRate').value);
   if (!name) { toast('Enter a product name'); return; }
   if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
   var prod = { id: id(), name: name, raw: raw, cooked: cooked, unit: unit };
@@ -1058,6 +1284,10 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
     prod.costMode = costMode || 'measure';
   }
   if (potRaw  > 0) prod.unitsPerPot = potRaw;
+  if (pkgRaw  > 0) prod.packagingCost = pkgRaw;
+  if (lhRaw > 0)   prod.laborHours = lhRaw;
+  if (lwRaw > 0)   prod.laborWorkers = lwRaw;
+  if (lrRaw > 0)   prod.laborRate = lrRaw;
   products.push(prod);
   saveProducts();
   document.getElementById('newProductName').value = '';
@@ -1067,13 +1297,17 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   document.getElementById('newProductCost').value = '';
   document.getElementById('newProductCostMode').value = 'measure';
   document.getElementById('newProductPot').value = '';
+  document.getElementById('newProductPackaging').value = '';
+  document.getElementById('newProductLaborHours').value = '';
+  document.getElementById('newProductLaborWorkers').value = '';
+  document.getElementById('newProductLaborRate').value = '';
   renderProducts();
   renderOrderRows();
   renderReverseSelect();
   toast('Product added ✓');
 });
 
-// ============ ORDER ROWS ============
+// ============ ORDER ROWS (grouped: each row = one product with multiple sizes) ============
 function renderOrderRows() {
   var container = document.getElementById('orderRows');
   if (products.length === 0) {
@@ -1085,15 +1319,16 @@ function renderOrderRows() {
     return;
   }
   container.innerHTML = '';
+  var q = calcSearch.trim().toLowerCase();
+
   orderRows.forEach(function(row, idx) {
     var div = document.createElement('div');
     div.className = 'order-row';
 
-    var q = calcSearch.trim().toLowerCase();
     var options = products
       .filter(function(p) {
         if (!q) return true;
-        if (p.id === row.productId) return true;  // keep current selection visible
+        if (p.id === row.productId) return true;
         return p.name.toLowerCase().indexOf(q) !== -1;
       })
       .map(function(p) {
@@ -1103,9 +1338,28 @@ function renderOrderRows() {
 
     var isFirst = idx === 0;
     var isLast = idx === orderRows.length - 1;
+
+    var sizes = Array.isArray(row.sizes) ? row.sizes : [];
+    var sizesHtml = sizes.map(function(sz) {
+      return (
+        '<div class="size-row" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+          '<div class="field">' +
+            '<label>Portions</label>' +
+            '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (sz.portions > 0 ? sz.portions : '') + '" data-size-field="portions" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+          '</div>' +
+          '<div class="field">' +
+            '<label>Portion size</label>' +
+            '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 8" value="' + (sz.portionSize > 0 ? sz.portionSize : '') + '" data-size-field="portionSize" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+          '</div>' +
+          '<button class="btn-danger btn-icon" data-rmsize="' + sz.id + '" data-row-id="' + row.id + '" title="Remove this size">🗑️</button>' +
+          '<div class="size-row-summary" id="size-sum-' + sz.id + '"></div>' +
+        '</div>'
+      );
+    }).join('');
+
     div.innerHTML =
       '<div class="row-header">' +
-        '<div class="row-header-text">Row #' + (idx+1) + '</div>' +
+        '<div class="row-header-text">Product #' + (idx+1) + '</div>' +
         '<div class="row-controls">' +
           '<button class="btn-secondary btn-icon" data-mvup="' + row.id + '" title="Move up"' + (isFirst ? ' disabled' : '') + '>▲</button>' +
           '<button class="btn-secondary btn-icon" data-mvdn="' + row.id + '" title="Move down"' + (isLast ? ' disabled' : '') + '>▼</button>' +
@@ -1117,34 +1371,76 @@ function renderOrderRows() {
         '<label>Product</label>' +
         '<select data-field="productId" data-id="' + row.id + '">' + options + '</select>' +
       '</div>' +
-      '<div class="row-grid">' +
-        '<div class="field">' +
-          '<label>Number of portions</label>' +
-          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (row.portions > 0 ? row.portions : '') + '" data-field="portions" data-id="' + row.id + '">' +
-        '</div>' +
-        '<div class="field">' +
-          '<label>Portion size (cooked)</label>' +
-          '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 8" value="' + (row.portionSize > 0 ? row.portionSize : '') + '" data-field="portionSize" data-id="' + row.id + '">' +
-        '</div>' +
-      '</div>' +
-      '<div class="order-summary" id="sum-' + row.id + '"></div>';
+      sizesHtml +
+      '<button class="add-size-btn" data-addsize="' + row.id + '">+ Add another size for this product</button>' +
+      '<div class="order-group-totals" id="group-sum-' + row.id + '"></div>';
 
     container.appendChild(div);
-    updateRowSummary(row.id);
   });
 
-  container.querySelectorAll('[data-field]').forEach(function(el) {
-    el.addEventListener('input', function() {
+  // Per-size summaries + group totals
+  orderRows.forEach(function(row) {
+    updateGroupSummary(row.id);
+  });
+
+  // Product selector change
+  container.querySelectorAll('[data-field="productId"]').forEach(function(el) {
+    el.addEventListener('change', function() {
       var rowId = el.getAttribute('data-id');
-      var field = el.getAttribute('data-field');
       var row = orderRows.find(function(r){ return r.id === rowId; });
       if (!row) return;
-      if (field === 'productId') row.productId = el.value;
-      else row[field] = parseFloat(el.value) || 0;
+      row.productId = el.value;
       saveOrder();
-      updateRowSummary(rowId);
+      updateGroupSummary(rowId);
     });
   });
+
+  // Size field input
+  container.querySelectorAll('[data-size-field]').forEach(function(el) {
+    el.addEventListener('input', function() {
+      var rowId = el.getAttribute('data-row-id');
+      var sizeId = el.getAttribute('data-size-id');
+      var field = el.getAttribute('data-size-field');
+      var row = orderRows.find(function(r){ return r.id === rowId; });
+      if (!row) return;
+      var sz = row.sizes.find(function(s){ return s.id === sizeId; });
+      if (!sz) return;
+      sz[field] = parseFloat(el.value) || 0;
+      saveOrder();
+      updateGroupSummary(rowId);
+    });
+  });
+
+  // Add size to existing group
+  container.querySelectorAll('[data-addsize]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-addsize');
+      var row = orderRows.find(function(r){ return r.id === rid; });
+      if (!row) return;
+      row.sizes.push({ id: id(), portions: 0, portionSize: 0 });
+      saveOrder();
+      renderOrderRows();
+    });
+  });
+
+  // Remove size sub-row
+  container.querySelectorAll('[data-rmsize]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var sid = btn.getAttribute('data-rmsize');
+      var rid = btn.getAttribute('data-row-id');
+      var row = orderRows.find(function(r){ return r.id === rid; });
+      if (!row) return;
+      row.sizes = row.sizes.filter(function(s){ return s.id !== sid; });
+      // If last size deleted, drop the whole group
+      if (row.sizes.length === 0) {
+        orderRows = orderRows.filter(function(r){ return r.id !== rid; });
+      }
+      saveOrder();
+      renderOrderRows();
+    });
+  });
+
+  // Group-level controls (delete/move/duplicate)
   container.querySelectorAll('[data-rmrow]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var rid = btn.getAttribute('data-rmrow');
@@ -1173,35 +1469,54 @@ function renderOrderRows() {
       var i = orderRows.findIndex(function(r){ return r.id === rid; });
       if (i < 0) return;
       var orig = orderRows[i];
-      orderRows.splice(i + 1, 0, {
+      var copy = {
         id: id(),
         productId: orig.productId,
-        portions: orig.portions,
-        portionSize: orig.portionSize
-      });
+        sizes: orig.sizes.map(function(s) {
+          return { id: id(), portions: s.portions, portionSize: s.portionSize };
+        })
+      };
+      orderRows.splice(i + 1, 0, copy);
       saveOrder();
       renderOrderRows();
     });
   });
 }
 
-function updateRowSummary(rowId) {
+function updateGroupSummary(rowId) {
   var row = orderRows.find(function(r){ return r.id === rowId; });
   if (!row) return;
   var p = products.find(function(x){ return x.id === row.productId; });
-  var el = document.getElementById('sum-' + rowId);
-  if (!el || !p) return;
-  var totalCooked = row.portions * row.portionSize;
-  if (totalCooked > 0) {
-    el.textContent = 'Row total cooked: ' + format(totalCooked) + ' ' + unitLabel(p.unit);
-  } else {
-    el.textContent = '';
+  if (!p) return;
+  var u = unitLabel(p.unit);
+  var totalCooked = 0;
+  var totalPortions = 0;
+  (row.sizes || []).forEach(function(sz) {
+    var c = sz.portions * sz.portionSize;
+    if (c > 0) { totalCooked += c; totalPortions += sz.portions; }
+    var sumEl = document.getElementById('size-sum-' + sz.id);
+    if (sumEl) {
+      if (c > 0) sumEl.textContent = sz.portions + ' × ' + format(sz.portionSize) + ' ' + u + ' = ' + format(c) + ' ' + u;
+      else sumEl.textContent = '';
+    }
+  });
+  var groupEl = document.getElementById('group-sum-' + rowId);
+  if (groupEl) {
+    if (totalCooked > 0) {
+      groupEl.textContent = 'Group total: ' + totalPortions + ' portions, ' + format(totalCooked) + ' ' + u + ' cooked';
+    } else {
+      groupEl.textContent = '';
+    }
   }
 }
 
 document.getElementById('addRowBtn').addEventListener('click', function() {
   if (products.length === 0) { toast('Set up products first'); return; }
-  orderRows.push({ id: id(), productId: products[0].id, portions: 0, portionSize: 0 });
+  orderRows.push({
+    id: id(),
+    productId: products[0].id,
+    sizes: [{ id: id(), portions: 0, portionSize: 0 }]
+  });
   saveOrder();
   renderOrderRows();
 });
@@ -1230,13 +1545,24 @@ function renderQuickAdd() {
       var pid = btn.getAttribute('data-quickadd');
       var p = products.find(function(x){ return x.id === pid; });
       if (!p) return;
-      orderRows.push({ id: id(), productId: pid, portions: 0, portionSize: 0 });
+      // If product already exists in the order, add a new empty size to that group
+      var existing = orderRows.find(function(r){ return r.productId === pid; });
+      if (existing) {
+        existing.sizes.push({ id: id(), portions: 0, portionSize: 0 });
+        toast('New size added to ' + p.name);
+      } else {
+        orderRows.push({
+          id: id(),
+          productId: pid,
+          sizes: [{ id: id(), portions: 0, portionSize: 0 }]
+        });
+        toast('Added: ' + p.name);
+      }
       saveOrder();
       calcSearch = '';
       document.getElementById('calcSearch').value = '';
       renderQuickAdd();
       renderOrderRows();
-      toast('Added: ' + p.name);
     });
   });
 }
@@ -1248,27 +1574,82 @@ document.getElementById('calcSearch').addEventListener('input', function(e) {
 });
 
 // ============ CALCULATION ============
+// Returns array of per-product totals. Each total includes:
+//  - aggregated raw/cooked across all sizes
+//  - sizeBreakdown[]: one entry per unique portionSize seen for this product
+//  - packaging+labor inputs (so renderResults can compute per-portion costs)
 function computeTotals() {
   var totals = {};
   orderRows.forEach(function(row) {
     var p = products.find(function(x){ return x.id === row.productId; });
     if (!p) return;
-    var cooked = row.portions * row.portionSize;
-    if (!(cooked > 0)) return;
+    var sizes = Array.isArray(row.sizes) ? row.sizes : [];
     var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
-    var raw = cooked * ratio;
-    if (!totals[p.id]) totals[p.id] = {
-      productId: p.id, name: p.name, unit: p.unit,
-      cooked: 0, raw: 0,
-      packSize: p.packSize || 0,
-      costPerUnit: p.costPerUnit || 0,
-      costMode: p.costMode || 'measure',
-      unitsPerPot: p.unitsPerPot || 0
-    };
-    totals[p.id].cooked += cooked;
-    totals[p.id].raw += raw;
+    sizes.forEach(function(sz) {
+      var cooked = sz.portions * sz.portionSize;
+      if (!(cooked > 0)) return;
+      var raw = cooked * ratio;
+      if (!totals[p.id]) totals[p.id] = {
+        productId: p.id, name: p.name, unit: p.unit,
+        cooked: 0, raw: 0,
+        portionsCount: 0,
+        packSize: p.packSize || 0,
+        costPerUnit: p.costPerUnit || 0,
+        costMode: p.costMode || 'measure',
+        unitsPerPot: p.unitsPerPot || 0,
+        packagingCost: p.packagingCost || 0,
+        laborHours: p.laborHours || 0,
+        laborWorkers: p.laborWorkers || 0,
+        laborRate: p.laborRate || 0,
+        sizeBreakdown: []
+      };
+      var t = totals[p.id];
+      t.cooked += cooked;
+      t.raw += raw;
+      t.portionsCount += sz.portions;
+      // Group by portionSize key
+      var key = String(sz.portionSize);
+      var existing = t.sizeBreakdown.find(function(b){ return b.key === key; });
+      if (existing) {
+        existing.portions += sz.portions;
+        existing.cooked += cooked;
+        existing.raw += raw;
+      } else {
+        t.sizeBreakdown.push({
+          key: key,
+          portionSize: sz.portionSize,
+          portions: sz.portions,
+          cooked: cooked,
+          raw: raw
+        });
+      }
+    });
   });
   return Object.keys(totals).map(function(k){ return totals[k]; });
+}
+
+function computeIngredientCost(t) {
+  if (!(t.costPerUnit > 0)) return { cost: 0, note: '' };
+  var u = unitLabel(t.unit);
+  var mode = t.costMode || 'measure';
+  if (mode === 'pack') {
+    if (t.packSize > 0) {
+      var packs = Math.ceil(t.raw / t.packSize);
+      return { cost: packs * t.costPerUnit, note: packs + ' × $' + t.costPerUnit + '/pack' };
+    }
+    return { cost: t.raw * t.costPerUnit, note: 'no pack size; charged per ' + u };
+  }
+  if (mode === 'piece') {
+    return { cost: t.raw * t.costPerUnit, note: format(t.raw) + ' × $' + t.costPerUnit + '/piece' };
+  }
+  return { cost: t.raw * t.costPerUnit, note: format(t.raw) + ' × $' + t.costPerUnit + '/' + u };
+}
+
+function computeLaborCost(t) {
+  if (!(t.laborHours > 0 && t.laborWorkers > 0 && t.laborRate > 0)) return { cost: 0, batches: 0 };
+  var batches = (t.unitsPerPot > 0) ? Math.ceil(t.cooked / t.unitsPerPot) : 1;
+  var cost = batches * t.laborHours * t.laborWorkers * t.laborRate;
+  return { cost: cost, batches: batches };
 }
 
 function renderResults(totalsArr) {
@@ -1280,11 +1661,14 @@ function renderResults(totalsArr) {
   var html = '<div class="results-card"><h3>✅ Raw Amounts to Cook</h3>';
   var orderTotalCost = 0;
   var hasAnyCost = false;
+  var perPortionLines = []; // collect across all products
+
   totalsArr.forEach(function(t) {
     var u = unitLabel(t.unit);
     var rawAlt = altDisplay(t.raw, t.unit);
     var cookedAlt = altDisplay(t.cooked, t.unit);
     var extras = [];
+
     if (t.packSize > 0) {
       var packs = Math.ceil(t.raw / t.packSize);
       var totalInPacks = packs * t.packSize;
@@ -1294,38 +1678,29 @@ function renderResults(totalsArr) {
       var pots = Math.ceil(t.cooked / t.unitsPerPot);
       extras.push('🍲 ' + pots + ' pot' + (pots !== 1 ? 's' : '') + '/tray' + (pots !== 1 ? 's' : '') + ' (' + format(t.unitsPerPot) + ' ' + escapeHtml(u) + ' each)');
     }
-    var lineCost = 0;
-    if (t.costPerUnit > 0) {
-      var mode = t.costMode || 'measure';
-      var costNote = '';
-      if (mode === 'pack') {
-        if (t.packSize > 0) {
-          var packsForCost = Math.ceil(t.raw / t.packSize);
-          lineCost = packsForCost * t.costPerUnit;
-          costNote = ' (' + packsForCost + ' × $' + t.costPerUnit + '/pack)';
-        } else {
-          // pack mode without packSize — fall back to per-measure to avoid silent zero
-          lineCost = t.raw * t.costPerUnit;
-          costNote = ' (no pack size set; charged per ' + escapeHtml(u) + ')';
-        }
-      } else if (mode === 'piece') {
-        lineCost = t.raw * t.costPerUnit;
-        costNote = ' (' + format(t.raw) + ' × $' + t.costPerUnit + '/piece)';
-      } else {
-        lineCost = t.raw * t.costPerUnit;
-        costNote = ' (' + format(t.raw) + ' × $' + t.costPerUnit + '/' + escapeHtml(u) + ')';
-      }
+
+    var ing = computeIngredientCost(t);
+    var packagingTotal = (t.packagingCost > 0) ? t.portionsCount * t.packagingCost : 0;
+    var lab = computeLaborCost(t);
+    var lineCost = ing.cost + packagingTotal + lab.cost;
+
+    if (ing.cost > 0)        extras.push('💰 Ingredient: $' + ing.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + ing.note + ')</span>');
+    if (packagingTotal > 0)  extras.push('📦 Packaging: $' + packagingTotal.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + t.portionsCount + ' × $' + t.packagingCost + ')</span>');
+    if (lab.cost > 0)        extras.push('👥 Labor: $' + lab.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + lab.batches + ' batch' + (lab.batches !== 1 ? 'es' : '') + ' × ' + format(t.laborHours) + 'h × ' + format(t.laborWorkers) + ' workers × $' + t.laborRate + '/h)</span>');
+    if (lineCost > 0) {
       orderTotalCost += lineCost;
       hasAnyCost = true;
-      extras.push('💰 $' + lineCost.toFixed(2) + '<span style="opacity:.7;font-weight:500;">' + costNote + '</span>');
+      extras.push('<strong>Subtotal: $' + lineCost.toFixed(2) + '</strong>');
     }
+
     var extrasHtml = extras.length ? '<div class="result-extra">' + extras.join('<br>') + '</div>' : '';
     html +=
       '<div class="result-line">' +
         '<div style="flex:1;min-width:0;">' +
           '<div class="result-name">' + escapeHtml(t.name) + '</div>' +
           '<div class="result-sub">Total cooked: ' + format(t.cooked) + ' ' + escapeHtml(u) +
-            (cookedAlt ? ' <span style="opacity:.7">(' + cookedAlt + ')</span>' : '') + '</div>' +
+            (cookedAlt ? ' <span style="opacity:.7">(' + cookedAlt + ')</span>' : '') +
+            ' · ' + t.portionsCount + ' portion' + (t.portionsCount !== 1 ? 's' : '') + '</div>' +
           extrasHtml +
         '</div>' +
         '<div style="text-align:right;">' +
@@ -1333,7 +1708,49 @@ function renderResults(totalsArr) {
           (rawAlt ? '<div class="result-alt">' + rawAlt + '</div>' : '') +
         '</div>' +
       '</div>';
+
+    // Per-portion-size cost breakdown (only when we have either ingredient or other cost)
+    if ((t.sizeBreakdown && t.sizeBreakdown.length) && lineCost > 0) {
+      // effective $ per cooked unit accounts for pack/piece rounding correctly
+      var effectiveIngPerCooked = (t.cooked > 0) ? ing.cost / t.cooked : 0;
+      var laborPerPortion = (t.portionsCount > 0) ? lab.cost / t.portionsCount : 0;
+      t.sizeBreakdown.forEach(function(b) {
+        var perPortionIng = b.portionSize * effectiveIngPerCooked;
+        var perPortionPkg = (t.packagingCost > 0) ? t.packagingCost : 0;
+        var perPortionLabor = laborPerPortion;
+        var perPortionTotal = perPortionIng + perPortionPkg + perPortionLabor;
+        var bits = [];
+        if (perPortionIng > 0)   bits.push('ing $' + perPortionIng.toFixed(2));
+        if (perPortionPkg > 0)   bits.push('pkg $' + perPortionPkg.toFixed(2));
+        if (perPortionLabor > 0) bits.push('labor $' + perPortionLabor.toFixed(2));
+        perPortionLines.push({
+          name: t.name,
+          portionSize: b.portionSize,
+          portions: b.portions,
+          unit: u,
+          total: perPortionTotal,
+          breakdown: bits.join(' + ')
+        });
+      });
+    }
   });
+
+  // Per-portion-size section
+  if (perPortionLines.length) {
+    html += '<div class="per-portion-section">' +
+              '<div class="per-portion-title">🧮 Cost per single portion</div>';
+    perPortionLines.forEach(function(line) {
+      html += '<div class="per-portion-line">' +
+                '<div style="flex:1;min-width:0;">' +
+                  '<div class="per-portion-name">' + escapeHtml(line.name) + ' · ' + format(line.portionSize) + ' ' + escapeHtml(line.unit) + ' <span style="opacity:.7;font-weight:500;">×' + line.portions + '</span></div>' +
+                  (line.breakdown ? '<div class="per-portion-breakdown">' + line.breakdown + '</div>' : '') +
+                '</div>' +
+                '<div class="per-portion-amount">$' + line.total.toFixed(2) + '</div>' +
+              '</div>';
+    });
+    html += '</div>';
+  }
+
   if (hasAnyCost) {
     html += '<div class="results-total-cost"><span>💰 Total order cost</span><span>$' + orderTotalCost.toFixed(2) + '</span></div>';
   }
@@ -1445,18 +1862,24 @@ function pushHistory(totals) {
         productId: row.productId,
         productName: p ? p.name : '(deleted)',
         unit: p ? p.unit : '',
-        portions: row.portions,
-        portionSize: row.portionSize
+        sizes: (row.sizes || []).filter(function(s){ return s.portions > 0 && s.portionSize > 0; })
+                                .map(function(s){ return { portions: s.portions, portionSize: s.portionSize }; })
       };
-    }).filter(function(r) { return r.portions > 0 && r.portionSize > 0; }),
+    }).filter(function(r) { return r.sizes.length > 0; }),
     totals: totals.map(function(t) {
       return {
         productId: t.productId, name: t.name, unit: t.unit,
         cooked: t.cooked, raw: t.raw,
+        portionsCount: t.portionsCount || 0,
         packSize: t.packSize || 0,
         costPerUnit: t.costPerUnit || 0,
         costMode: t.costMode || 'measure',
-        unitsPerPot: t.unitsPerPot || 0
+        unitsPerPot: t.unitsPerPot || 0,
+        packagingCost: t.packagingCost || 0,
+        laborHours: t.laborHours || 0,
+        laborWorkers: t.laborWorkers || 0,
+        laborRate: t.laborRate || 0,
+        sizeBreakdown: t.sizeBreakdown || []
       };
     })
   };
@@ -1532,11 +1955,20 @@ function loadHistoryEntry(hid) {
   orderRows = entry.rows.map(function(r) {
     var stillExists = products.some(function(p){ return p.id === r.productId; });
     if (!stillExists) return null;
+    // Backward-compat: old history entries had portions/portionSize at row level
+    if (Array.isArray(r.sizes)) {
+      return {
+        id: id(),
+        productId: r.productId,
+        sizes: r.sizes.map(function(s) {
+          return { id: id(), portions: s.portions, portionSize: s.portionSize };
+        })
+      };
+    }
     return {
       id: id(),
       productId: r.productId,
-      portions: r.portions,
-      portionSize: r.portionSize
+      sizes: [{ id: id(), portions: r.portions || 0, portionSize: r.portionSize || 0 }]
     };
   }).filter(Boolean);
   if (orderRows.length === 0) {
