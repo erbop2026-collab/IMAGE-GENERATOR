@@ -770,7 +770,7 @@
 
   <div class="card">
     <div class="card-title">🔍 Find / Quick-add</div>
-    <input type="text" id="calcSearch" placeholder="Type product or recipe name…" autocomplete="off">
+    <input type="text" id="calcSearch" placeholder="Type dish name…" autocomplete="off">
     <div id="quickAddList" class="quick-add-list"></div>
   </div>
 
@@ -778,8 +778,7 @@
     <div class="card-title">📋 Cooking Order</div>
     <div id="orderRows"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 16px;">
-      <button class="add-row-btn" id="addRowBtn" style="margin:0;">+ Add Product</button>
-      <button class="add-row-btn" id="addRecipeRowBtn" style="margin:0;">+ Add Recipe</button>
+      <button class="add-row-btn" id="addDishRowBtn" style="margin:0;">+ Add Dish to Order</button>
     </div>
     <div class="btn-row">
       <button class="btn-primary" id="calcBtn">Calculate Raw Amounts</button>
@@ -1387,15 +1386,7 @@ function loadState() {
     ];
     saveProducts();
   }
-  if (orderRows.length === 0) {
-    orderRows = [{
-      id: id(),
-      kind: 'product',
-      productId: products[0].id,
-      sizes: [{ id: id(), portions: 0, portionSize: 0 }]
-    }];
-    saveOrder();
-  }
+  // No auto-seed — orderRows starts empty, user clicks "+ Add Dish to Order".
 }
 function saveProducts() {
   localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
@@ -2219,12 +2210,12 @@ document.addEventListener('change', function(e) {
 // ============ ORDER ROWS (grouped: each row = one product with multiple sizes) ============
 function renderOrderRows() {
   var container = document.getElementById('orderRows');
-  if (products.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚙️</div><div>First, set up ingredients in the "Products" tab.</div></div>';
+  if (recipes.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍲</div><div>No dishes yet. Go to the <strong>⚙️ Products</strong> tab and click <strong>+ Add Dish</strong> to define your first one.</div></div>';
     return;
   }
   if (orderRows.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div>No rows. Tap "Add Row" below.</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div>No rows. Tap <strong>+ Add Dish to Order</strong> below.</div></div>';
     return;
   }
   container.innerHTML = '';
@@ -2252,7 +2243,7 @@ function renderOrderRows() {
 
       div.innerHTML =
         '<div class="row-header">' +
-          '<div class="row-header-text">🍲 Recipe #' + (idx+1) + '</div>' +
+          '<div class="row-header-text">🍲 Dish #' + (idx+1) + '</div>' +
           '<div class="row-controls">' +
             '<button class="btn-secondary btn-icon" data-mvup="' + row.id + '" title="Move up"' + (isFirst ? ' disabled' : '') + '>▲</button>' +
             '<button class="btn-secondary btn-icon" data-mvdn="' + row.id + '" title="Move down"' + (isLast ? ' disabled' : '') + '>▼</button>' +
@@ -2261,7 +2252,7 @@ function renderOrderRows() {
           '</div>' +
         '</div>' +
         '<div class="field">' +
-          '<label>Recipe</label>' +
+          '<label>Dish</label>' +
           '<select data-field="recipeId" data-id="' + row.id + '">' + recOpts + '</select>' +
         '</div>' +
         '<div class="field">' +
@@ -2499,20 +2490,8 @@ function updateGroupSummary(rowId) {
   }
 }
 
-document.getElementById('addRowBtn').addEventListener('click', function() {
-  if (products.length === 0) { toast('Set up ingredients first'); return; }
-  orderRows.push({
-    id: id(),
-    kind: 'product',
-    productId: products[0].id,
-    sizes: [{ id: id(), portions: 0, portionSize: 0 }]
-  });
-  saveOrder();
-  renderOrderRows();
-});
-
-document.getElementById('addRecipeRowBtn').addEventListener('click', function() {
-  if (recipes.length === 0) { toast('No recipes yet — create one in the Recipes tab'); return; }
+document.getElementById('addDishRowBtn').addEventListener('click', function() {
+  if (recipes.length === 0) { toast('No dishes yet — go to the ⚙️ Products tab and click "+ Add Dish" to create one'); return; }
   orderRows.push({
     id: id(),
     kind: 'recipe',

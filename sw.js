@@ -1,5 +1,5 @@
 // Service Worker for Kitchen Portion Calculator
-var CACHE_NAME = 'portion-calc-v2.5.2';
+var CACHE_NAME = 'portion-calc-v2.5.3';
 var URLS_TO_CACHE = [
   './',
   './index.html',
