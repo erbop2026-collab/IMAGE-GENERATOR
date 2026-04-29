@@ -769,7 +769,7 @@
 
   <div class="card">
     <div class="card-title">🔍 Find / Quick-add</div>
-    <input type="text" id="calcSearch" placeholder="Type ingredient or recipe name…" autocomplete="off">
+    <input type="text" id="calcSearch" placeholder="Type product or recipe name…" autocomplete="off">
     <div id="quickAddList" class="quick-add-list"></div>
   </div>
 
@@ -777,7 +777,7 @@
     <div class="card-title">📋 Cooking Order</div>
     <div id="orderRows"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 16px;">
-      <button class="add-row-btn" id="addRowBtn" style="margin:0;">+ Add Ingredient</button>
+      <button class="add-row-btn" id="addRowBtn" style="margin:0;">+ Add Product</button>
       <button class="add-row-btn" id="addRecipeRowBtn" style="margin:0;">+ Add Recipe</button>
     </div>
     <div class="btn-row">
@@ -836,11 +836,11 @@
 <!-- ============ TAB: INGREDIENTS ============ -->
 <section class="tab-content" id="tab-products">
   <div class="card">
-    <div class="card-title">➕ Add New Ingredient</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">An ingredient is a raw material with a raw → cooked conversion (e.g. rice, chicken, oil). Combine ingredients into a meal in the <strong>🍲 Recipes</strong> tab.</p>
+    <div class="card-title">➕ Add New Product</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A product has a raw → cooked conversion plus advanced fields (packaging, labor, pots). For simple priced raw materials use the <strong>🥕 Ingredients</strong> tab. Combine products into a meal in the <strong>🍲 Recipes</strong> tab.</p>
 
     <div class="field">
-      <label>Ingredient name</label>
+      <label>Product name</label>
       <input type="text" id="newProductName" placeholder="e.g. White rice">
     </div>
 
@@ -892,7 +892,7 @@
         <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Add one row per size. Name is optional. The app fills with the largest first.</div>
       </div>
       <div class="field">
-        <label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <label>Product cost ($) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
         <input type="number" id="newProductCost" placeholder="e.g. 1.20" step="any" min="0" inputmode="decimal">
         <select id="newProductCostMode" style="margin-top:6px;font-size:13px;padding:8px 10px;">
           <option value="measure">Per measurement unit (oz/lb/cup…)</option>
@@ -943,7 +943,7 @@
       </div>
     </div>
 
-    <button class="btn-primary" id="addProductBtn">Save Ingredient</button>
+    <button class="btn-primary" id="addProductBtn">Save Product</button>
   </div>
 
   <div class="card">
@@ -962,9 +962,9 @@ Pasta,oz,8,16"></textarea>
   </div>
 
   <div class="card">
-    <div class="card-title">📦 Ingredient List</div>
+    <div class="card-title">📦 Product List</div>
     <div class="search-row">
-      <input type="text" id="productSearch" placeholder="🔍 Search ingredients…" autocomplete="off">
+      <input type="text" id="productSearch" placeholder="🔍 Search products…" autocomplete="off">
       <select id="productSort">
         <option value="recent">Recent first</option>
         <option value="name">Name A→Z</option>
@@ -977,7 +977,7 @@ Pasta,oz,8,16"></textarea>
   <div class="card">
     <div class="card-title">🔄 Reverse Calc — How many portions?</div>
     <div class="field">
-      <label>Ingredient</label>
+      <label>Product</label>
       <select id="reverseProduct"></select>
     </div>
     <div class="row-grid">
@@ -990,7 +990,7 @@ Pasta,oz,8,16"></textarea>
         <input type="number" id="reversePortion" placeholder="e.g. 8" step="any" min="0" inputmode="decimal">
       </div>
     </div>
-    <div id="reverseResult" class="reverse-result empty">Pick an ingredient and enter amounts to see how many portions you get.</div>
+    <div id="reverseResult" class="reverse-result empty">Pick a product and enter amounts to see how many portions you get.</div>
   </div>
 </section>
 
@@ -1497,7 +1497,7 @@ function buildProductEditCard(p) {
           '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Name is optional. Largest size is filled first when planning.</div>' +
         '</div>' +
         '<div class="field">' +
-          '<label>Ingredient cost ($) <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
+          '<label>Product cost ($) <span style="color:var(--text-muted);font-weight:400;">(opt)</span></label>' +
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="costPerUnit" data-eid="' + p.id + '" value="' + costVal + '">' +
           '<select data-edit-field="costMode" data-eid="' + p.id + '" style="margin-top:6px;font-size:13px;padding:8px 10px;">' + costModeOpts + '</select>' +
         '</div>' +
@@ -2090,7 +2090,7 @@ function renderOrderRows() {
 
     div.innerHTML =
       '<div class="row-header">' +
-        '<div class="row-header-text">Ingredient #' + (idx+1) + '</div>' +
+        '<div class="row-header-text">Product #' + (idx+1) + '</div>' +
         '<div class="row-controls">' +
           '<button class="btn-secondary btn-icon" data-mvup="' + row.id + '" title="Move up"' + (isFirst ? ' disabled' : '') + '>▲</button>' +
           '<button class="btn-secondary btn-icon" data-mvdn="' + row.id + '" title="Move down"' + (isLast ? ' disabled' : '') + '>▼</button>' +
@@ -2099,11 +2099,11 @@ function renderOrderRows() {
         '</div>' +
       '</div>' +
       '<div class="field">' +
-        '<label>Ingredient</label>' +
+        '<label>Product</label>' +
         '<select data-field="productId" data-id="' + row.id + '">' + options + '</select>' +
       '</div>' +
       sizesHtml +
-      '<button class="add-size-btn" data-addsize="' + row.id + '">+ Add another size for this ingredient</button>' +
+      '<button class="add-size-btn" data-addsize="' + row.id + '">+ Add another size for this product</button>' +
       '<div class="order-group-totals" id="group-sum-' + row.id + '"></div>';
 
     container.appendChild(div);
@@ -2714,7 +2714,7 @@ function renderReverseResult() {
   var p = products.find(function(x){ return x.id === pid; });
   if (!p || !(rawAmt > 0) || !(portionSize > 0)) {
     box.className = 'reverse-result empty';
-    box.textContent = 'Pick an ingredient and enter amounts to see how many portions you get.';
+    box.textContent = 'Pick a product and enter amounts to see how many portions you get.';
     return;
   }
   var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
