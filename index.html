@@ -1,2329 +1,743 @@
-<!--
-AI CATALOG STUDIO v2.0.0
-Last Updated: 2026-03-21
-Standalone AI product image generator powered by FAL API
-
-EMBED: <iframe src="index.html?embed=true"></iframe>
--->
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="AI Catalog Studio">
-    <meta name="theme-color" content="#7c3aed">
-    <meta name="description" content="AI Catalog Studio - Professional product image generation with AI">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <title>AI Catalog Studio</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #f5f5f7; --bg-elevated: #ffffff;
-            --card: #ffffff; --card-hover: #fafafa;
-            --primary: #7c3aed; --primary-light: #7c3aed; --primary-dim: rgba(124,58,237,0.08);
-            --accent: #7c3aed; --accent-light: #c4b5fd; --accent-hover: #6d28d9;
-            --text: #1a1a2e; --text-secondary: #4a4a5a; --text-muted: #8a8a9a;
-            --border: #e2e2e8; --border-light: #d0d0d8;
-            --success: #16a34a; --success-bg: #ecfdf5;
-            --error: #dc2626; --error-bg: #fef2f2;
-            --warning: #ca8a04; --warning-bg: #fefce8;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-            --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-            --radius: 12px; --radius-sm: 8px;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg);
-            min-height: 100vh;
-            color: var(--text);
-            -webkit-font-smoothing: antialiased;
-            direction: rtl;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Kitchen Portion Calculator</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --primary: #0f766e;
+    --primary-dark: #115e59;
+    --primary-light: #ccfbf1;
+    --accent: #f59e0b;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.04);
+  }
+  html, body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  body {
+    padding-bottom: 80px;
+    padding-top: env(safe-area-inset-top);
+  }
+  header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 18px 16px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  header .subtitle {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 60px;
+    z-index: 40;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .tab-content {
+    display: none;
+    padding: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .tab-content.active { display: block; }
 
-        .top-bar.hidden { display: none; }
-        /* ═══ TOP BAR ═══ */
-        .top-bar {
-            background: var(--bg-elevated);
-            border-bottom: 1px solid var(--border);
-            padding: 14px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .top-bar-right { display: flex; align-items: center; gap: 12px; }
-        .top-bar-brand { display: flex; align-items: center; gap: 12px; }
-        .top-bar-logo {
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, var(--primary), #a855f7);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 15px; color: var(--primary); font-weight: 700;
-        }
-        .top-bar h1 { font-size: 18px; color: var(--text); font-weight: 600; }
-        .top-bar-subtitle { font-size: 10px; color: var(--text-muted); letter-spacing: 1.5px; }
-        .top-bar-actions { display: flex; gap: 8px; align-items: center; }
-        .icon-btn {
-            display: flex; align-items: center; gap: 6px;
-            padding: 8px 14px; border-radius: 10px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text-secondary); font-size: 13px; font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer; transition: all 0.2s; white-space: nowrap;
-        }
-        .icon-btn:hover { background: var(--border); color: var(--text); }
-        .icon-btn.round { padding: 8px 12px; }
-        .nav-link {
-            color: var(--accent-light); text-decoration: none;
-            font-size: 12px; font-weight: 500;
-            display: flex; align-items: center; gap: 4px;
-        }
-        .nav-link:hover { color: white; }
+  .card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  input, select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(15,118,110,0.15);
+  }
+  .row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  button {
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: transform 0.1s, opacity 0.15s, background 0.15s;
+  }
+  button:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    padding: 14px 20px;
+    font-size: 16px;
+    width: 100%;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    padding: 8px;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  .product-item, .order-row {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .product-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .product-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .product-detail {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+  .product-ratio-badge {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+  .results-card {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border-radius: 14px;
+    padding: 18px;
+    margin-top: 16px;
+    box-shadow: var(--shadow-lg);
+  }
+  .results-card h3 {
+    font-size: 18px;
+    margin-bottom: 14px;
+    font-weight: 700;
+  }
+  .result-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    font-size: 15px;
+    gap: 12px;
+  }
+  .result-line:last-child { border-bottom: none; }
+  .result-name { font-weight: 600; }
+  .result-amount {
+    font-weight: 700;
+    font-size: 17px;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .result-sub {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  .result-alt {
+    font-size: 11px;
+    opacity: 0.85;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .row-header-text {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .add-row-btn {
+    background: white;
+    border: 2px dashed var(--primary);
+    color: var(--primary);
+    width: 100%;
+    padding: 14px;
+    margin: 8px 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .order-summary {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .install-banner {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: var(--primary);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 100;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .install-banner button {
+    background: white;
+    color: var(--primary);
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  .install-banner .close-btn {
+    background: transparent;
+    color: white;
+    padding: 4px 8px;
+    font-size: 18px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.3s;
+    z-index: 200;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
 
-        /* ═══ CONTAINER ═══ */
-        .container { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
-
-        /* ═══ SEARCH & ADD BAR ═══ */
-        .action-bar {
-            display: flex; gap: 10px; margin-bottom: 20px;
-            flex-wrap: wrap; align-items: center;
-        }
-        .search-box {
-            flex: 1; min-width: 200px;
-            position: relative;
-        }
-        .search-input {
-            width: 100%; padding: 12px 16px 12px 40px;
-            border: 1px solid var(--border); border-radius: var(--radius);
-            font-size: 14px; font-family: 'Inter', sans-serif;
-            background: var(--bg-elevated); color: var(--text);
-        }
-        .search-input::placeholder { color: var(--text-muted); }
-        .search-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
-        .search-icon {
-            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-            color: var(--text-muted); font-size: 16px; pointer-events: none;
-        }
-        .btn-add {
-            padding: 12px 20px;
-            background: var(--accent); color: white; border: none;
-            border-radius: var(--radius); font-size: 14px; font-weight: 700;
-            font-family: 'Inter', sans-serif; cursor: pointer;
-            display: flex; align-items: center; gap: 6px;
-            transition: background 0.2s;
-        }
-        .btn-add:hover { background: var(--accent-hover); }
-        .action-buttons { display: flex; gap: 8px; }
-        .btn-action {
-            padding: 10px 16px;
-            background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border);
-            border-radius: var(--radius); font-size: 13px; font-weight: 600;
-            font-family: 'Inter', sans-serif; cursor: pointer;
-            display: flex; align-items: center; gap: 6px;
-            transition: all 0.2s;
-        }
-        .btn-action:hover { border-color: var(--primary); color: var(--text); background: var(--card); }
-
-        /* ═══ STATS BAR ═══ */
-        .stats-bar {
-            display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
-        }
-        .stat-chip {
-            padding: 6px 14px; background: var(--card);
-            border: 1px solid var(--border); border-radius: 20px;
-            font-size: 12px; font-weight: 600; color: var(--text-muted);
-        }
-        .stat-chip span { color: var(--primary-light); font-weight: 600; }
-
-        /* ═══ PRODUCT GRID ═══ */
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 16px;
-        }
-        .empty-state {
-            grid-column: 1 / -1;
-            text-align: center; padding: 80px 20px;
-            color: var(--text-muted);
-        }
-        .empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.4; }
-        .empty-state h3 { color: var(--text-secondary); margin-bottom: 8px; font-size: 20px; font-weight: 600; }
-        .empty-state p { font-size: 14px; line-height: 1.6; }
-
-        /* ═══ PRODUCT CARD ═══ */
-        .catalog-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-            transition: box-shadow 0.2s, transform 0.15s;
-            position: relative;
-        }
-        .catalog-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-        .catalog-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
-        .catalog-card.processing .card-image::after {
-            content: ''; position: absolute; inset: 0;
-            background: rgba(255,255,255,0.7);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .card-select {
-            position: absolute; top: 8px; right: 8px; z-index: 5;
-        }
-        .product-checkbox {
-            width: 20px; height: 20px; cursor: pointer;
-            accent-color: var(--accent);
-        }
-        .card-image {
-            width: 100%; aspect-ratio: 1; background: var(--bg-elevated);
-            display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
-        }
-        .card-image img {
-            width: 100%; height: 100%; object-fit: cover;
-        }
-        .card-placeholder {
-            font-size: 48px; opacity: 0.2;
-        }
-        .card-status {
-            position: absolute; top: 8px; left: 8px;
-            padding: 3px 10px; border-radius: 20px;
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-        }
-        .status-draft { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
-        .status-processing { background: var(--warning-bg); color: var(--warning); }
-        .status-ready { background: var(--success-bg); color: var(--success); }
-        .status-error { background: var(--error-bg); color: var(--error); }
-        .card-spinner {
-            position: absolute; inset: 0;
-            background: rgba(255,255,255,0.8);
-            display: none; align-items: center; justify-content: center;
-        }
-        .card-spinner.show { display: flex; }
-        .spinner {
-            width: 36px; height: 36px;
-            border: 3px solid var(--border); border-top-color: var(--accent);
-            border-radius: 50%; animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .card-info { padding: 12px; }
-        .card-name {
-            font-weight: 600; font-size: 14px; color: var(--text);
-            margin-bottom: 4px; min-height: 20px;
-            outline: none; border-bottom: 1px solid transparent;
-            transition: border-color 0.2s;
-        }
-        .card-name:focus, .card-name.editing {
-            border-bottom-color: var(--accent);
-        }
-        .card-desc {
-            font-size: 12px; color: var(--text-muted);
-            min-height: 16px; outline: none;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.2s;
-        }
-        .card-desc:focus, .card-desc.editing {
-            border-bottom-color: var(--accent);
-        }
-        .card-actions {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 4px; padding: 0 8px 8px;
-        }
-        .ai-btn {
-            padding: 6px 4px;
-            border: 1px solid var(--border); border-radius: 6px;
-            background: var(--bg); color: var(--text);
-            font-size: 11px; font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer; transition: all 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 3px;
-        }
-        .ai-btn:hover { border-color: var(--primary); color: var(--text); background: var(--primary-dim); }
-        .ai-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .btn-generate:hover { background: rgba(124,58,237,0.12); border-color: #7c3aed; }
-        .btn-template:hover { background: rgba(59,130,246,0.12); border-color: #3b82f6; }
-        .btn-isolate:hover { background: rgba(34,197,94,0.12); border-color: #22c55e; }
-        .btn-studio:hover { background: rgba(249,115,22,0.12); border-color: #f97316; }
-        .card-delete {
-            position: absolute; top: 8px; left: 8px;
-            width: 28px; height: 28px;
-            background: rgba(0,0,0,0.5); color: white;
-            border: none; border-radius: 50%;
-            font-size: 14px; cursor: pointer;
-            display: none; align-items: center; justify-content: center;
-            transition: background 0.2s; z-index: 5;
-        }
-        .catalog-card:hover .card-delete { display: flex; }
-        .card-delete:hover { background: var(--error); }
-
-        /* ═══ FLOATING TOOLBAR ═══ */
-        .floating-toolbar {
-            position: fixed; bottom: -80px; left: 50%;
-            transform: translateX(-50%);
-            background: var(--card); color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 16px; padding: 12px 24px;
-            display: flex; align-items: center; gap: 12px;
-            box-shadow: var(--shadow-lg);
-            transition: bottom 0.3s ease; z-index: 1000;
-        }
-        .floating-toolbar.visible { bottom: 24px; }
-        .toolbar-count {
-            font-size: 13px; font-weight: 700;
-            padding: 4px 12px; background: var(--accent);
-            border-radius: 20px; white-space: nowrap;
-        }
-        .toolbar-btn {
-            padding: 8px 16px; border-radius: 10px;
-            border: 1px solid var(--border);
-            background: transparent; color: var(--text-secondary);
-            font-size: 12px; font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer; transition: background 0.2s;
-            white-space: nowrap;
-        }
-        .toolbar-btn:hover { background: var(--primary-dim); color: var(--text); }
-        .toolbar-btn.danger { border-color: var(--error); color: var(--error); }
-        .toolbar-btn.danger:hover { background: var(--error-bg); }
-        .toolbar-divider { width: 1px; height: 24px; background: var(--border); }
-
-        /* ═══ MODALS ═══ */
-        .modal-overlay {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.4); z-index: 2000; backdrop-filter: blur(4px);
-            overflow-y: auto;
-        }
-        .modal-overlay.show { display: block; }
-        .modal {
-            background: var(--card); max-width: 500px;
-            margin: 60px auto 40px; border-radius: var(--radius);
-            box-shadow: var(--shadow-lg); overflow: hidden;
-        }
-        .modal {
-            border: 1px solid var(--border);
-        }
-        .modal-header {
-            background: var(--bg-elevated); padding: 18px 24px; border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .modal-header h2 { color: var(--text); font-size: 16px; font-weight: 600; }
-        .modal-close {
-            width: 32px; height: 32px; border-radius: 8px;
-            background: var(--bg); border: 1px solid var(--border);
-            color: white; font-size: 18px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .modal-body { padding: 24px; }
-        .form-group { margin-bottom: 16px; }
-        .form-label {
-            display: block; font-size: 12px; font-weight: 600;
-            color: var(--text-muted); margin-bottom: 6px;
-        }
-        .form-input {
-            width: 100%; padding: 11px 14px;
-            border: 1px solid var(--border); border-radius: var(--radius-sm);
-            font-size: 14px; font-family: 'Inter', sans-serif;
-            color: var(--text); background: var(--bg-elevated);
-        }
-        .form-input::placeholder { color: var(--text-muted); }
-        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
-        .btn-primary {
-            display: block; width: 100%; padding: 14px;
-            background: var(--accent); color: white; border: none;
-            border-radius: var(--radius); font-size: 15px; font-weight: 700;
-            font-family: 'Inter', sans-serif; cursor: pointer;
-            text-align: center;
-        }
-        .btn-primary:hover { background: var(--accent-hover); }
-
-        /* ═══ PROGRESS MODAL ═══ */
-        .progress-content { text-align: center; padding: 20px 0; }
-        .progress-content .spinner { width: 48px; height: 48px; margin: 0 auto 20px; }
-        .progress-text { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
-        .progress-track { width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
-        .progress-fill { height: 100%; background: var(--accent); width: 0%; border-radius: 4px; transition: width 0.3s; }
-        .progress-label { font-size: 12px; color: var(--text-muted); }
-        .btn-stop {
-            margin-top: 20px; padding: 10px 24px;
-            background: var(--error); color: white; border: none;
-            border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
-            font-family: 'Inter', sans-serif; cursor: pointer;
-        }
-
-        /* ═══ IMAGE ZOOM MODAL ═══ */
-        .zoom-overlay {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.85); z-index: 3000;
-            align-items: center; justify-content: center; cursor: pointer;
-        }
-        .zoom-overlay.show { display: flex; }
-        .zoom-overlay img {
-            max-width: 90vw; max-height: 90vh;
-            border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5);
-        }
-
-        /* ═══ TOAST ═══ */
-        .toast-container {
-            position: fixed; top: 80px; left: 50%;
-            transform: translateX(-50%); z-index: 5000;
-            display: flex; flex-direction: column; gap: 8px;
-            pointer-events: none;
-        }
-        .toast {
-            padding: 12px 20px; border-radius: var(--radius-sm);
-            font-size: 13px; font-weight: 600;
-            box-shadow: var(--shadow-md); pointer-events: auto;
-            animation: toastIn 0.3s ease;
-            max-width: 400px;
-        }
-        .toast.success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
-        .toast.error { background: var(--error-bg); color: var(--error); border: 1px solid rgba(239,68,68,0.3); }
-        .toast.info { background: var(--primary-dim); color: var(--primary-light); border: 1px solid rgba(124,58,237,0.3); }
-        @keyframes toastIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
-        .toast.removing { animation: toastOut 0.3s ease forwards; }
-        @keyframes toastOut { to { opacity:0; transform:translateY(-10px); } }
-
-        /* ═══ FILE DROP ZONE ═══ */
-        .drop-zone {
-            border: 2px dashed var(--border); border-radius: var(--radius);
-            padding: 30px; text-align: center; cursor: pointer;
-            transition: all 0.2s; background: var(--bg-elevated);
-        }
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--primary); background: var(--primary-dim);
-        }
-        .drop-zone-icon { font-size: 36px; opacity: 0.4; margin-bottom: 8px; }
-        .drop-zone-text { font-size: 13px; color: var(--text-muted); }
-
-        /* ═══ RESPONSIVE ═══ */
-        @media (max-width: 600px) {
-            .container { padding: 12px 10px 120px; }
-            .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-            .action-bar { flex-direction: column; }
-            .search-box { min-width: 100%; }
-            .floating-toolbar { padding: 10px 16px; gap: 8px; border-radius: 12px; }
-            .toolbar-btn { padding: 6px 12px; font-size: 11px; }
-            .top-bar h1 { font-size: 16px; }
-            .ai-btn { font-size: 10px; padding: 5px 3px; }
-        }
-    </style>
+  @media (max-width: 380px) {
+    .row-grid-3 { grid-template-columns: 1fr; }
+    .row-grid { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
-    <!-- ═══ TOP BAR ═══ -->
-    <div class="top-bar" id="topBar">
-        <div class="top-bar-right">
-            <div class="top-bar-brand">
-                <div class="top-bar-logo">AI</div>
-                <div>
-                    <h1>AI Catalog Studio</h1>
-                    <div class="top-bar-subtitle">PRODUCT IMAGE GENERATOR</div>
-                </div>
-            </div>
-        </div>
-        <div class="top-bar-actions">
-            <button class="icon-btn round" onclick="toggleLang()" id="langBtn" title="Language">EN</button>
-            <button class="icon-btn round" onclick="showSettings()" title="Settings">&#9881;</button>
-            <button class="icon-btn" onclick="showImportExport()" id="btnExport">&#128229; <span data-i18n="export">&#1497;&#1497;&#1510;&#1493;&#1488;</span></button>
-        </div>
+
+<header>
+  <h1>🍳 Kitchen Portion Calculator</h1>
+  <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
+</header>
+
+<nav class="tabs">
+  <div class="tab active" data-tab="calc">📊 Calculate</div>
+  <div class="tab" data-tab="products">⚙️ Products</div>
+</nav>
+
+<!-- ============ TAB: CALCULATOR ============ -->
+<section class="tab-content active" id="tab-calc">
+  <div class="card">
+    <div class="card-title">📋 Cooking Order</div>
+    <div id="orderRows"></div>
+    <button class="add-row-btn" id="addRowBtn">+ Add Row</button>
+    <button class="btn-primary" id="calcBtn">Calculate Raw Amounts</button>
+  </div>
+
+  <div id="results"></div>
+</section>
+
+<!-- ============ TAB: PRODUCTS ============ -->
+<section class="tab-content" id="tab-products">
+  <div class="card">
+    <div class="card-title">➕ Add New Product</div>
+    <div class="field">
+      <label>Product name</label>
+      <input type="text" id="newProductName" placeholder="e.g. White rice">
     </div>
-
-    <!-- ═══ MAIN CONTAINER ═══ -->
-    <div class="container">
-        <!-- ACTION BAR -->
-        <div class="action-bar">
-            <div class="search-box">
-                <span class="search-icon">&#128269;</span>
-                <input type="text" class="search-input" id="searchInput" placeholder="&#1495;&#1508;&#1513; &#1502;&#1493;&#1510;&#1512;&#1497;&#1501;..." oninput="filterProducts()">
-            </div>
-            <button class="btn-add" onclick="addNewProduct()">+ &#1502;&#1493;&#1510;&#1512; &#1495;&#1491;&#1513;</button>
-            <div class="action-buttons">
-                <button class="btn-action" onclick="selectAll()">&#9745; &#1489;&#1495;&#1512; &#1492;&#1499;&#1500;</button>
-                <button class="btn-action" onclick="importExcel()">&#128196; &#1497;&#1497;&#1489;&#1493;&#1488; Excel</button>
-            </div>
-        </div>
-
-        <!-- STATS BAR -->
-        <div class="stats-bar" id="statsBar">
-            <div class="stat-chip">&#1505;&#1492;&quot;&#1499;: <span id="statTotal">0</span></div>
-            <div class="stat-chip">&#1502;&#1493;&#1499;&#1504;&#1497;&#1501;: <span id="statReady">0</span></div>
-            <div class="stat-chip">&#1496;&#1497;&#1493;&#1496;&#1493;&#1514;: <span id="statDraft">0</span></div>
-            <div class="stat-chip">&#1513;&#1490;&#1497;&#1488;&#1493;&#1514;: <span id="statError">0</span></div>
-        </div>
-
-        <!-- PRODUCT GRID -->
-        <div class="product-grid" id="productGrid">
-            <div class="empty-state" id="emptyState">
-                <div class="empty-state-icon">&#128247;</div>
-                <h3>&#1488;&#1497;&#1503; &#1502;&#1493;&#1510;&#1512;&#1497;&#1501; &#1506;&#1491;&#1497;&#1497;&#1503;</h3>
-                <p>&#1500;&#1495;&#1509; &#1506;&#1500; &quot;&#1502;&#1493;&#1510;&#1512; &#1495;&#1491;&#1513;&quot; &#1488;&#1493; &#1497;&#1497;&#1489;&#1488; &#1511;&#1493;&#1489;&#1509; Excel &#1499;&#1491;&#1497; &#1500;&#1492;&#1514;&#1495;&#1497;&#1500;</p>
-            </div>
-        </div>
+    <div class="field">
+      <label>Unit type</label>
+      <select id="newProductUnit">
+        <optgroup label="Weight">
+          <option value="oz">ounces (oz)</option>
+          <option value="lb">pounds (lb)</option>
+        </optgroup>
+        <optgroup label="Volume">
+          <option value="cup">cups</option>
+          <option value="floz">fluid ounces (fl oz)</option>
+          <option value="qt">quarts (qt)</option>
+          <option value="gal">gallons (gal)</option>
+        </optgroup>
+        <optgroup label="Count">
+          <option value="ct">units (count)</option>
+        </optgroup>
+      </select>
     </div>
-
-    <!-- ═══ FLOATING TOOLBAR ═══ -->
-    <div class="floating-toolbar" id="floatingToolbar">
-        <div class="toolbar-count" id="toolbarCount">0 &#1504;&#1489;&#1495;&#1512;&#1493;</div>
-        <div class="toolbar-divider"></div>
-        <button class="toolbar-btn" onclick="bulkGenerate()">&#10024; &#1497;&#1510;&#1497;&#1512;&#1492; &#1500;&#1499;&#1493;&#1500;&#1501;</button>
-        <button class="toolbar-btn" onclick="bulkTemplate()">&#128203; &#1514;&#1489;&#1504;&#1497;&#1514;</button>
-        <button class="toolbar-btn" onclick="bulkIsolate()">&#9986; &#1489;&#1497;&#1491;&#1493;&#1491;</button>
-        <button class="toolbar-btn" onclick="bulkStudio()">&#128247; &#1505;&#1496;&#1493;&#1491;&#1497;&#1493;</button>
-        <div class="toolbar-divider"></div>
-        <button class="toolbar-btn danger" onclick="bulkDelete()">&#128465; &#1502;&#1495;&#1511;</button>
-        <button class="toolbar-btn" onclick="deselectAll()">&#10005;</button>
+    <div class="row-grid">
+      <div class="field">
+        <label>Raw amount</label>
+        <input type="number" id="newProductRaw" placeholder="12" step="any" min="0" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Cooked amount</label>
+        <input type="number" id="newProductCooked" placeholder="36" step="any" min="0" inputmode="decimal">
+      </div>
     </div>
-
-    <!-- ═══ SETTINGS MODAL ═══ -->
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal" style="max-width:560px;">
-            <div class="modal-header">
-                <h2>&#9881; AI Providers</h2>
-                <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
-            </div>
-            <div class="modal-body" style="padding:16px;">
-                <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;padding:10px 14px;background:var(--primary-dim);border-radius:8px;border:1px solid rgba(124,58,237,0.2);color:var(--primary-light);">
-                    Auto-fallback: the app tries each provider in order. Add keys to enable more providers.
-                </div>
-                <div id="providersList"></div>
-                <button class="btn-primary" style="margin-top:16px;" onclick="saveAllSettings()">Save All</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ PROGRESS MODAL ═══ -->
-    <div class="modal-overlay" id="progressModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>&#9889; &#1502;&#1506;&#1489;&#1491; &#1514;&#1502;&#1493;&#1504;&#1493;&#1514;...</h2>
-                <button class="modal-close" onclick="cancelBulkOperation()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="progress-content">
-                    <div class="spinner"></div>
-                    <div class="progress-text" id="progressText">&#1502;&#1506;&#1489;&#1491; &#1502;&#1493;&#1510;&#1512; 1 &#1502;&#1514;&#1493;&#1498; 10...</div>
-                    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-                    <div class="progress-label" id="progressLabel">0%</div>
-                    <button class="btn-stop" onclick="cancelBulkOperation()">&#9724; &#1506;&#1510;&#1493;&#1512;</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ IMPORT/EXPORT MODAL ═══ -->
-    <div class="modal-overlay" id="importExportModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>&#128229; &#1497;&#1497;&#1489;&#1493;&#1488; / &#1497;&#1497;&#1510;&#1493;&#1488;</h2>
-                <button class="modal-close" onclick="closeModal('importExportModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary)">&#1497;&#1497;&#1489;&#1493;&#1488;</h3>
-                <div class="drop-zone" id="dropZone" onclick="document.getElementById('excelFileInput').click()">
-                    <div class="drop-zone-icon">&#128196;</div>
-                    <div class="drop-zone-text">&#1490;&#1512;&#1493;&#1512; &#1511;&#1493;&#1489;&#1509; Excel &#1500;&#1499;&#1488;&#1503; &#1488;&#1493; &#1500;&#1495;&#1509; &#1500;&#1489;&#1495;&#1497;&#1512;&#1492;</div>
-                </div>
-                <div id="importPreview" style="display:none;margin-top:16px;">
-                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;">&#1502;&#1497;&#1508;&#1493;&#1497; &#1506;&#1502;&#1493;&#1491;&#1493;&#1514;:</div>
-                    <div id="columnMapping"></div>
-                    <button class="btn-primary" style="margin-top:12px;" onclick="confirmImport()">&#1497;&#1497;&#1489;&#1488; &#1502;&#1493;&#1510;&#1512;&#1497;&#1501;</button>
-                </div>
-                <hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">
-                <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary)">&#1497;&#1497;&#1510;&#1493;&#1488;</h3>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn-action" style="flex:1;" onclick="exportExcel()">&#128196; &#1497;&#1497;&#1510;&#1493;&#1488; Excel</button>
-                    <button class="btn-action" style="flex:1;" onclick="exportZip()">&#128230; &#1497;&#1497;&#1510;&#1493;&#1488; ZIP</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ ADD PRODUCT MODAL ═══ -->
-    <div class="modal-overlay" id="addProductModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>+ &#1502;&#1493;&#1510;&#1512; &#1495;&#1491;&#1513;</h2>
-                <button class="modal-close" onclick="closeModal('addProductModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">&#1513;&#1501; &#1492;&#1502;&#1493;&#1510;&#1512;</label>
-                    <input type="text" class="form-input" id="newProductName" placeholder="&#1500;&#1491;&#1493;&#1490;&#1502;&#1492;: &#1488;&#1508;&#1512;&#1505;&#1511; &#1502;&#1513;&#1493;&#1502;&#1512;">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">&#1514;&#1497;&#1488;&#1493;&#1512; (&#1488;&#1493;&#1508;&#1510;&#1497;&#1493;&#1504;&#1500;&#1497;)</label>
-                    <input type="text" class="form-input" id="newProductDesc" placeholder="&#1508;&#1495;&#1497;&#1514; 500 &#1490;&#1512;&#1501;, &#1505;&#1497;&#1512;&#1493;&#1508; &#1511;&#1500;">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">&#1514;&#1502;&#1493;&#1504;&#1492; (&#1488;&#1493;&#1508;&#1510;&#1497;&#1493;&#1504;&#1500;&#1497;)</label>
-                    <input type="file" class="form-input" id="newProductImage" accept="image/*">
-                </div>
-                <button class="btn-primary" onclick="confirmAddProduct()">&#1492;&#1493;&#1505;&#1507; &#1502;&#1493;&#1510;&#1512;</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ TEMPLATE UPLOAD MODAL ═══ -->
-    <div class="modal-overlay" id="templateModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>&#128203; &#1489;&#1495;&#1512; &#1514;&#1502;&#1493;&#1504;&#1514; &#1514;&#1489;&#1504;&#1497;&#1514;</h2>
-                <button class="modal-close" onclick="closeModal('templateModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">&#1489;&#1495;&#1512; &#1514;&#1502;&#1493;&#1504;&#1492; &#1513;&#1500; &#1502;&#1493;&#1510;&#1512; &#1511;&#1497;&#1497;&#1501; - &#1492;-AI &#1497;&#1513;&#1502;&#1493;&#1512; &#1506;&#1500; &#1492;&#1510;&#1493;&#1512;&#1492;, &#1497;&#1495;&#1500;&#1497;&#1507; &#1502;&#1497;&#1514;&#1493;&#1490; &#1493;&#1497;&#1505;&#1497;&#1512; &#1512;&#1511;&#1506;</p>
-                <div class="drop-zone" onclick="document.getElementById('templateFileInput').click()">
-                    <div class="drop-zone-icon">&#128444;</div>
-                    <div class="drop-zone-text">&#1490;&#1512;&#1493;&#1512; &#1514;&#1502;&#1493;&#1504;&#1492; &#1500;&#1499;&#1488;&#1503; &#1488;&#1493; &#1500;&#1495;&#1509; &#1500;&#1489;&#1495;&#1497;&#1512;&#1492;</div>
-                </div>
-                <input type="file" id="templateFileInput" accept="image/*" style="display:none" onchange="handleTemplateUpload(this.files[0])">
-                <div id="templatePreview" style="display:none;margin-top:12px;text-align:center;">
-                    <img id="templatePreviewImg" style="max-width:200px;border-radius:8px;border:1px solid var(--border);">
-                    <button class="btn-primary" style="margin-top:12px;" onclick="confirmTemplate()">&#1492;&#1495;&#1500; &#1514;&#1489;&#1504;&#1497;&#1514;</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ IMAGE ZOOM ═══ -->
-    <div class="zoom-overlay" id="zoomOverlay" onclick="closeZoom()">
-        <img id="zoomImage" src="" alt="Zoomed product">
-    </div>
-
-    <!-- ═══ TOAST CONTAINER ═══ -->
-    <div class="toast-container" id="toastContainer"></div>
-
-    <!-- ═══ HIDDEN FILE INPUT FOR SINGLE TEMPLATE ═══ -->
-    <input type="file" id="singleTemplateInput" accept="image/*" style="display:none">
-    <input type="file" id="singleSourceInput" accept="image/*" style="display:none">
-    <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelImport(this.files[0])">
-
-    <!-- ═══ CDN LIBRARIES ═══ -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
-    <script>
-    // ========================================
-    // 1. CONFIGURATION & STATE
-    // ========================================
-    var PROVIDERS = {
-        pollinations: { name: 'Pollinations (Free)', needsKey: false, canGenerate: true, canEdit: false, canIsolate: false },
-        siliconflow: { name: 'SiliconFlow (Free)', needsKey: true, canGenerate: true, canEdit: false, canIsolate: false },
-        gemini: { name: 'Gemini (Free)', needsKey: true, canGenerate: true, canEdit: true, canIsolate: true },
-        fal: { name: 'FAL (Paid)', needsKey: true, canGenerate: true, canEdit: true, canIsolate: true }
-    };
-    var RATE_LIMIT_DELAY = 1000;
-    var IS_EMBED = window.location.search.indexOf('embed=true') !== -1;
-
-    function getProvider() { return localStorage.getItem('ai_provider') || 'pollinations'; }
-    function getProviderKey() { return localStorage.getItem('ai_provider_key_' + getProvider()) || ''; }
-
-    var state = {
-        products: [],
-        filteredProducts: null,
-        selectedIds: new Set(),
-        bulkCancelled: false,
-        bulkRunning: false,
-        templateTargetId: null,
-        templateBulkIds: null,
-        importedData: null,
-        importColumns: null
-    };
-
-    // ========================================
-    // 2. UTILITY FUNCTIONS
-    // ========================================
-    function generateId() {
-        return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
-    }
-
-    function showToast(message, type) {
-        type = type || 'info';
-        var container = document.getElementById('toastContainer');
-        var toast = document.createElement('div');
-        toast.className = 'toast ' + type;
-        toast.textContent = message;
-        container.appendChild(toast);
-        setTimeout(function() {
-            toast.classList.add('removing');
-            setTimeout(function() { toast.remove(); }, 300);
-        }, 3500);
-    }
-
-    function closeModal(id) {
-        document.getElementById(id).classList.remove('show');
-    }
-
-    function openModal(id) {
-        document.getElementById(id).classList.add('show');
-    }
-
-    // ========================================
-    // 3. INDEXEDDB STORAGE MODULE
-    // ========================================
-    var ImageDB = (function() {
-        var DB_NAME = 'CatalogStudioDB';
-        var DB_VERSION = 1;
-        var STORE_NAME = 'productImages';
-        var dbInstance = null;
-
-        function open() {
-            return new Promise(function(resolve, reject) {
-                if (dbInstance) { resolve(dbInstance); return; }
-                var request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onupgradeneeded = function(e) {
-                    var db = e.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                    }
-                };
-                request.onsuccess = function(e) {
-                    dbInstance = e.target.result;
-                    resolve(dbInstance);
-                };
-                request.onerror = function(e) { reject(e.target.error); };
-            });
-        }
-
-        function saveImage(productId, fullBlob, thumbnailBlob, sourceBlob) {
-            return open().then(function(db) {
-                return new Promise(function(resolve, reject) {
-                    var tx = db.transaction(STORE_NAME, 'readwrite');
-                    var store = tx.objectStore(STORE_NAME);
-                    var record = {
-                        id: productId,
-                        full: fullBlob || null,
-                        thumbnail: thumbnailBlob || null,
-                        source: sourceBlob || null,
-                        updatedAt: Date.now()
-                    };
-                    var req = store.put(record);
-                    req.onsuccess = function() { resolve(); };
-                    req.onerror = function(e) { reject(e.target.error); };
-                });
-            });
-        }
-
-        function getImage(productId) {
-            return open().then(function(db) {
-                return new Promise(function(resolve, reject) {
-                    var tx = db.transaction(STORE_NAME, 'readonly');
-                    var store = tx.objectStore(STORE_NAME);
-                    var req = store.get(productId);
-                    req.onsuccess = function() { resolve(req.result || null); };
-                    req.onerror = function(e) { reject(e.target.error); };
-                });
-            });
-        }
-
-        function deleteImage(productId) {
-            return open().then(function(db) {
-                return new Promise(function(resolve, reject) {
-                    var tx = db.transaction(STORE_NAME, 'readwrite');
-                    var store = tx.objectStore(STORE_NAME);
-                    var req = store.delete(productId);
-                    req.onsuccess = function() { resolve(); };
-                    req.onerror = function(e) { reject(e.target.error); };
-                });
-            });
-        }
-
-        function getAllImages() {
-            return open().then(function(db) {
-                return new Promise(function(resolve, reject) {
-                    var tx = db.transaction(STORE_NAME, 'readonly');
-                    var store = tx.objectStore(STORE_NAME);
-                    var req = store.getAll();
-                    req.onsuccess = function() { resolve(req.result || []); };
-                    req.onerror = function(e) { reject(e.target.error); };
-                });
-            });
-        }
-
-        return {
-            open: open,
-            saveImage: saveImage,
-            getImage: getImage,
-            deleteImage: deleteImage,
-            getAllImages: getAllImages
-        };
-    })();
-
-    // ========================================
-    // 4. IMAGE UTILITIES
-    // ========================================
-    function compressImage(blob, maxWidth, maxHeight, quality) {
-        return new Promise(function(resolve) {
-            var img = new Image();
-            img.onload = function() {
-                var canvas = document.createElement('canvas');
-                var ctx = canvas.getContext('2d');
-                var ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
-                canvas.width = img.width * ratio;
-                canvas.height = img.height * ratio;
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob(function(compressed) {
-                    URL.revokeObjectURL(img.src);
-                    resolve(compressed);
-                }, 'image/jpeg', quality || 0.8);
-            };
-            img.onerror = function() {
-                URL.revokeObjectURL(img.src);
-                resolve(blob);
-            };
-            img.src = URL.createObjectURL(blob);
-        });
-    }
-
-    function generateThumbnail(blob) {
-        return compressImage(blob, 200, 200, 0.6);
-    }
-
-    function optimizeFullImage(blob) {
-        return compressImage(blob, 1024, 1024, 0.85);
-    }
-
-    function blobToBase64(blob) {
-        return new Promise(function(resolve, reject) {
-            var reader = new FileReader();
-            reader.onload = function() {
-                var base64 = reader.result.split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    }
-
-    function base64ToBlob(base64, mimeType) {
-        mimeType = mimeType || 'image/jpeg';
-        var byteChars = atob(base64);
-        var byteNums = new Array(byteChars.length);
-        for (var i = 0; i < byteChars.length; i++) {
-            byteNums[i] = byteChars.charCodeAt(i);
-        }
-        return new Blob([new Uint8Array(byteNums)], { type: mimeType });
-    }
-
-    function dataUrlToBlob(dataUrl) {
-        var parts = dataUrl.split(',');
-        var mime = parts[0].match(/:(.*?);/)[1];
-        return base64ToBlob(parts[1], mime);
-    }
-
-    // ========================================
-    // 5. FAL UPLOAD HELPERS
-    // ========================================
-    function uploadBlobToFal(blob, key) {
-        var fd = new FormData(); fd.append('file', blob, 'image.jpg');
-        return fetch('https://fal.ai/api/storage/upload', { method: 'POST', headers: { 'Authorization': 'Key ' + key }, body: fd })
-        .then(function(r) { if (!r.ok) return r.text().then(function(t) { throw new Error('Upload: ' + t); }); return r.json(); })
-        .then(function(d) { return d.url; });
-    }
-    function base64ToFalUrl(b64, key) { return uploadBlobToFal(base64ToBlob(b64, 'image/jpeg'), key); }
-    function falUrlToBase64(url) { return fetch(url).then(function(r) { if (!r.ok) throw new Error('Download failed'); return r.blob(); }).then(function(b) { return blobToBase64(b); }); }
-
-    // ========================================
-    // 6. LOCAL STORAGE MODULE
-    // ========================================
-    function saveProductsLocal() {
-        var toSave = state.products.map(function(p) {
-            return {
-                id: p.id,
-                name: p.name,
-                description: p.description,
-                status: p.status,
-                lastAction: p.lastAction,
-                errorMessage: p.errorMessage,
-                thumbnailUrl: p.thumbnailUrl || '',
-                order: p.order,
-                createdAt: p.createdAt,
-                updatedAt: Date.now()
-            };
-        });
-        localStorage.setItem('catalogProducts', JSON.stringify(toSave));
-    }
-
-    function loadProductsLocal() {
-        try {
-            return JSON.parse(localStorage.getItem('catalogProducts') || '[]');
-        } catch(e) { return []; }
-    }
-
-    // ========================================
-    // 7. MULTI-PROVIDER AI MODULE
-    // ========================================
-    function makePrompt(name, desc) {
-        return 'Professional studio product photograph of "' + name + '". ' + (desc ? desc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels.';
-    }
-    function makeEditPrompt(name, desc) {
-        return 'Keep the exact same container shape and form factor. Replace all branding, labels, and text with new branding for "' + name + '". ' + (desc ? desc + '. ' : '') + 'Professional product photo, clean white background. Keep the container shape identical.';
-    }
-    function makeStudioPrompt(name) {
-        return 'Transform this product photo of "' + name + '" into a professional studio photograph. Add soft diffused studio lighting with subtle reflections. Add a gentle shadow beneath the product. Clean white background. High-end commercial product shot.';
-    }
-    function makeIsolatePrompt() {
-        return 'Remove the background from this product image completely. Place the product on a pure clean white background (#FFFFFF). Keep the product perfectly intact with crisp, clean edges. No shadows.';
-    }
-
-    function checkKey() {
-        var prov = getProvider();
-        if (!PROVIDERS[prov].needsKey) return true;
-        var k = getProviderKey();
-        if (!k) { showToast('\u05d0\u05e0\u05d0 \u05d4\u05d6\u05df \u05de\u05e4\u05ea\u05d7 API \u05d1\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea', 'error'); showSettings(); return false; }
-        return true;
-    }
-
-    // --- POLLINATIONS (free, no key) ---
-    function toAsciiSafe(text) {
-        // Remove non-ASCII chars for URL-based APIs, keep only Latin + digits + basic punctuation
-        var safe = text.replace(/[^\x20-\x7E]/g, '').trim();
-        return safe || 'product';
-    }
-
-    var PollinationsProvider = {
-        generateFromText: function(name, desc) {
-            var safeName = toAsciiSafe(name);
-            var safeDesc = desc ? toAsciiSafe(desc) : '';
-            var engPrompt = 'Professional studio product photograph of "' + safeName + '". ' + (safeDesc ? safeDesc + '. ' : '') + 'Clean pure white background, soft diffused studio lighting, commercial product photography style, high detail, photorealistic, no text or labels.';
-            var prompt = encodeURIComponent(engPrompt);
-            var url = 'https://image.pollinations.ai/prompt/' + prompt + '?width=1024&height=1024&nologo=true&seed=' + Math.floor(Math.random() * 999999);
-            return fetch(url).then(function(r) { if (!r.ok) throw new Error('Pollinations error ' + r.status); return r.blob(); }).then(function(b) { return blobToBase64(b); });
-        },
-        applyTemplate: function() { return Promise.reject(new Error('\u05EA\u05D1\u05E0\u05D9\u05EA \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DB\u05EA \u05D1-Pollinations. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
-        isolateProduct: function() { return Promise.reject(new Error('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-Pollinations. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
-        enhanceToStudio: function() { return Promise.reject(new Error('\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-Pollinations. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); }
-    };
-
-    // --- SILICONFLOW (free, key required) ---
-    var SiliconFlowProvider = {
-        generateFromText: function(name, desc) {
-            var k = getProviderKey();
-            return fetch('https://api.siliconflow.cn/v1/images/generations', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + k, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'black-forest-labs/FLUX.1-schnell', prompt: makePrompt(name, desc), image_size: '1024x1024' })
-            }).then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || e.error || 'SiliconFlow error'); }); return r.json(); })
-            .then(function(d) { return falUrlToBase64(d.images[0].url); });
-        },
-        applyTemplate: function() { return Promise.reject(new Error('\u05EA\u05D1\u05E0\u05D9\u05EA \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DB\u05EA \u05D1-SiliconFlow. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
-        isolateProduct: function() { return Promise.reject(new Error('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-SiliconFlow. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); },
-        enhanceToStudio: function() { return Promise.reject(new Error('\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05DC\u05D0 \u05E0\u05EA\u05DE\u05DA \u05D1-SiliconFlow. \u05D4\u05D7\u05DC\u05E3 \u05DC-Gemini \u05D0\u05D5 FAL.')); }
-    };
-
-    // --- GEMINI (free tier, key required) ---
-    var GeminiProvider = {
-        _call: function(body, key) {
-            return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + key, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-            }).then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.error ? e.error.message : 'Gemini error ' + r.status); }); return r.json(); })
-            .then(function(d) {
-                if (!d.candidates || !d.candidates[0] || !d.candidates[0].content || !d.candidates[0].content.parts) throw new Error('No response from Gemini');
-                var parts = d.candidates[0].content.parts;
-                for (var i = 0; i < parts.length; i++) { if (parts[i].inlineData && parts[i].inlineData.data) return parts[i].inlineData.data; }
-                throw new Error('No image in Gemini response');
-            });
-        },
-        _textOnly: function(prompt, key) {
-            return GeminiProvider._call({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }, key);
-        },
-        _withImage: function(prompt, srcB64, key) {
-            return GeminiProvider._call({ contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: srcB64 } }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }, key);
-        },
-        generateFromText: function(name, desc) { return GeminiProvider._textOnly(makePrompt(name, desc), getProviderKey()); },
-        applyTemplate: function(srcB64, name, desc) { return GeminiProvider._withImage(makeEditPrompt(name, desc) + ' Also remove the background completely, place on pure white.', srcB64, getProviderKey()); },
-        isolateProduct: function(srcB64) { return GeminiProvider._withImage(makeIsolatePrompt(), srcB64, getProviderKey()); },
-        enhanceToStudio: function(srcB64, name) { return GeminiProvider._withImage(makeStudioPrompt(name), srcB64, getProviderKey()); }
-    };
-
-    // --- FAL (paid, key required) ---
-    var FalProvider = {
-        _call: function(ep, body) {
-            var k = getProviderKey();
-            return fetch('https://fal.run/' + ep, { method: 'POST', headers: { 'Authorization': 'Key ' + k, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-            .then(function(r) { if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || e.message || 'FAL error ' + r.status); }); return r.json(); });
-        },
-        generateFromText: function(name, desc) {
-            return FalProvider._call('fal-ai/flux/schnell', { prompt: makePrompt(name, desc), image_size: 'square_hd', output_format: 'jpeg', num_inference_steps: 4 })
-            .then(function(d) { return falUrlToBase64(d.images[0].url); });
-        },
-        applyTemplate: function(srcB64, name, desc) {
-            var k = getProviderKey();
-            return base64ToFalUrl(srcB64, k)
-            .then(function(url) { return FalProvider._call('fal-ai/nano-banana-2/edit', { prompt: makeEditPrompt(name, desc), image_urls: [url], output_format: 'jpeg' }); })
-            .then(function(d) { return FalProvider._call('fal-ai/imageutils/rembg', { image_url: d.images[0].url }); })
-            .then(function(d) { return falUrlToBase64(d.image.url); });
-        },
-        isolateProduct: function(srcB64) {
-            var k = getProviderKey();
-            return base64ToFalUrl(srcB64, k)
-            .then(function(url) { return FalProvider._call('fal-ai/imageutils/rembg', { image_url: url }); })
-            .then(function(d) { return falUrlToBase64(d.image.url); });
-        },
-        enhanceToStudio: function(srcB64, name) {
-            var k = getProviderKey();
-            return base64ToFalUrl(srcB64, k)
-            .then(function(url) { return FalProvider._call('fal-ai/nano-banana-2/edit', { prompt: makeStudioPrompt(name), image_urls: [url], output_format: 'jpeg' }); })
-            .then(function(d) { return falUrlToBase64(d.images[0].url); });
-        }
-    };
-
-    function getAI() {
-        var p = getProvider();
-        if (p === 'siliconflow') return SiliconFlowProvider;
-        if (p === 'gemini') return GeminiProvider;
-        if (p === 'fal') return FalProvider;
-        return PollinationsProvider;
-    }
-
-    // Unified API (same interface as old FalAPI)
-    // Auto-fallback: try providers in order until one works
-    function getFallbackOrder() {
-        var selected = getProvider();
-        var order = [selected];
-        var all = ['pollinations', 'siliconflow', 'gemini', 'fal'];
-        all.forEach(function(p) { if (p !== selected) order.push(p); });
-        return order;
-    }
-
-    function getProviderInstance(name) {
-        if (name === 'siliconflow') return SiliconFlowProvider;
-        if (name === 'gemini') return GeminiProvider;
-        if (name === 'fal') return FalProvider;
-        return PollinationsProvider;
-    }
-
-    function tryWithFallback(method, args) {
-        var order = getFallbackOrder();
-        var lastError = null;
-
-        function tryNext(i) {
-            if (i >= order.length) return Promise.reject(lastError || new Error('All providers failed'));
-            var provName = order[i];
-            var prov = getProviderInstance(provName);
-            var provInfo = PROVIDERS[provName];
-
-            // Skip if needs key and no key set
-            if (provInfo.needsKey && !localStorage.getItem('ai_provider_key_' + provName)) {
-                return tryNext(i + 1);
-            }
-            // Skip if provider doesn't support this method
-            if (method === 'applyTemplate' && !provInfo.canEdit) return tryNext(i + 1);
-            if (method === 'isolateProduct' && !provInfo.canIsolate) return tryNext(i + 1);
-            if (method === 'enhanceToStudio' && !provInfo.canEdit) return tryNext(i + 1);
-
-            return prov[method].apply(null, args).catch(function(err) {
-                console.log('Provider ' + provName + ' failed: ' + err.message + ', trying next...');
-                lastError = err;
-                return tryNext(i + 1);
-            });
-        }
-        return tryNext(0);
-    }
-
-    // Unified API with auto-fallback
-    var FalAPI = {
-        getApiKey: function() { return 'auto'; },
-        generateFromText: function(n, d) { return tryWithFallback('generateFromText', [n, d]); },
-        applyTemplate: function(s, n, d) { return tryWithFallback('applyTemplate', [s, n, d]); },
-        isolateProduct: function(s) { return tryWithFallback('isolateProduct', [s]); },
-        enhanceToStudio: function(s, n) { return tryWithFallback('enhanceToStudio', [s, n]); }
-    };
-
-    // ========================================
-    // 8. PRODUCT MANAGER (CRUD)
-    // ========================================
-    function createProduct(name, description, imageBlob) {
-        var product = {
-            id: generateId(),
-            name: name || '\u05DE\u05D5\u05E6\u05E8 \u05D7\u05D3\u05E9',
-            description: description || '',
-            status: 'draft',
-            lastAction: null,
-            errorMessage: '',
-            thumbnailUrl: '',
-            order: state.products.length,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-        };
-        state.products.push(product);
-        saveProductsLocal();
-
-        if (imageBlob) {
-            processAndSaveImage(product.id, imageBlob).then(function() {
-                renderGrid();
-            });
-        }
-        return product;
-    }
-
-    function updateProduct(id, fields) {
-        var product = getProduct(id);
-        if (!product) return;
-        for (var key in fields) {
-            if (fields.hasOwnProperty(key)) {
-                product[key] = fields[key];
-            }
-        }
-        product.updatedAt = Date.now();
-        saveProductsLocal();
-    }
-
-    function deleteProduct(id) {
-        state.products = state.products.filter(function(p) { return p.id !== id; });
-        state.selectedIds.delete(id);
-        saveProductsLocal();
-        ImageDB.deleteImage(id);
-    }
-
-    function getProduct(id) {
-        for (var i = 0; i < state.products.length; i++) {
-            if (state.products[i].id === id) return state.products[i];
-        }
-        return null;
-    }
-
-    function processAndSaveImage(productId, blob) {
-        return Promise.all([
-            optimizeFullImage(blob),
-            generateThumbnail(blob)
-        ]).then(function(results) {
-            var fullBlob = results[0];
-            var thumbBlob = results[1];
-            return ImageDB.saveImage(productId, fullBlob, thumbBlob, blob).then(function() {
-                return blobToBase64(thumbBlob);
-            }).then(function(thumbBase64) {
-                var thumbUrl = 'data:image/jpeg;base64,' + thumbBase64;
-                updateProduct(productId, { status: 'ready', thumbnailUrl: thumbUrl });
-                if (IS_EMBED && window.parent !== window) {
-                    window.parent.postMessage({ type: 'catalog-image-ready', productId: productId, imageUrl: thumbUrl }, '*');
-                }
-            });
-        });
-    }
-
-    // ========================================
-    // 9. UI RENDERER
-    // ========================================
-    function renderGrid() {
-        var grid = document.getElementById('productGrid');
-        var products = state.filteredProducts || state.products;
-
-        if (products.length === 0) {
-            grid.innerHTML = '<div class="empty-state">' +
-                '<div class="empty-state-icon">&#128247;</div>' +
-                '<h3>\u05D0\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05E2\u05D3\u05D9\u05D9\u05DF</h3>' +
-                '<p>\u05DC\u05D7\u05E5 \u05E2\u05DC "\u05DE\u05D5\u05E6\u05E8 \u05D7\u05D3\u05E9" \u05D0\u05D5 \u05D9\u05D9\u05D1\u05D0 \u05E7\u05D5\u05D1\u05E5 Excel \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC</p>' +
-                '</div>';
-            updateStats();
-            return;
-        }
-
-        var fragment = document.createDocumentFragment();
-
-        products.forEach(function(product) {
-            var card = document.createElement('div');
-            card.className = 'catalog-card' + (state.selectedIds.has(product.id) ? ' selected' : '');
-            card.dataset.productId = product.id;
-
-            var statusClass = 'status-' + product.status;
-            var statusText = { draft: t('statusDraft'), processing: t('statusProcessing'), ready: t('statusReady'), error: t('statusError') }[product.status] || product.status;
-
-            var imageContent = '';
-            if (product.thumbnailUrl) {
-                imageContent = '<img src="' + product.thumbnailUrl + '" alt="' + product.name + '" onclick="zoomImage(\'' + product.id + '\')" style="cursor:pointer;">';
-            } else {
-                imageContent = '<div class="card-placeholder">\uD83D\uDCE6</div>';
-            }
-
-            var dis = product.status === 'processing' ? 'disabled' : '';
-            card.innerHTML =
-                '<div class="card-select"><input type="checkbox" class="product-checkbox" ' +
-                (state.selectedIds.has(product.id) ? 'checked' : '') +
-                ' onchange="toggleSelect(\'' + product.id + '\', this.checked)"></div>' +
-                '<div class="card-image">' + imageContent +
-                '<div class="card-status ' + statusClass + '">' + statusText + '</div>' +
-                (product.status === 'error' && product.errorMessage ? '<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 10px;background:var(--error-bg);color:var(--error);font-size:10px;font-weight:500;line-height:1.3;overflow:hidden;max-height:40px;">' + escapeHtml(product.errorMessage) + '</div>' : '') +
-                '<div class="card-spinner" id="spinner_' + product.id + '"><div class="spinner"></div></div>' +
-                '</div>' +
-                '<div class="card-info">' +
-                '<div class="card-name" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'name\')">' + escapeHtml(product.name) + '</div>' +
-                '<div class="card-desc" contenteditable="false" onclick="startEdit(this, \'' + product.id + '\', \'description\')">' + escapeHtml(product.description || t('clickToEdit')) + '</div>' +
-                '</div>' +
-                '<div class="card-actions">' +
-                '<button class="ai-btn btn-generate" onclick="aiGenerate(\'' + product.id + '\')" ' + dis + '>' + t('generate') + '</button>' +
-                '<button class="ai-btn btn-template" onclick="aiTemplate(\'' + product.id + '\')" ' + dis + '>' + t('template') + '</button>' +
-                '<button class="ai-btn btn-isolate" onclick="aiIsolate(\'' + product.id + '\')" ' + dis + '>' + t('isolate') + '</button>' +
-                '<button class="ai-btn btn-studio" onclick="aiStudio(\'' + product.id + '\')" ' + dis + '>' + t('studio') + '</button>' +
-                '</div>' +
-                '<button class="card-delete" onclick="confirmDelete(\'' + product.id + '\')" title="\u05DE\u05D7\u05E7">&times;</button>';
-
-            fragment.appendChild(card);
-        });
-
-        grid.innerHTML = '';
-        grid.appendChild(fragment);
-        updateStats();
-        updateFloatingToolbar();
-    }
-
-    function escapeHtml(text) {
-        var div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function updateStats() {
-        var total = state.products.length;
-        var ready = 0, draft = 0, errors = 0;
-        state.products.forEach(function(p) {
-            if (p.status === 'ready') ready++;
-            else if (p.status === 'draft') draft++;
-            else if (p.status === 'error') errors++;
-        });
-        document.getElementById('statTotal').textContent = total;
-        document.getElementById('statReady').textContent = ready;
-        document.getElementById('statDraft').textContent = draft;
-        document.getElementById('statError').textContent = errors;
-    }
-
-    // ========================================
-    // 10. INLINE EDITING
-    // ========================================
-    function startEdit(element, productId, field) {
-        if (element.getAttribute('contenteditable') === 'true') return;
-        var product = getProduct(productId);
-        if (!product) return;
-
-        element.setAttribute('contenteditable', 'true');
-        element.classList.add('editing');
-
-        if (field === 'description' && !product.description) {
-            element.textContent = '';
-        }
-
-        element.focus();
-        var range = document.createRange();
-        range.selectNodeContents(element);
-        window.getSelection().removeAllRanges();
-        window.getSelection().addRange(range);
-
-        function save() {
-            element.setAttribute('contenteditable', 'false');
-            element.classList.remove('editing');
-            var newValue = element.textContent.trim();
-            if (newValue && newValue !== t('clickToEdit')) {
-                var update = {};
-                update[field] = newValue;
-                updateProduct(productId, update);
-            } else if (field === 'description') {
-                element.textContent = product.description || t('clickToEdit');
-            } else {
-                element.textContent = product[field];
-            }
-        }
-
-        element.addEventListener('blur', save, { once: true });
-        element.addEventListener('keydown', function handler(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                element.blur();
-            }
-            if (e.key === 'Escape') {
-                element.textContent = product[field] || (field === 'description' ? t('clickToEdit') : '');
-                element.blur();
-            }
-        });
-    }
-
-    // ========================================
-    // 11. SELECTION & FLOATING TOOLBAR
-    // ========================================
-    function toggleSelect(productId, checked) {
-        if (checked) {
-            state.selectedIds.add(productId);
-        } else {
-            state.selectedIds.delete(productId);
-        }
-        var card = document.querySelector('[data-product-id="' + productId + '"]');
-        if (card) card.classList.toggle('selected', checked);
-        updateFloatingToolbar();
-    }
-
-    function selectAll() {
-        var products = state.filteredProducts || state.products;
-        products.forEach(function(p) { state.selectedIds.add(p.id); });
-        renderGrid();
-    }
-
-    function deselectAll() {
-        state.selectedIds.clear();
-        renderGrid();
-    }
-
-    function updateFloatingToolbar() {
-        var toolbar = document.getElementById('floatingToolbar');
-        var count = state.selectedIds.size;
-        if (count > 0) {
-            toolbar.classList.add('visible');
-            document.getElementById('toolbarCount').textContent = count + ' \u05E0\u05D1\u05D7\u05E8\u05D5';
-        } else {
-            toolbar.classList.remove('visible');
-        }
-    }
-
-    // ========================================
-    // 12. SINGLE AI ACTIONS
-    // ========================================
-    function showCardSpinner(productId, show) {
-        var spinner = document.getElementById('spinner_' + productId);
-        if (spinner) spinner.classList.toggle('show', show);
-    }
-
-    function aiGenerate(productId) {
-        var product = getProduct(productId);
-        if (!product) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        updateProduct(productId, { status: 'processing' });
-        renderGrid();
-        showCardSpinner(productId, true);
-
-        FalAPI.generateFromText(product.name, product.description).then(function(base64) {
-            var blob = base64ToBlob(base64);
-            return processAndSaveImage(productId, blob).then(function() {
-                updateProduct(productId, { status: 'ready', lastAction: 'generate', errorMessage: '' });
-                showToast('\u05EA\u05DE\u05D5\u05E0\u05D4 \u05E0\u05D5\u05E6\u05E8\u05D4 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
-            });
-        }).catch(function(err) {
-            updateProduct(productId, { status: 'error', errorMessage: err.message });
-            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
-        }).then(function() {
-            showCardSpinner(productId, false);
-            renderGrid();
-        });
-    }
-
-    function aiTemplate(productId) {
-        var product = getProduct(productId);
-        if (!product) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        state.templateTargetId = productId;
-        state.templateBulkIds = null;
-
-        var input = document.getElementById('singleTemplateInput');
-        input.onchange = function() {
-            if (!input.files[0]) return;
-            var file = input.files[0];
-            var reader = new FileReader();
-            reader.onload = function() {
-                var base64 = reader.result.split(',')[1];
-                runTemplate(productId, base64);
-            };
-            reader.readAsDataURL(file);
-            input.value = '';
-        };
-        input.click();
-    }
-
-    function runTemplate(productId, sourceBase64) {
-        var product = getProduct(productId);
-        if (!product) return;
-
-        updateProduct(productId, { status: 'processing' });
-        renderGrid();
-        showCardSpinner(productId, true);
-
-        FalAPI.applyTemplate(sourceBase64, product.name, product.description).then(function(base64) {
-            var blob = base64ToBlob(base64);
-            return processAndSaveImage(productId, blob).then(function() {
-                updateProduct(productId, { status: 'ready', lastAction: 'template', errorMessage: '' });
-                showToast('\u05EA\u05D1\u05E0\u05D9\u05EA \u05D4\u05D5\u05D7\u05DC\u05D4 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
-            });
-        }).catch(function(err) {
-            updateProduct(productId, { status: 'error', errorMessage: err.message });
-            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
-        }).then(function() {
-            showCardSpinner(productId, false);
-            renderGrid();
-        });
-    }
-
-    function aiIsolate(productId) {
-        var product = getProduct(productId);
-        if (!product) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        ImageDB.getImage(productId).then(function(record) {
-            if (!record || (!record.full && !record.source)) {
-                // Ask user to upload an image
-                var input = document.getElementById('singleSourceInput');
-                input.onchange = function() {
-                    if (!input.files[0]) return;
-                    var file = input.files[0];
-                    var reader = new FileReader();
-                    reader.onload = function() {
-                        var base64 = reader.result.split(',')[1];
-                        runIsolate(productId, base64);
-                    };
-                    reader.readAsDataURL(file);
-                    input.value = '';
-                };
-                input.click();
-                return;
-            }
-            var blob = record.source || record.full;
-            blobToBase64(blob).then(function(base64) {
-                runIsolate(productId, base64);
-            });
-        });
-    }
-
-    function runIsolate(productId, sourceBase64) {
-        var product = getProduct(productId);
-        if (!product) return;
-
-        updateProduct(productId, { status: 'processing' });
-        renderGrid();
-        showCardSpinner(productId, true);
-
-        FalAPI.isolateProduct(sourceBase64).then(function(base64) {
-            var blob = base64ToBlob(base64);
-            return processAndSaveImage(productId, blob).then(function() {
-                updateProduct(productId, { status: 'ready', lastAction: 'isolate', errorMessage: '' });
-                showToast('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05D1\u05D5\u05E6\u05E2 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
-            });
-        }).catch(function(err) {
-            updateProduct(productId, { status: 'error', errorMessage: err.message });
-            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
-        }).then(function() {
-            showCardSpinner(productId, false);
-            renderGrid();
-        });
-    }
-
-    function aiStudio(productId) {
-        var product = getProduct(productId);
-        if (!product) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        ImageDB.getImage(productId).then(function(record) {
-            if (!record || (!record.full && !record.source)) {
-                var input = document.getElementById('singleSourceInput');
-                input.onchange = function() {
-                    if (!input.files[0]) return;
-                    var file = input.files[0];
-                    var reader = new FileReader();
-                    reader.onload = function() {
-                        var base64 = reader.result.split(',')[1];
-                        runStudio(productId, base64);
-                    };
-                    reader.readAsDataURL(file);
-                    input.value = '';
-                };
-                input.click();
-                return;
-            }
-            var blob = record.source || record.full;
-            blobToBase64(blob).then(function(base64) {
-                runStudio(productId, base64);
-            });
-        });
-    }
-
-    function runStudio(productId, sourceBase64) {
-        var product = getProduct(productId);
-        if (!product) return;
-
-        updateProduct(productId, { status: 'processing' });
-        renderGrid();
-        showCardSpinner(productId, true);
-
-        FalAPI.enhanceToStudio(sourceBase64, product.name).then(function(base64) {
-            var blob = base64ToBlob(base64);
-            return processAndSaveImage(productId, blob).then(function() {
-                updateProduct(productId, { status: 'ready', lastAction: 'studio', errorMessage: '' });
-                showToast('\u05E9\u05D3\u05E8\u05D5\u05D2 \u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05D4\u05D5\u05E9\u05DC\u05DD!', 'success');
-            });
-        }).catch(function(err) {
-            updateProduct(productId, { status: 'error', errorMessage: err.message });
-            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4: ' + err.message, 'error');
-        }).then(function() {
-            showCardSpinner(productId, false);
-            renderGrid();
-        });
-    }
-
-    // ========================================
-    // 13. BULK OPERATIONS
-    // ========================================
-    function getSelectedProductIds() {
-        return Array.from(state.selectedIds);
-    }
-
-    function showProgress(current, total, text) {
-        openModal('progressModal');
-        var pct = Math.round((current / total) * 100);
-        document.getElementById('progressFill').style.width = pct + '%';
-        document.getElementById('progressLabel').textContent = pct + '%';
-        document.getElementById('progressText').textContent = text || ('\u05DE\u05E2\u05D1\u05D3 ' + current + ' \u05DE\u05EA\u05D5\u05DA ' + total + '...');
-    }
-
-    function hideProgress() {
-        closeModal('progressModal');
-        document.getElementById('progressFill').style.width = '0%';
-    }
-
-    function cancelBulkOperation() {
-        state.bulkCancelled = true;
-        hideProgress();
-        showToast('\u05E4\u05E2\u05D5\u05DC\u05D4 \u05D1\u05D5\u05D8\u05DC\u05D4', 'info');
-    }
-
-    function bulkGenerate() {
-        var ids = getSelectedProductIds();
-        if (ids.length === 0) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        state.bulkCancelled = false;
-        state.bulkRunning = true;
-        var completed = 0;
-        var errors = 0;
-
-        function processNext(index) {
-            if (state.bulkCancelled || index >= ids.length) {
-                state.bulkRunning = false;
-                hideProgress();
-                deselectAll();
-                renderGrid();
-                showToast('\u05D4\u05D5\u05E9\u05DC\u05DD! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
-                return;
-            }
-            var product = getProduct(ids[index]);
-            showProgress(index + 1, ids.length, '\u05DE\u05D9\u05D9\u05E6\u05E8 "' + (product ? product.name : '') + '"...');
-
-            if (!product) { processNext(index + 1); return; }
-
-            updateProduct(ids[index], { status: 'processing' });
-
-            FalAPI.generateFromText(product.name, product.description).then(function(base64) {
-                var blob = base64ToBlob(base64);
-                return processAndSaveImage(ids[index], blob).then(function() {
-                    updateProduct(ids[index], { status: 'ready', lastAction: 'generate', errorMessage: '' });
-                    completed++;
-                });
-            }).catch(function(err) {
-                updateProduct(ids[index], { status: 'error', errorMessage: err.message });
-                errors++;
-            }).then(function() {
-                setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
-            });
-        }
-
-        processNext(0);
-    }
-
-    function bulkTemplate() {
-        var ids = getSelectedProductIds();
-        if (ids.length === 0) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        state.templateBulkIds = ids;
-        state.templateTargetId = null;
-        openModal('templateModal');
-    }
-
-    function handleTemplateUpload(file) {
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function() {
-            document.getElementById('templatePreviewImg').src = reader.result;
-            document.getElementById('templatePreview').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function confirmTemplate() {
-        var img = document.getElementById('templatePreviewImg');
-        if (!img.src) return;
-
-        var base64 = img.src.split(',')[1];
-        closeModal('templateModal');
-
-        if (state.templateBulkIds && state.templateBulkIds.length > 0) {
-            runBulkTemplate(state.templateBulkIds, base64);
-        } else if (state.templateTargetId) {
-            runTemplate(state.templateTargetId, base64);
-        }
-
-        document.getElementById('templatePreview').style.display = 'none';
-        document.getElementById('templateFileInput').value = '';
-    }
-
-    function runBulkTemplate(ids, sourceBase64) {
-        state.bulkCancelled = false;
-        state.bulkRunning = true;
-        var completed = 0;
-        var errors = 0;
-
-        function processNext(index) {
-            if (state.bulkCancelled || index >= ids.length) {
-                state.bulkRunning = false;
-                hideProgress();
-                deselectAll();
-                renderGrid();
-                showToast('\u05EA\u05D1\u05E0\u05D9\u05EA \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
-                return;
-            }
-            var product = getProduct(ids[index]);
-            showProgress(index + 1, ids.length, '\u05DE\u05D7\u05D9\u05DC \u05EA\u05D1\u05E0\u05D9\u05EA \u05E2\u05DC "' + (product ? product.name : '') + '"...');
-
-            if (!product) { processNext(index + 1); return; }
-
-            updateProduct(ids[index], { status: 'processing' });
-
-            FalAPI.applyTemplate(sourceBase64, product.name, product.description).then(function(base64) {
-                var blob = base64ToBlob(base64);
-                return processAndSaveImage(ids[index], blob).then(function() {
-                    updateProduct(ids[index], { status: 'ready', lastAction: 'template', errorMessage: '' });
-                    completed++;
-                });
-            }).catch(function(err) {
-                updateProduct(ids[index], { status: 'error', errorMessage: err.message });
-                errors++;
-            }).then(function() {
-                setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
-            });
-        }
-
-        processNext(0);
-    }
-
-    function bulkIsolate() {
-        var ids = getSelectedProductIds();
-        if (ids.length === 0) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        state.bulkCancelled = false;
-        state.bulkRunning = true;
-        var completed = 0;
-        var errors = 0;
-
-        function processNext(index) {
-            if (state.bulkCancelled || index >= ids.length) {
-                state.bulkRunning = false;
-                hideProgress();
-                deselectAll();
-                renderGrid();
-                showToast('\u05D1\u05D9\u05D3\u05D5\u05D3 \u05D4\u05D5\u05E9\u05DC\u05DD! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
-                return;
-            }
-            var product = getProduct(ids[index]);
-            showProgress(index + 1, ids.length, '\u05DE\u05D1\u05D5\u05D3\u05D3 "' + (product ? product.name : '') + '"...');
-
-            if (!product) { processNext(index + 1); return; }
-
-            ImageDB.getImage(ids[index]).then(function(record) {
-                if (!record || (!record.full && !record.source)) {
-                    errors++;
-                    updateProduct(ids[index], { status: 'error', errorMessage: '\u05D0\u05D9\u05DF \u05EA\u05DE\u05D5\u05E0\u05D4 \u05DC\u05D1\u05D9\u05D3\u05D5\u05D3' });
-                    setTimeout(function() { processNext(index + 1); }, 500);
-                    return;
-                }
-                var blob = record.source || record.full;
-                updateProduct(ids[index], { status: 'processing' });
-                blobToBase64(blob).then(function(base64) {
-                    return FalAPI.isolateProduct(base64);
-                }).then(function(resultBase64) {
-                    var resultBlob = base64ToBlob(resultBase64);
-                    return processAndSaveImage(ids[index], resultBlob).then(function() {
-                        updateProduct(ids[index], { status: 'ready', lastAction: 'isolate', errorMessage: '' });
-                        completed++;
-                    });
-                }).catch(function(err) {
-                    updateProduct(ids[index], { status: 'error', errorMessage: err.message });
-                    errors++;
-                }).then(function() {
-                    setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
-                });
-            });
-        }
-
-        processNext(0);
-    }
-
-    function bulkStudio() {
-        var ids = getSelectedProductIds();
-        if (ids.length === 0) return;
-        if (!FalAPI.getApiKey()) { showSettings(); return; }
-
-        state.bulkCancelled = false;
-        state.bulkRunning = true;
-        var completed = 0;
-        var errors = 0;
-
-        function processNext(index) {
-            if (state.bulkCancelled || index >= ids.length) {
-                state.bulkRunning = false;
-                hideProgress();
-                deselectAll();
-                renderGrid();
-                showToast('\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5 \u05D4\u05D5\u05E9\u05DC\u05DD! ' + completed + ' \u05D4\u05E6\u05DC\u05D9\u05D7\u05D5, ' + errors + ' \u05E9\u05D2\u05D9\u05D0\u05D5\u05EA', completed > 0 ? 'success' : 'error');
-                return;
-            }
-            var product = getProduct(ids[index]);
-            showProgress(index + 1, ids.length, '\u05DE\u05E9\u05D3\u05E8\u05D2 "' + (product ? product.name : '') + '"...');
-
-            if (!product) { processNext(index + 1); return; }
-
-            ImageDB.getImage(ids[index]).then(function(record) {
-                if (!record || (!record.full && !record.source)) {
-                    errors++;
-                    updateProduct(ids[index], { status: 'error', errorMessage: '\u05D0\u05D9\u05DF \u05EA\u05DE\u05D5\u05E0\u05D4 \u05DC\u05E9\u05D3\u05E8\u05D5\u05D2' });
-                    setTimeout(function() { processNext(index + 1); }, 500);
-                    return;
-                }
-                var blob = record.source || record.full;
-                updateProduct(ids[index], { status: 'processing' });
-                blobToBase64(blob).then(function(base64) {
-                    return FalAPI.enhanceToStudio(base64, product.name);
-                }).then(function(resultBase64) {
-                    var resultBlob = base64ToBlob(resultBase64);
-                    return processAndSaveImage(ids[index], resultBlob).then(function() {
-                        updateProduct(ids[index], { status: 'ready', lastAction: 'studio', errorMessage: '' });
-                        completed++;
-                    });
-                }).catch(function(err) {
-                    updateProduct(ids[index], { status: 'error', errorMessage: err.message });
-                    errors++;
-                }).then(function() {
-                    setTimeout(function() { processNext(index + 1); }, RATE_LIMIT_DELAY);
-                });
-            });
-        }
-
-        processNext(0);
-    }
-
-    function bulkDelete() {
-        var ids = getSelectedProductIds();
-        if (ids.length === 0) return;
-        if (!confirm('\u05D4\u05D0\u05DD \u05DC\u05DE\u05D7\u05D5\u05E7 ' + ids.length + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD?')) return;
-
-        ids.forEach(function(id) { deleteProduct(id); });
-        deselectAll();
-        renderGrid();
-        showToast(ids.length + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05E0\u05DE\u05D7\u05E7\u05D5', 'success');
-    }
-
-    // ========================================
-    // 14. IMPORT / EXPORT
-    // ========================================
-    function showImportExport() {
-        openModal('importExportModal');
-    }
-
-    function importExcel() {
-        document.getElementById('excelFileInput').click();
-    }
-
-    function handleExcelImport(file) {
-        if (!file) return;
-        // Reset file input so same file can be re-selected
-        var fileInput = document.getElementById('excelFileInput');
-        if (fileInput) fileInput.value = '';
-        var fileName = file.name.toLowerCase();
-
-        // CSV fallback when XLSX library not available
-        if (typeof XLSX === 'undefined') {
-            if (fileName.endsWith('.csv')) {
-                var textReader = new FileReader();
-                textReader.onload = function(e) {
-                    try {
-                        var data = parseCSV(e.target.result);
-                        if (data.length < 2) {
-                            showToast('\u05D4\u05E7\u05D5\u05D1\u05E5 \u05E8\u05D9\u05E7', 'error');
-                            return;
-                        }
-                        state.importedData = data;
-                        state.importColumns = data[0];
-                        openModal('importExportModal');
-                        showColumnMapping(data[0]);
-                    } catch(err) {
-                        showToast('\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05E7\u05E8\u05D9\u05D0\u05EA CSV: ' + err.message, 'error');
-                    }
-                };
-                textReader.readAsText(file);
-            } else {
-                showToast('\u05E1\u05E4\u05E8\u05D9\u05D9\u05EA XLSX \u05DC\u05D0 \u05E0\u05D8\u05E2\u05E0\u05D4. \u05D4\u05E9\u05EA\u05DE\u05E9 \u05D1\u05E7\u05D5\u05D1\u05E5 CSV \u05D0\u05D5 \u05E4\u05EA\u05D7 \u05D3\u05E8\u05DA \u05E9\u05E8\u05EA \u05D0\u05D9\u05E0\u05D8\u05E8\u05E0\u05D8.', 'error');
-            }
-            return;
-        }
-
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                var wb = XLSX.read(e.target.result, { type: 'array' });
-                var ws = wb.Sheets[wb.SheetNames[0]];
-                var data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-
-                if (data.length < 2) {
-                    showToast('\u05D4\u05E7\u05D5\u05D1\u05E5 \u05E8\u05D9\u05E7', 'error');
-                    return;
-                }
-
-                // Find first non-empty row as header row
-                var headerRowIdx = 0;
-                for (var r = 0; r < Math.min(data.length, 10); r++) {
-                    var row = data[r];
-                    if (!row || !Array.isArray(row)) continue;
-                    var nonEmpty = row.filter(function(cell) {
-                        return cell !== undefined && cell !== null && cell.toString().trim() !== '';
-                    });
-                    if (nonEmpty.length >= 2) {
-                        headerRowIdx = r;
-                        break;
-                    }
-                }
-
-                // Ensure all rows have same number of columns using range
-                var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-                var totalCols = range.e.c - range.s.c + 1;
-                var headerRow = data[headerRowIdx] || [];
-                // Pad header row to total columns
-                while (headerRow.length < totalCols) {
-                    headerRow.push('');
-                }
-
-                // Rebuild data from headerRowIdx onwards
-                var importData = [headerRow];
-                for (var i = headerRowIdx + 1; i < data.length; i++) {
-                    var row = data[i] || [];
-                    while (row.length < totalCols) row.push('');
-                    importData.push(row);
-                }
-
-                if (importData.length < 2) {
-                    showToast('\u05D4\u05E7\u05D5\u05D1\u05E5 \u05E8\u05D9\u05E7', 'error');
-                    return;
-                }
-
-                state.importedData = importData;
-                state.importColumns = headerRow;
-                openModal('importExportModal');
-                showColumnMapping(headerRow);
-            } catch(err) {
-                showToast('\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05E7\u05E8\u05D9\u05D0\u05EA \u05D4\u05E7\u05D5\u05D1\u05E5: ' + err.message, 'error');
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    function parseCSV(text) {
-        var lines = text.split(/\r?\n/).filter(function(line) { return line.trim(); });
-        return lines.map(function(line) {
-            var result = [];
-            var current = '';
-            var inQuotes = false;
-            for (var i = 0; i < line.length; i++) {
-                var ch = line[i];
-                if (ch === '"') {
-                    if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
-                    else { inQuotes = !inQuotes; }
-                } else if (ch === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += ch;
-                }
-            }
-            result.push(current.trim());
-            return result;
-        });
-    }
-
-    function showColumnMapping(columns) {
-        var container = document.getElementById('columnMapping');
-        if (!container) return;
-
-        // Filter out empty columns
-        var validCols = [];
-        columns.forEach(function(col, i) {
-            var text = (col === undefined || col === null) ? '' : col.toString().trim();
-            validCols.push({ index: i, text: text, original: col });
-        });
-
-        if (validCols.length === 0) {
-            // Try to infer column count from data rows
-            var maxCols = 0;
-            if (state.importedData) {
-                for (var ri = 0; ri < Math.min(state.importedData.length, 10); ri++) {
-                    if (state.importedData[ri] && state.importedData[ri].length > maxCols) {
-                        maxCols = state.importedData[ri].length;
-                    }
-                }
-            }
-            if (maxCols > 0) {
-                for (var ci = 0; ci < maxCols; ci++) {
-                    validCols.push({ index: ci, text: '', original: '' });
-                }
-            } else {
-                container.innerHTML = '<div style="padding:12px;color:#d32f2f;font-size:13px;">\u05DC\u05D0 \u05E0\u05DE\u05E6\u05D0\u05D5 \u05E2\u05DE\u05D5\u05D3\u05D5\u05EA \u05D1\u05E7\u05D5\u05D1\u05E5</div>';
-                document.getElementById('importPreview').style.display = 'block';
-                return;
-            }
-        }
-
-        var nameAutoIdx = -1;
-        var descAutoIdx = -1;
-        validCols.forEach(function(vc) {
-            if (vc.text && nameAutoIdx === -1 && (vc.text.includes('\u05E9\u05DD') || vc.text.toLowerCase().includes('name'))) nameAutoIdx = vc.index;
-            if (vc.text && descAutoIdx === -1 && (vc.text.includes('\u05EA\u05D9\u05D0\u05D5\u05E8') || vc.text.toLowerCase().includes('desc'))) descAutoIdx = vc.index;
-        });
-
-        // Get first data row sample for column previews
-        var sampleRow = (state.importedData && state.importedData.length > 1) ? state.importedData[1] : [];
-
-        function buildSelect(id, autoIdx) {
-            var s = '<select id="' + id + '" style="width:100%;padding:10px 12px;border:1.5px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a2e;direction:rtl;appearance:auto;-webkit-appearance:listbox;">';
-            s += '<option value="-1">-- \u05D1\u05D7\u05E8 \u05E2\u05DE\u05D5\u05D3\u05D4 --</option>';
-            validCols.forEach(function(vc) {
-                var label = vc.text || '(\u05E2\u05DE\u05D5\u05D3\u05D4 ' + (vc.index + 1) + ')';
-                // Add sample value from first data row
-                var sample = sampleRow[vc.index];
-                if (sample !== undefined && sample !== null && sample.toString().trim()) {
-                    var sampleText = sample.toString().trim();
-                    if (sampleText.length > 25) sampleText = sampleText.substring(0, 25) + '...';
-                    label += ' \u2190 "' + sampleText + '"';
-                }
-                var sel = (vc.index === autoIdx) ? ' selected' : '';
-                s += '<option value="' + vc.index + '"' + sel + '>' + (vc.index + 1) + '. ' + escapeHtml(label) + '</option>';
-            });
-            s += '</select>';
-            return s;
-        }
-
-        var html = '';
-        html += '<div style="margin-bottom:10px;">';
-        html += '<label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px;">\u05E2\u05DE\u05D5\u05D3\u05EA \u05E9\u05DD \u05DE\u05D5\u05E6\u05E8 *</label>';
-        html += buildSelect('colName', nameAutoIdx);
-        html += '</div>';
-        html += '<div style="margin-bottom:10px;">';
-        html += '<label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px;">\u05E2\u05DE\u05D5\u05D3\u05EA \u05EA\u05D9\u05D0\u05D5\u05E8 (\u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9)</label>';
-        html += buildSelect('colDesc', descAutoIdx);
-        html += '</div>';
-
-        // Data preview
-        html += '<div style="margin-top:8px;padding:10px;background:#f5f5f5;border-radius:8px;font-size:12px;max-height:120px;overflow-y:auto;">';
-        html += '<div style="font-weight:600;margin-bottom:6px;">\u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 (' + (state.importedData.length - 1) + ' \u05E9\u05D5\u05E8\u05D5\u05EA):</div>';
-        var previewCount = Math.min(state.importedData.length - 1, 5);
-        for (var r = 1; r <= previewCount; r++) {
-            var row = state.importedData[r];
-            var preview = row ? row.slice(0, 3).join(' | ') : '';
-            html += '<div style="padding:2px 0;color:#555;border-bottom:1px solid #e0e0e0;">' + escapeHtml(preview) + '</div>';
-        }
-        if (state.importedData.length - 1 > 5) {
-            html += '<div style="padding:2px 0;color:#999;">...</div>';
-        }
-        html += '</div>';
-
-        container.innerHTML = html;
-        document.getElementById('importPreview').style.display = 'block';
-    }
-
-    function confirmImport() {
-        var nameCol = parseInt(document.getElementById('colName').value);
-        var descCol = parseInt(document.getElementById('colDesc').value);
-
-        if (nameCol === -1) {
-            showToast('\u05D1\u05D7\u05E8 \u05E2\u05DE\u05D5\u05D3\u05EA \u05E9\u05DD', 'error');
-            return;
-        }
-
-        var data = state.importedData;
-        var count = 0;
-        for (var i = 1; i < data.length; i++) {
-            var name = data[i][nameCol];
-            if (!name || !name.toString().trim()) continue;
-            var desc = descCol >= 0 ? (data[i][descCol] || '') : '';
-            createProduct(name.toString().trim(), desc.toString().trim());
-            count++;
-        }
-
-        closeModal('importExportModal');
-        document.getElementById('importPreview').style.display = 'none';
-        document.getElementById('excelFileInput').value = '';
-        state.importedData = null;
-        state.importColumns = null;
-        renderGrid();
-        showToast(count + ' \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05D9\u05D5\u05D1\u05D0\u05D5 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
-    }
-
-    function exportExcel() {
-        if (state.products.length === 0) {
-            showToast('\u05D0\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05DC\u05D9\u05D9\u05E6\u05D5\u05D0', 'error');
-            return;
-        }
-
-        var wsData = [['\u05E9\u05DD \u05DE\u05D5\u05E6\u05E8', '\u05EA\u05D9\u05D0\u05D5\u05E8', '\u05E1\u05D8\u05D8\u05D5\u05E1', '\u05E4\u05E2\u05D5\u05DC\u05D4 \u05D0\u05D7\u05E8\u05D5\u05E0\u05D4']];
-        state.products.forEach(function(p) {
-            wsData.push([p.name, p.description || '', p.status, p.lastAction || '']);
-        });
-
-        var wb = XLSX.utils.book_new();
-        var ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 15 }];
-        XLSX.utils.book_append_sheet(wb, ws, '\u05E7\u05D8\u05DC\u05D5\u05D2');
-        XLSX.writeFile(wb, 'catalog_export_' + new Date().toISOString().slice(0, 10) + '.xlsx');
-        showToast('\u05E7\u05D5\u05D1\u05E5 Excel \u05D9\u05D5\u05E6\u05D0 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
-    }
-
-    function exportZip() {
-        if (state.products.length === 0) {
-            showToast('\u05D0\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD \u05DC\u05D9\u05D9\u05E6\u05D5\u05D0', 'error');
-            return;
-        }
-
-        showToast('\u05DE\u05DB\u05D9\u05DF \u05E7\u05D5\u05D1\u05E5 ZIP...', 'info');
-
-        var zip = new JSZip();
-        var promises = [];
-
-        state.products.forEach(function(product) {
-            if (product.status !== 'ready') return;
-            var promise = ImageDB.getImage(product.id).then(function(record) {
-                if (record && record.full) {
-                    var safeName = product.name.replace(/[\/\\:*?"<>|]/g, '_');
-                    zip.file(safeName + '.jpg', record.full);
-                }
-            });
-            promises.push(promise);
-        });
-
-        Promise.all(promises).then(function() {
-            return zip.generateAsync({ type: 'blob' });
-        }).then(function(content) {
-            saveAs(content, 'catalog_images_' + new Date().toISOString().slice(0, 10) + '.zip');
-            showToast('\u05E7\u05D5\u05D1\u05E5 ZIP \u05D9\u05D5\u05E6\u05D0 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4!', 'success');
-        }).catch(function(err) {
-            showToast('\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05D9\u05E6\u05D5\u05D0: ' + err.message, 'error');
-        });
-    }
-
-    // ========================================
-    // 15. UI ACTIONS & EVENT HANDLERS
-    // ========================================
-    function addNewProduct() {
-        openModal('addProductModal');
-        document.getElementById('newProductName').value = '';
-        document.getElementById('newProductDesc').value = '';
-        document.getElementById('newProductImage').value = '';
-        setTimeout(function() { document.getElementById('newProductName').focus(); }, 100);
-    }
-
-    function confirmAddProduct() {
-        var name = document.getElementById('newProductName').value.trim();
-        if (!name) {
-            showToast('\u05D4\u05D6\u05DF \u05E9\u05DD \u05DE\u05D5\u05E6\u05E8', 'error');
-            return;
-        }
-        var desc = document.getElementById('newProductDesc').value.trim();
-        var fileInput = document.getElementById('newProductImage');
-        var imageFile = fileInput.files[0] || null;
-
-        var product = createProduct(name, desc, imageFile);
-        closeModal('addProductModal');
-        renderGrid();
-        showToast('\u05DE\u05D5\u05E6\u05E8 "\u200E' + name + '" \u05E0\u05D5\u05E1\u05E3!', 'success');
-    }
-
-    function confirmDelete(productId) {
-        var product = getProduct(productId);
-        if (!product) return;
-        if (!confirm('\u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA "' + product.name + '"?')) return;
-        deleteProduct(productId);
-        renderGrid();
-        showToast('\u05DE\u05D5\u05E6\u05E8 \u05E0\u05DE\u05D7\u05E7', 'success');
-    }
-
-    function filterProducts() {
-        var query = document.getElementById('searchInput').value.trim().toLowerCase();
-        if (!query) {
-            state.filteredProducts = null;
-        } else {
-            state.filteredProducts = state.products.filter(function(p) {
-                return p.name.toLowerCase().includes(query) ||
-                    (p.description && p.description.toLowerCase().includes(query));
-            });
-        }
-        renderGrid();
-    }
-
-    function zoomImage(productId) {
-        ImageDB.getImage(productId).then(function(record) {
-            if (record && record.full) {
-                var url = URL.createObjectURL(record.full);
-                document.getElementById('zoomImage').src = url;
-                document.getElementById('zoomOverlay').classList.add('show');
-            } else {
-                var product = getProduct(productId);
-                if (product && product.thumbnailUrl) {
-                    document.getElementById('zoomImage').src = product.thumbnailUrl;
-                    document.getElementById('zoomOverlay').classList.add('show');
-                }
-            }
-        });
-    }
-
-    function closeZoom() {
-        var overlay = document.getElementById('zoomOverlay');
-        overlay.classList.remove('show');
-        var img = document.getElementById('zoomImage');
-        if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-        img.src = '';
-    }
-
-    var PROVIDER_LIST = [
-        { id: 'pollinations', name: 'Pollinations', price: 'Free', badge: '\u2705 FREE', needsKey: false, features: 'Generate only', url: '', urlLabel: '', desc: 'No signup needed. Text-to-image only.' },
-        { id: 'siliconflow', name: 'SiliconFlow', price: 'Free', badge: '\u2705 FREE', needsKey: true, features: 'Generate (Flux Schnell)', url: 'https://cloud.siliconflow.cn/account/ak', urlLabel: 'cloud.siliconflow.cn', desc: 'Chinese provider. 2000 free requests/day.' },
-        { id: 'gemini', name: 'Gemini (Google)', price: 'Free', badge: '\u2705 FREE', needsKey: true, features: 'All 4 actions', url: 'https://aistudio.google.com/apikey', urlLabel: 'aistudio.google.com', desc: 'Best free option! Generate + Template + Isolate + Studio. 15 req/min.' },
-        { id: 'fal', name: 'FAL', price: 'Paid', badge: '\u{1F4B3}', needsKey: true, features: 'All 4 actions (best quality)', url: 'https://fal.ai/settings/keys', urlLabel: 'fal.ai/settings/keys', desc: 'Pay per use. Flux + Nano Banana + rembg.' }
+    <button class="btn-primary" id="addProductBtn">Save Product</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Product List</div>
+    <div id="productsList"></div>
+  </div>
+</section>
+
+<div class="install-banner" id="installBanner">
+  <span style="font-size:13px;">📲 Install as an app on your home screen</span>
+  <div>
+    <button id="installBtn">Install</button>
+    <button class="close-btn" id="dismissInstall">✕</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ============ STATE ============
+var STORAGE_KEY_PRODUCTS = 'kitchen_calc_products_v2';
+var STORAGE_KEY_ORDER    = 'kitchen_calc_order_v2';
+
+var products = [];   // [{id, name, raw, cooked, unit}]
+var orderRows = [];  // [{id, productId, portions, portionSize}]
+
+// ============ UNITS (US customary) ============
+// unit display names + conversion to a common base for "nicer" alt display.
+// Weight base: ounces. Volume base: fluid ounces.
+var UNIT_INFO = {
+  oz:   { label: 'oz',    full: 'ounces',        kind: 'weight', base: 1 },
+  lb:   { label: 'lb',    full: 'pounds',        kind: 'weight', base: 16 },
+  cup:  { label: 'cup',   full: 'cups',          kind: 'volume', base: 8 },
+  floz: { label: 'fl oz', full: 'fluid ounces',  kind: 'volume', base: 1 },
+  qt:   { label: 'qt',    full: 'quarts',        kind: 'volume', base: 32 },
+  gal:  { label: 'gal',   full: 'gallons',       kind: 'volume', base: 128 },
+  ct:   { label: 'units', full: 'units',         kind: 'count',  base: 1 }
+};
+function unitLabel(u) { return UNIT_INFO[u] ? UNIT_INFO[u].label : u; }
+
+// Pretty alternate display: convert to nicer unit if value is large/small.
+function altDisplay(value, unit) {
+  var info = UNIT_INFO[unit];
+  if (!info) return '';
+  if (info.kind === 'weight') {
+    var oz = value * info.base;
+    if (unit !== 'lb' && oz >= 16) {
+      return '≈ ' + format(oz / 16) + ' lb';
+    }
+    if (unit === 'lb' && oz < 16) {
+      return '≈ ' + format(oz) + ' oz';
+    }
+  } else if (info.kind === 'volume') {
+    var floz = value * info.base;
+    if (unit !== 'gal' && floz >= 128) return '≈ ' + format(floz / 128) + ' gal';
+    if (unit !== 'qt'  && floz >= 32 && floz < 128) return '≈ ' + format(floz / 32) + ' qt';
+    if (unit !== 'cup' && floz >= 8  && floz < 32)  return '≈ ' + format(floz / 8) + ' cups';
+    if (unit !== 'floz' && floz < 8 && floz > 0)    return '≈ ' + format(floz) + ' fl oz';
+  }
+  return '';
+}
+
+// ============ STORAGE ============
+function loadState() {
+  try {
+    var p = localStorage.getItem(STORAGE_KEY_PRODUCTS);
+    if (p) products = JSON.parse(p);
+  } catch(e) { products = []; }
+  try {
+    var o = localStorage.getItem(STORAGE_KEY_ORDER);
+    if (o) orderRows = JSON.parse(o);
+  } catch(e) { orderRows = []; }
+
+  if (products.length === 0) {
+    products = [
+      { id: id(), name: 'White Rice', raw: 12, cooked: 36, unit: 'oz' },
+      { id: id(), name: 'Pasta',      raw: 8,  cooked: 16, unit: 'oz' }
     ];
+    saveProducts();
+  }
+  if (orderRows.length === 0) {
+    orderRows = [{ id: id(), productId: products[0].id, portions: 100, portionSize: 18 }];
+    saveOrder();
+  }
+}
+function saveProducts() { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); }
+function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
+function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
-    function renderProvidersList() {
-        var container = document.getElementById('providersList');
-        var html = '';
-        PROVIDER_LIST.forEach(function(p) {
-            var key = localStorage.getItem('ai_provider_key_' + p.id) || '';
-            var hasKey = !p.needsKey || !!key;
-            var statusColor = hasKey ? 'var(--success)' : 'var(--text-muted)';
-            var statusDot = hasKey ? '\u25CF' : '\u25CB';
-            html += '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;background:var(--bg-elevated);">';
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-            html += '<div style="display:flex;align-items:center;gap:8px;">';
-            html += '<span style="color:' + statusColor + ';font-size:10px;">' + statusDot + '</span>';
-            html += '<strong style="font-size:14px;color:var(--text);">' + p.name + '</strong>';
-            html += '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:' + (p.price === 'Free' ? 'var(--success-bg)' : 'var(--warning-bg)') + ';color:' + (p.price === 'Free' ? 'var(--success)' : 'var(--warning)') + ';">' + p.badge + '</span>';
-            html += '</div>';
-            html += '<span style="font-size:11px;color:var(--text-muted);">' + p.features + '</span>';
-            html += '</div>';
-            html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">' + p.desc + '</div>';
-            if (p.needsKey) {
-                html += '<div style="display:flex;gap:8px;align-items:center;">';
-                html += '<input type="password" class="form-input" id="key_' + p.id + '" placeholder="API Key" value="' + (key ? '\u2022\u2022\u2022\u2022\u2022\u2022' + key.slice(-6) : '') + '" style="flex:1;padding:8px 12px;font-size:13px;">';
-                if (p.url) {
-                    html += '<a href="' + p.url + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary-light);white-space:nowrap;text-decoration:none;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);">' + p.urlLabel + ' \u2197</a>';
-                }
-                html += '</div>';
-            }
-            html += '</div>';
-        });
-        container.innerHTML = html;
-    }
+// ============ TABS ============
+document.querySelectorAll('.tab').forEach(function(t) {
+  t.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
 
-    function showSettings() {
-        renderProvidersList();
-        openModal('settingsModal');
-    }
+// ============ PRODUCTS ============
+function renderProducts() {
+  var list = document.getElementById('productsList');
+  if (products.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>No products yet. Add one above.</div></div>';
+    return;
+  }
+  list.innerHTML = '';
+  products.forEach(function(p) {
+    var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
+    var per1 = ratio.toFixed(3).replace(/\.?0+$/, '');
+    var u = unitLabel(p.unit);
+    var div = document.createElement('div');
+    div.className = 'product-item';
+    div.innerHTML =
+      '<div class="product-item-header">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+          '<div class="product-detail">' + format(p.raw) + ' ' + escapeHtml(u) + ' raw → ' + format(p.cooked) + ' ' + escapeHtml(u) + ' cooked</div>' +
+          '<div class="product-ratio-badge">Ratio: ' + per1 + ' raw per 1 cooked</div>' +
+        '</div>' +
+        '<button class="btn-danger btn-icon" data-del="' + p.id + '" title="Delete">🗑️</button>' +
+      '</div>';
+    list.appendChild(div);
+  });
+  list.querySelectorAll('[data-del]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pid = btn.getAttribute('data-del');
+      if (confirm('Delete this product?')) {
+        products = products.filter(function(x){ return x.id !== pid; });
+        saveProducts();
+        renderProducts();
+        renderOrderRows();
+      }
+    });
+  });
+}
 
-    function saveAllSettings() {
-        PROVIDER_LIST.forEach(function(p) {
-            if (!p.needsKey) return;
-            var input = document.getElementById('key_' + p.id);
-            if (!input) return;
-            var val = input.value.trim();
-            if (val && !val.startsWith('\u2022')) {
-                localStorage.setItem('ai_provider_key_' + p.id, val);
-            }
-        });
-        closeModal('settingsModal');
-        showToast('Settings saved!', 'success');
-    }
+document.getElementById('addProductBtn').addEventListener('click', function() {
+  var name = document.getElementById('newProductName').value.trim();
+  var raw = parseFloat(document.getElementById('newProductRaw').value);
+  var cooked = parseFloat(document.getElementById('newProductCooked').value);
+  var unit = document.getElementById('newProductUnit').value;
+  if (!name) { toast('Enter a product name'); return; }
+  if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
+  products.push({ id: id(), name: name, raw: raw, cooked: cooked, unit: unit });
+  saveProducts();
+  document.getElementById('newProductName').value = '';
+  document.getElementById('newProductRaw').value = '';
+  document.getElementById('newProductCooked').value = '';
+  renderProducts();
+  renderOrderRows();
+  toast('Product added ✓');
+});
 
-    // ========================================
-    // 16. INTERNATIONALIZATION
-    // ========================================
-    var LANG = {
-        he: {
-            search: '\u05d7\u05e4\u05e9 \u05de\u05d5\u05e6\u05e8\u05d9\u05dd...',
-            addProduct: '+ \u05de\u05d5\u05e6\u05e8 \u05d7\u05d3\u05e9',
-            selectAll: '\u2611 \u05d1\u05d7\u05e8 \u05d4\u05db\u05dc',
-            importExcel: '\u{1F4C4} \u05d9\u05d9\u05d1\u05d5\u05d0 Excel',
-            total: '\u05e1\u05d4"\u05db',
-            ready: '\u05de\u05d5\u05db\u05e0\u05d9\u05dd',
-            drafts: '\u05d8\u05d9\u05d5\u05d8\u05d5\u05ea',
-            errors: '\u05e9\u05d2\u05d9\u05d0\u05d5\u05ea',
-            emptyTitle: '\u05d0\u05d9\u05df \u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05e2\u05d3\u05d9\u05d9\u05df',
-            emptyDesc: '\u05dc\u05d7\u05e5 \u05e2\u05dc "\u05de\u05d5\u05e6\u05e8 \u05d7\u05d3\u05e9" \u05d0\u05d5 \u05d9\u05d9\u05d1\u05d0 Excel',
-            generate: '\u2728 \u05de\u05d0\u05e4\u05e1',
-            template: '\u{1F4CB} \u05ea\u05d1\u05e0\u05d9\u05ea',
-            isolate: '\u2702 \u05d1\u05d9\u05d3\u05d5\u05d3',
-            studio: '\u{1F4F7} \u05e1\u05d8\u05d5\u05d3\u05d9\u05d5',
-            selected: '\u05e0\u05d1\u05d7\u05e8\u05d5',
-            bulkGenerate: '\u2728 \u05d9\u05e6\u05d9\u05e8\u05d4',
-            bulkTemplate: '\u{1F4CB} \u05ea\u05d1\u05e0\u05d9\u05ea',
-            bulkIsolate: '\u2702 \u05d1\u05d9\u05d3\u05d5\u05d3',
-            bulkStudio: '\u{1F4F7} \u05e1\u05d8\u05d5\u05d3\u05d9\u05d5',
-            bulkDelete: '\u{1F5D1} \u05de\u05d7\u05e7',
-            export: '\u05d9\u05d9\u05e6\u05d5\u05d0',
-            settings: '\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea',
-            save: '\u05e9\u05de\u05d5\u05e8 \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea',
-            provider: '\u05e1\u05e4\u05e7 AI',
-            clickToEdit: '\u05dc\u05d7\u05e5 \u05dc\u05e2\u05e8\u05d9\u05db\u05d4',
-            statusDraft: '\u05d8\u05d9\u05d5\u05d8\u05d4',
-            statusProcessing: '\u05de\u05e2\u05d1\u05d3...',
-            statusReady: '\u05de\u05d5\u05db\u05df',
-            statusError: '\u05e9\u05d2\u05d9\u05d0\u05d4',
-            langBtn: 'EN'
-        },
-        en: {
-            search: 'Search products...',
-            addProduct: '+ New Product',
-            selectAll: '\u2611 Select All',
-            importExcel: '\u{1F4C4} Import Excel',
-            total: 'Total',
-            ready: 'Ready',
-            drafts: 'Drafts',
-            errors: 'Errors',
-            emptyTitle: 'No products yet',
-            emptyDesc: 'Click "New Product" or import Excel to start',
-            generate: '\u2728 Generate',
-            template: '\u{1F4CB} Template',
-            isolate: '\u2702 Isolate',
-            studio: '\u{1F4F7} Studio',
-            selected: 'selected',
-            bulkGenerate: '\u2728 Generate',
-            bulkTemplate: '\u{1F4CB} Template',
-            bulkIsolate: '\u2702 Isolate',
-            bulkStudio: '\u{1F4F7} Studio',
-            bulkDelete: '\u{1F5D1} Delete',
-            export: 'Export',
-            settings: 'Settings',
-            save: 'Save Settings',
-            provider: 'AI Provider',
-            clickToEdit: 'Click to edit',
-            statusDraft: 'Draft',
-            statusProcessing: 'Processing...',
-            statusReady: 'Ready',
-            statusError: 'Error',
-            langBtn: '\u05e2\u05d1'
-        }
-    };
+// ============ ORDER ROWS ============
+function renderOrderRows() {
+  var container = document.getElementById('orderRows');
+  if (products.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚙️</div><div>First, set up products in the "Products" tab.</div></div>';
+    return;
+  }
+  if (orderRows.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div>No rows. Tap "Add Row" below.</div></div>';
+    return;
+  }
+  container.innerHTML = '';
+  orderRows.forEach(function(row, idx) {
+    var div = document.createElement('div');
+    div.className = 'order-row';
 
-    function getLang() { return localStorage.getItem('app_lang') || 'he'; }
-    function t(key) { return (LANG[getLang()] || LANG.he)[key] || key; }
+    var options = products.map(function(p) {
+      var sel = p.id === row.productId ? ' selected' : '';
+      return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
+    }).join('');
 
-    function toggleLang() {
-        var curr = getLang();
-        var next = curr === 'he' ? 'en' : 'he';
-        localStorage.setItem('app_lang', next);
-        document.documentElement.dir = next === 'he' ? 'rtl' : 'ltr';
-        document.documentElement.lang = next;
-        document.getElementById('langBtn').textContent = t('langBtn');
-        document.getElementById('searchInput').placeholder = t('search');
-        renderGrid();
-        applyLangToUI();
-    }
+    div.innerHTML =
+      '<div class="row-header">' +
+        '<div class="row-header-text">Row #' + (idx+1) + '</div>' +
+        '<button class="btn-danger btn-icon" data-rmrow="' + row.id + '">🗑️</button>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Product</label>' +
+        '<select data-field="productId" data-id="' + row.id + '">' + options + '</select>' +
+      '</div>' +
+      '<div class="row-grid">' +
+        '<div class="field">' +
+          '<label>Number of portions</label>' +
+          '<input type="number" min="0" step="any" inputmode="decimal" value="' + row.portions + '" data-field="portions" data-id="' + row.id + '">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Portion size (cooked)</label>' +
+          '<input type="number" min="0" step="any" inputmode="decimal" value="' + row.portionSize + '" data-field="portionSize" data-id="' + row.id + '">' +
+        '</div>' +
+      '</div>' +
+      '<div class="order-summary" id="sum-' + row.id + '"></div>';
 
-    function applyLangToUI() {
-        var l = getLang();
-        document.documentElement.dir = l === 'he' ? 'rtl' : 'ltr';
-        document.documentElement.lang = l;
-        document.getElementById('langBtn').textContent = t('langBtn');
-        document.getElementById('searchInput').placeholder = t('search');
-        // Toolbar buttons
-        var tbBtns = document.getElementById('floatingToolbar').querySelectorAll('.toolbar-btn');
-        if (tbBtns.length >= 6) {
-            tbBtns[0].textContent = t('bulkGenerate');
-            tbBtns[1].textContent = t('bulkTemplate');
-            tbBtns[2].textContent = t('bulkIsolate');
-            tbBtns[3].textContent = t('bulkStudio');
-            tbBtns[4].textContent = t('bulkDelete');
-        }
-    }
+    container.appendChild(div);
+    updateRowSummary(row.id);
+  });
 
-    // ========================================
-    // 17. DRAG & DROP
-    // ========================================
-    function setupDragDrop() {
-        var dropZone = document.getElementById('dropZone');
-        if (!dropZone) return;
+  container.querySelectorAll('[data-field]').forEach(function(el) {
+    el.addEventListener('input', function() {
+      var rowId = el.getAttribute('data-id');
+      var field = el.getAttribute('data-field');
+      var row = orderRows.find(function(r){ return r.id === rowId; });
+      if (!row) return;
+      if (field === 'productId') row.productId = el.value;
+      else row[field] = parseFloat(el.value) || 0;
+      saveOrder();
+      updateRowSummary(rowId);
+    });
+  });
+  container.querySelectorAll('[data-rmrow]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-rmrow');
+      orderRows = orderRows.filter(function(r){ return r.id !== rid; });
+      saveOrder();
+      renderOrderRows();
+    });
+  });
+}
 
-        ['dragenter', 'dragover'].forEach(function(evtName) {
-            dropZone.addEventListener(evtName, function(e) {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-        });
+function updateRowSummary(rowId) {
+  var row = orderRows.find(function(r){ return r.id === rowId; });
+  if (!row) return;
+  var p = products.find(function(x){ return x.id === row.productId; });
+  var el = document.getElementById('sum-' + rowId);
+  if (!el || !p) return;
+  var totalCooked = row.portions * row.portionSize;
+  el.textContent = 'Row total cooked: ' + format(totalCooked) + ' ' + unitLabel(p.unit);
+}
 
-        ['dragleave', 'drop'].forEach(function(evtName) {
-            dropZone.addEventListener(evtName, function(e) {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-            });
-        });
+document.getElementById('addRowBtn').addEventListener('click', function() {
+  if (products.length === 0) { toast('Set up products first'); return; }
+  orderRows.push({ id: id(), productId: products[0].id, portions: 0, portionSize: 0 });
+  saveOrder();
+  renderOrderRows();
+});
 
-        dropZone.addEventListener('drop', function(e) {
-            var files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleExcelImport(files[0]);
-            }
-        });
-    }
+// ============ CALCULATION ============
+document.getElementById('calcBtn').addEventListener('click', function() {
+  if (orderRows.length === 0) { toast('No rows to calculate'); return; }
+  var totals = {};
+  orderRows.forEach(function(row) {
+    var p = products.find(function(x){ return x.id === row.productId; });
+    if (!p) return;
+    var cooked = row.portions * row.portionSize;
+    if (!(cooked > 0)) return;
+    var ratio = p.cooked > 0 ? (p.raw / p.cooked) : 0;
+    var raw = cooked * ratio;
+    if (!totals[p.id]) totals[p.id] = { name: p.name, unit: p.unit, cooked: 0, raw: 0 };
+    totals[p.id].cooked += cooked;
+    totals[p.id].raw += raw;
+  });
 
-    // ========================================
-    // 17. INITIALIZATION
-    // ========================================
-    function init() {
-        // Embed mode: hide top bar
-        if (IS_EMBED) document.getElementById('topBar').classList.add('hidden');
+  var keys = Object.keys(totals);
+  var resEl = document.getElementById('results');
+  if (keys.length === 0) {
+    resEl.innerHTML = '<div class="card"><div class="empty-state"><div class="empty-state-icon">🤔</div><div>Nothing to calculate.<br>Make sure you entered portions and portion size.</div></div></div>';
+    return;
+  }
+  var html = '<div class="results-card"><h3>✅ Raw Amounts to Cook</h3>';
+  keys.forEach(function(k) {
+    var t = totals[k];
+    var u = unitLabel(t.unit);
+    var rawAlt = altDisplay(t.raw, t.unit);
+    var cookedAlt = altDisplay(t.cooked, t.unit);
+    html +=
+      '<div class="result-line">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="result-name">' + escapeHtml(t.name) + '</div>' +
+          '<div class="result-sub">Total cooked: ' + format(t.cooked) + ' ' + escapeHtml(u) +
+            (cookedAlt ? ' <span style="opacity:.7">(' + cookedAlt + ')</span>' : '') + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div class="result-amount">' + format(t.raw) + ' ' + escapeHtml(u) + '</div>' +
+          (rawAlt ? '<div class="result-alt">' + rawAlt + '</div>' : '') +
+        '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+  resEl.innerHTML = html;
+  resEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
-        // Load products from localStorage (persists between sessions)
-        state.products = loadProductsLocal();
+// ============ HELPERS ============
+function format(n) {
+  if (!isFinite(n)) return '0';
+  if (n >= 1000) return Math.round(n).toLocaleString('en-US');
+  if (n >= 100)  return n.toFixed(1).replace(/\.0$/, '');
+  return n.toFixed(2).replace(/\.?0+$/, '');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
 
-        // Init IndexedDB (persists between sessions)
-        ImageDB.open().catch(function(err) { console.error('IndexedDB:', err); });
+// ============ PWA INSTALL ============
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('install_dismissed')) {
+    document.getElementById('installBanner').style.display = 'flex';
+  }
+});
+document.getElementById('installBtn').addEventListener('click', function() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(){
+    deferredPrompt = null;
+    document.getElementById('installBanner').style.display = 'none';
+  });
+});
+document.getElementById('dismissInstall').addEventListener('click', function() {
+  document.getElementById('installBanner').style.display = 'none';
+  localStorage.setItem('install_dismissed', '1');
+});
 
-        // Apply language
-        applyLangToUI();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
 
-        // Render
-        renderGrid();
-        setupDragDrop();
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeZoom();
-                document.querySelectorAll('.modal-overlay.show').forEach(function(modal) {
-                    modal.classList.remove('show');
-                });
-            }
-        });
-
-        // Register service worker for PWA
-        if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-            navigator.serviceWorker.register('sw.js').catch(function() {});
-        }
-    }
-
-    // Run init when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
-    </script>
+// ============ INIT ============
+loadState();
+renderProducts();
+renderOrderRows();
+</script>
 </body>
 </html>
