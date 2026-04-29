@@ -833,8 +833,14 @@
   </div>
 </section>
 
-<!-- ============ TAB: INGREDIENTS ============ -->
+<!-- ============ TAB: PRODUCTS ============ -->
 <section class="tab-content" id="tab-products">
+  <div class="card" style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 100%);color:white;">
+    <div class="card-title" style="color:white;">🍲 Compose a dish from ingredients</div>
+    <p style="font-size:13px;color:rgba(255,255,255,0.9);margin-bottom:10px;">Click below to define a new dish (recipe). You'll pick components from the <strong>🥕 Ingredients</strong> catalog, set yield per batch, and mark a ⭐ lead ingredient.</p>
+    <button class="btn-primary" id="addDishBtn" style="background:white;color:#0f766e;width:100%;font-weight:700;">➕ Add Dish</button>
+  </div>
+
   <div class="card">
     <div class="card-title">➕ Add New Product</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A product has a raw → cooked conversion plus advanced fields (packaging, labor, pots). For simple priced raw materials use the <strong>🥕 Ingredients</strong> tab. Combine products into a meal in the <strong>🍲 Recipes</strong> tab.</p>
@@ -1212,6 +1218,53 @@ Pasta,oz,8,16"></textarea>
 
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
+
+<!-- ============ MODAL: ADD DISH (v2.5.0) ============ -->
+<div id="dishModalOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:2000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 20px;">
+  <div style="background:white;border-radius:12px;max-width:600px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+      <h3 style="margin:0;font-size:18px;color:var(--primary);">🍲 Add Dish</h3>
+      <button type="button" id="dishModalCloseBtn" style="background:none;border:none;font-size:28px;cursor:pointer;color:#94a3b8;line-height:1;padding:0 4px;">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Define a meal made of components from the Ingredients catalog. Mark one component as ⭐ <strong>lead</strong> — its raw weight drives pot sizing.</p>
+    <div class="field">
+      <label>Dish name</label>
+      <input type="text" id="dishModalName" placeholder="e.g. Kugel">
+    </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Yield / batch (cooked) <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+        <input type="number" id="dishModalYield" step="any" min="0" placeholder="e.g. 80" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Yield unit</label>
+        <select id="dishModalYieldUnit">
+          <option value="oz">oz</option>
+          <option value="lb">lb</option>
+          <option value="floz">fl oz</option>
+          <option value="cup">cup</option>
+          <option value="qt">qt</option>
+          <option value="gal">gal</option>
+          <option value="ct">ct</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Reference <span style="color:var(--text-muted);font-weight:400;">(optional kitchen note)</span></label>
+      <input type="text" id="dishModalRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
+    </div>
+    <div class="field">
+      <label>Components (per ONE meal — click ☆ to mark ⭐ lead)</label>
+      <div class="component-list" data-component-list="modal"></div>
+      <button class="btn-secondary btn-small" type="button" data-component-add="modal">+ Add ingredient</button>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much of it goes into one meal. The unit is taken from the ingredient.</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <button class="btn-primary" id="dishModalSaveBtn" style="flex:1;">Save Dish</button>
+      <button class="btn-secondary" id="dishModalCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -2060,6 +2113,58 @@ document.getElementById('addRecipeBtn').addEventListener('click', function() {
   renderRecipes();
   renderOrderRows();
   toast('Recipe added ✓');
+});
+
+// ============ ADD DISH MODAL (v2.5.0) ============
+function openDishModal(prefilledName) {
+  var overlay = document.getElementById('dishModalOverlay');
+  if (!overlay) return;
+  document.getElementById('dishModalName').value = prefilledName || '';
+  document.getElementById('dishModalYield').value = '';
+  document.getElementById('dishModalYieldUnit').value = 'oz';
+  document.getElementById('dishModalRef').value = '';
+  setComponentListContent(document.querySelector('[data-component-list="modal"]'), [], null);
+  overlay.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('dishModalName').focus(); }, 50);
+}
+function closeDishModal() {
+  var overlay = document.getElementById('dishModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+document.getElementById('addDishBtn') && document.getElementById('addDishBtn').addEventListener('click', function() {
+  openDishModal('');
+});
+document.getElementById('dishModalCloseBtn') && document.getElementById('dishModalCloseBtn').addEventListener('click', closeDishModal);
+document.getElementById('dishModalCancelBtn') && document.getElementById('dishModalCancelBtn').addEventListener('click', closeDishModal);
+document.getElementById('dishModalOverlay') && document.getElementById('dishModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeDishModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var overlay = document.getElementById('dishModalOverlay');
+    if (overlay && overlay.style.display !== 'none') closeDishModal();
+  }
+});
+document.getElementById('dishModalSaveBtn') && document.getElementById('dishModalSaveBtn').addEventListener('click', function() {
+  var name = (document.getElementById('dishModalName').value || '').trim();
+  var listEl = document.querySelector('[data-component-list="modal"]');
+  var comps = collectComponents(listEl);
+  var leadProductId = collectLeadProductId(listEl);
+  var yieldCooked = parseFloat(document.getElementById('dishModalYield').value);
+  var yieldUnit = document.getElementById('dishModalYieldUnit').value || 'oz';
+  var referenceText = (document.getElementById('dishModalRef').value || '').trim();
+  if (!name) { toast('Enter a dish name'); return; }
+  if (comps.length === 0) { toast('Add at least one ingredient'); return; }
+  var recipe = { id: id(), name: name, components: comps };
+  if (leadProductId) recipe.leadProductId = leadProductId;
+  if (yieldCooked > 0) { recipe.yieldCooked = yieldCooked; recipe.yieldUnit = yieldUnit; }
+  if (referenceText) recipe.referenceText = referenceText;
+  recipes.push(recipe);
+  saveRecipes();
+  closeDishModal();
+  renderRecipes();
+  renderOrderRows();
+  toast('Dish "' + name + '" added ✓');
 });
 
 // Component row delegation: + Add / 🗑 / unit-label sync on product change
