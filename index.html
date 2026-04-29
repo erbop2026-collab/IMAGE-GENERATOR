@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.5</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.6</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1147,7 +1147,10 @@ Pasta,oz,8,16"></textarea>
         <input type="number" id="packPrice" step="any" min="0" placeholder="0.30" inputmode="decimal">
       </div>
     </div>
-    <button class="btn-primary" id="addPackBtn">Save packaging</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-primary" id="addPackBtn" style="flex:1;">Save packaging</button>
+      <button class="btn-secondary" id="packEditCancel" style="display:none;">Cancel edit</button>
+    </div>
     <div id="packFormMsg" style="font-size:12px;margin-top:8px;"></div>
   </div>
 
@@ -4471,6 +4474,34 @@ document.getElementById('addPotBtn') && document.getElementById('addPotBtn').add
 });
 
 // ============ PACKAGING (v2.5.4) ============
+var packEditingId = null;
+function startEditPack(packId) {
+  var pk = packs.find(function(p){ return p.id === packId; });
+  if (!pk) return;
+  packEditingId = packId;
+  document.getElementById('packName').value = pk.name || '';
+  document.getElementById('packSizeQty').value = pk.sizeQty > 0 ? pk.sizeQty : '';
+  document.getElementById('packSizeUnit').value = pk.sizeUnit || 'oz';
+  document.getElementById('packPrice').value = pk.price > 0 ? pk.price : '';
+  document.getElementById('addPackBtn').textContent = 'Update packaging';
+  document.getElementById('packEditCancel').style.display = '';
+  document.getElementById('packFormMsg').style.color = 'var(--primary)';
+  document.getElementById('packFormMsg').textContent = '✏️ Editing "' + pk.name + '" — change fields and click Update.';
+  document.getElementById('packName').scrollIntoView({behavior:'smooth', block:'center'});
+  renderPacks();
+}
+function cancelEditPack() {
+  packEditingId = null;
+  document.getElementById('packName').value = '';
+  document.getElementById('packSizeQty').value = '';
+  document.getElementById('packPrice').value = '';
+  document.getElementById('packSizeUnit').value = 'oz';
+  document.getElementById('addPackBtn').textContent = 'Save packaging';
+  document.getElementById('packEditCancel').style.display = 'none';
+  document.getElementById('packFormMsg').textContent = '';
+  renderPacks();
+}
+
 function renderPacks() {
   var container = document.getElementById('packsTable');
   if (!container) return;
@@ -4484,29 +4515,39 @@ function renderPacks() {
       '<th style="padding:8px;text-align:left;">Name</th>' +
       '<th style="padding:8px;text-align:right;">Capacity</th>' +
       '<th style="padding:8px;text-align:right;">Price</th>' +
-      '<th style="padding:8px;width:36px;"></th>' +
+      '<th style="padding:8px;width:80px;"></th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(pk) {
-    html += '<tr style="border-bottom:1px solid var(--border);">' +
-      '<td style="padding:8px;font-weight:600;">' + escapeHtml(pk.name || '') + '</td>' +
+    var isEditing = pk.id === packEditingId;
+    html += '<tr style="border-bottom:1px solid var(--border);' + (isEditing ? 'background:#fef3c7;' : '') + '">' +
+      '<td style="padding:8px;font-weight:600;">' + escapeHtml(pk.name || '') + (isEditing ? ' <span style="color:#b45309;font-size:11px;">(editing)</span>' : '') + '</td>' +
       '<td style="padding:8px;text-align:right;">' + format(pk.sizeQty || 0) + ' ' + escapeHtml(unitLabel(pk.sizeUnit || 'oz')) + '</td>' +
       '<td style="padding:8px;text-align:right;">' + (pk.price > 0 ? '$' + pk.price.toFixed(2) : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
-      '<td style="padding:8px;text-align:right;"><button class="btn-danger btn-icon" data-del-pack="' + pk.id + '" title="Delete">🗑️</button></td>' +
+      '<td style="padding:8px;text-align:right;white-space:nowrap;">' +
+        '<button class="btn-secondary btn-icon" data-edit-pack="' + pk.id + '" title="Edit">✏️</button> ' +
+        '<button class="btn-danger btn-icon" data-del-pack="' + pk.id + '" title="Delete">🗑️</button>' +
+      '</td>' +
     '</tr>';
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
+  container.querySelectorAll('[data-edit-pack]').forEach(function(btn) {
+    btn.addEventListener('click', function() { startEditPack(btn.getAttribute('data-edit-pack')); });
+  });
   container.querySelectorAll('[data-del-pack]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var pid = btn.getAttribute('data-del-pack');
       if (!confirm('Delete this packaging?')) return;
       packs = packs.filter(function(x){ return x.id !== pid; });
+      if (packEditingId === pid) cancelEditPack();
       savePacks();
       renderPacks();
       toast('Packaging deleted ✓');
     });
   });
 }
+
+document.getElementById('packEditCancel') && document.getElementById('packEditCancel').addEventListener('click', cancelEditPack);
 
 document.getElementById('addPackBtn') && document.getElementById('addPackBtn').addEventListener('click', function() {
   var name = (document.getElementById('packName').value || '').trim();
@@ -4516,15 +4557,29 @@ document.getElementById('addPackBtn') && document.getElementById('addPackBtn').a
   var msgEl = document.getElementById('packFormMsg');
   msgEl.textContent = '';
   if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
-  var pk = { id: id(), name: name, sizeQty: sizeQty, sizeUnit: sizeUnit };
-  if (price > 0) pk.price = price;
-  packs.push(pk);
-  savePacks();
-  document.getElementById('packName').value = '';
-  document.getElementById('packSizeQty').value = '';
-  document.getElementById('packPrice').value = '';
-  msgEl.style.color = '#15803d';
-  msgEl.textContent = 'Packaging "' + name + '" saved ✓';
+  if (packEditingId) {
+    var existing = packs.find(function(p){ return p.id === packEditingId; });
+    if (existing) {
+      existing.name = name;
+      existing.sizeQty = sizeQty;
+      existing.sizeUnit = sizeUnit;
+      if (price > 0) existing.price = price; else delete existing.price;
+    }
+    savePacks();
+    cancelEditPack();
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = 'Packaging "' + name + '" updated ✓';
+  } else {
+    var pk = { id: id(), name: name, sizeQty: sizeQty, sizeUnit: sizeUnit };
+    if (price > 0) pk.price = price;
+    packs.push(pk);
+    savePacks();
+    document.getElementById('packName').value = '';
+    document.getElementById('packSizeQty').value = '';
+    document.getElementById('packPrice').value = '';
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = 'Packaging "' + name + '" saved ✓';
+  }
   renderPacks();
 });
 
@@ -4557,37 +4612,69 @@ function populatePackPicks() {
     if (current) sel.value = current;
   });
 }
-// Multi-pack picker: a checkbox list per dish form (Add Dish modal,
-// Recipes Add form, Recipes Edit card). currentByKey maps key →
-// array of currently-selected pack ids; pass {} for empty.
+// Multi-pack picker (v2.6.6): one dropdown row per attached pack, with a
+// "+ Add packaging" button to append more rows and 🗑 to remove.
+// Replaces the v2.6.4 checkbox list per user feedback (תפריט נגלל).
+function packPickRowHtml(selectedId) {
+  var sorted = packs.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  var opts = '<option value="">— pick packaging —</option>' + sorted.map(function(pk) {
+    var unitTxt = pk.sizeUnit === 'ct' ? 'portions' : unitLabel(pk.sizeUnit || 'oz');
+    var sizeTxt = pk.sizeQty > 0 ? format(pk.sizeQty) + ' ' + unitTxt : '—';
+    var priceTxt = pk.price > 0 ? '$' + pk.price.toFixed(2) : 'no price';
+    var sel = pk.id === selectedId ? ' selected' : '';
+    return '<option value="' + pk.id + '"' + sel + '>' + escapeHtml(pk.name || '') + ' · ' + sizeTxt + ' · ' + priceTxt + '</option>';
+  }).join('');
+  return '<div class="pack-pick-row" style="display:grid;grid-template-columns:1fr 36px;gap:6px;margin-bottom:6px;align-items:center;">' +
+    '<select class="pack-pick-select">' + opts + '</select>' +
+    '<button class="btn-danger btn-icon pack-pick-remove" type="button" title="Remove">🗑</button>' +
+  '</div>';
+}
 function populatePackMultiLists(currentByKey) {
-  var sortedPacks = packs.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
   document.querySelectorAll('[data-pack-multi]').forEach(function(box) {
     var key = box.getAttribute('data-pack-multi');
-    var current = (currentByKey && currentByKey[key]) || [];
-    if (sortedPacks.length === 0) {
+    var current;
+    if (currentByKey && Object.prototype.hasOwnProperty.call(currentByKey, key)) {
+      current = currentByKey[key] || [];
+    } else {
+      // Re-render after a pack catalog change → preserve any rows the user already picked.
+      current = collectSelectedPackIds(key);
+    }
+    if (packs.length === 0) {
       box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0;">No packaging defined yet — add some in the 📦 Packaging tab.</div>';
       return;
     }
-    box.innerHTML = sortedPacks.map(function(pk) {
-      var isSel = current.indexOf(pk.id) >= 0;
-      var unitTxt = pk.sizeUnit === 'ct' ? 'portions' : unitLabel(pk.sizeUnit || 'oz');
-      var sizeTxt = pk.sizeQty > 0 ? format(pk.sizeQty) + ' ' + unitTxt : '—';
-      var priceTxt = pk.price > 0 ? '$' + pk.price.toFixed(2) : 'no price';
-      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:13px;cursor:pointer;background:' + (isSel ? '#ecfdf5' : '#fff') + ';">' +
-        '<input type="checkbox" value="' + pk.id + '"' + (isSel ? ' checked' : '') + '>' +
-        '<span style="flex:1;"><strong>' + escapeHtml(pk.name || '') + '</strong> <span style="color:var(--text-muted);">· ' + sizeTxt + ' · ' + priceTxt + '</span></span>' +
-      '</label>';
-    }).join('');
+    var rowsHtml = (current || []).map(function(pid) { return packPickRowHtml(pid); }).join('');
+    box.innerHTML = rowsHtml +
+      '<button class="btn-secondary btn-small" type="button" data-pack-pick-add="' + key + '">+ Add packaging</button>';
   });
 }
 function collectSelectedPackIds(key) {
   var box = document.querySelector('[data-pack-multi="' + key + '"]');
   if (!box) return [];
-  return Array.prototype.slice.call(box.querySelectorAll('input[type=checkbox]:checked')).map(function(el) {
-    return el.value;
-  });
+  return Array.prototype.slice.call(box.querySelectorAll('.pack-pick-select')).map(function(sel) {
+    return sel.value;
+  }).filter(function(v) { return !!v; });
 }
+// Click delegation for the multi-pack picker rows.
+document.addEventListener('click', function(e) {
+  var addBtn = e.target.closest && e.target.closest('[data-pack-pick-add]');
+  if (addBtn) {
+    var key = addBtn.getAttribute('data-pack-pick-add');
+    var box = document.querySelector('[data-pack-multi="' + key + '"]');
+    if (box && packs.length > 0) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = packPickRowHtml(null);
+      box.insertBefore(wrap.firstChild, addBtn);
+    }
+    return;
+  }
+  var rmBtn = e.target.closest && e.target.closest('.pack-pick-remove');
+  if (rmBtn) {
+    var row = rmBtn.closest('.pack-pick-row');
+    if (row) row.remove();
+    return;
+  }
+});
 
 // Hook saves to refresh picks
 var _origSavePots = savePots; savePots = function() { _origSavePots(); populatePotPicks(); };
