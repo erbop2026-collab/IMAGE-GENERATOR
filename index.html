@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.5.4</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.5.5</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1419,31 +1419,12 @@ function altDisplay(value, unit) {
 // ============ STORAGE ============
 function migrateOrderRows(rows) {
   if (!Array.isArray(rows)) return [];
+  // v2.5.5: orders are dishes-only. Drop any kind:'product' or legacy
+  // (no-kind) rows that came from pre-v2.5.3 storage.
   return rows.map(function(r) {
     if (!r) return null;
-    // Recipe row (already in new shape)
     if (r.kind === 'recipe' && r.recipeId) {
       return { id: r.id || id(), kind: 'recipe', recipeId: r.recipeId, portions: r.portions || 0 };
-    }
-    // Product row (with kind set)
-    if (r.kind === 'product' && r.productId) {
-      var sizes = Array.isArray(r.sizes) ? r.sizes : [];
-      if (sizes.length === 0 && r.portions > 0 && r.portionSize > 0) {
-        sizes = [{ id: id(), portions: r.portions, portionSize: r.portionSize }];
-      }
-      return { id: r.id || id(), kind: 'product', productId: r.productId, sizes: sizes };
-    }
-    // Legacy: no kind. Treat as product if productId is set.
-    if (r.productId) {
-      if (Array.isArray(r.sizes)) {
-        return { id: r.id || id(), kind: 'product', productId: r.productId, sizes: r.sizes };
-      }
-      return {
-        id: r.id || id(),
-        kind: 'product',
-        productId: r.productId,
-        sizes: [{ id: id(), portions: r.portions || 0, portionSize: r.portionSize || 0 }]
-      };
     }
     return null;
   }).filter(Boolean);
@@ -1456,7 +1437,14 @@ function loadState() {
   } catch(e) { products = []; }
   try {
     var o = localStorage.getItem(STORAGE_KEY_ORDER);
-    if (o) orderRows = migrateOrderRows(JSON.parse(o));
+    if (o) {
+      var rawRows = JSON.parse(o);
+      orderRows = migrateOrderRows(rawRows);
+      // If migration dropped any rows, persist the cleaned state immediately.
+      if (Array.isArray(rawRows) && rawRows.length !== orderRows.length) {
+        localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows));
+      }
+    }
   } catch(e) { orderRows = []; }
   try {
     var h = localStorage.getItem(STORAGE_KEY_HISTORY);
