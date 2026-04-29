@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.7</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.8</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1028,7 +1028,10 @@
       </div>
     </div>
 
-    <button class="btn-primary" id="addIngrBtn">Save ingredient</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-primary" id="addIngrBtn" style="flex:1;">Save ingredient</button>
+      <button class="btn-secondary" id="ingrEditCancel" style="display:none;">Cancel edit</button>
+    </div>
     <div id="ingrFormMsg" style="font-size:12px;margin-top:8px;"></div>
   </div>
 
@@ -1111,7 +1114,10 @@ Pasta,oz,8,16"></textarea>
       <label>Capacity override <span style="color:var(--text-muted);font-weight:400;">(cooked food, lb — optional, leave blank to use auto-volume)</span></label>
       <input type="number" id="potCapLb" step="any" min="0" placeholder="e.g. 50" inputmode="decimal">
     </div>
-    <button class="btn-primary" id="addPotBtn">Save equipment</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-primary" id="addPotBtn" style="flex:1;">Save equipment</button>
+      <button class="btn-secondary" id="potEditCancel" style="display:none;">Cancel edit</button>
+    </div>
     <div id="potFormMsg" style="font-size:12px;margin-top:8px;"></div>
   </div>
 </section>
@@ -4137,6 +4143,48 @@ function ingrLargeMult(kind) { return kind === 'weight' ? 16 : kind === 'volume'
 function ingrSmallLabel(kind) { return kind === 'weight' ? '$/oz' : kind === 'volume' ? '$/floz' : '$/ct'; }
 function ingrLargeLabel(kind) { return kind === 'weight' ? '$/lb' : kind === 'volume' ? '$/gal' : '—'; }
 
+var ingrEditingId = null;
+function startEditIngr(productId) {
+  var p = products.find(function(x){ return x.id === productId; });
+  if (!p) return;
+  ingrEditingId = productId;
+  document.getElementById('ingrName').value = p.name || '';
+  document.getElementById('ingrUnit').value = p.unit || 'oz';
+  document.getElementById('ingrPackSize').value = p.packSize > 0 ? p.packSize : '';
+  // Derive pack price from existing schema (mode-aware) so smart-fill keeps working.
+  var packPrice = NaN;
+  if (p.costPerUnit > 0) {
+    var mode = p.costMode || 'measure';
+    if (mode === 'pack') packPrice = p.costPerUnit;
+    else packPrice = (p.packSize > 0) ? p.costPerUnit * p.packSize : p.costPerUnit;
+  }
+  document.getElementById('ingrPackPrice').value = packPrice > 0 ? packPrice.toFixed(2) : '';
+  document.getElementById('ingrPriceLarge').value = '';
+  document.getElementById('ingrPriceSmall').value = '';
+  ingrUpdateLabels();
+  if (packPrice > 0 && p.packSize > 0) ingrSmartRecalc('pack');
+  document.getElementById('addIngrBtn').textContent = 'Update ingredient';
+  document.getElementById('ingrEditCancel').style.display = '';
+  var msgEl = document.getElementById('ingrFormMsg');
+  msgEl.style.color = 'var(--primary)';
+  msgEl.textContent = '✏️ Editing "' + p.name + '" — change fields and click Update.';
+  document.getElementById('ingrName').scrollIntoView({behavior:'smooth', block:'center'});
+  renderIngredients();
+}
+function cancelEditIngr() {
+  ingrEditingId = null;
+  document.getElementById('ingrName').value = '';
+  document.getElementById('ingrPackSize').value = '';
+  document.getElementById('ingrPackPrice').value = '';
+  document.getElementById('ingrPriceLarge').value = '';
+  document.getElementById('ingrPriceSmall').value = '';
+  document.getElementById('addIngrBtn').textContent = 'Save ingredient';
+  document.getElementById('ingrEditCancel').style.display = 'none';
+  document.getElementById('ingrFormMsg').textContent = '';
+  renderIngredients();
+}
+document.getElementById('ingrEditCancel') && document.getElementById('ingrEditCancel').addEventListener('click', cancelEditIngr);
+
 function renderIngredients() {
   var container = document.getElementById('ingredientsTable');
   if (!container) return;
@@ -4156,6 +4204,7 @@ function renderIngredients() {
       '<th style="padding:8px;text-align:right;">Pack $</th>' +
       '<th style="padding:8px;text-align:right;">Large unit</th>' +
       '<th style="padding:8px;text-align:right;">Base unit</th>' +
+      '<th style="padding:8px;width:80px;"></th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(p) {
     var info = UNIT_INFO[p.unit] || { kind:'count', base:1, label:p.unit };
@@ -4172,17 +4221,48 @@ function renderIngredients() {
         largeTxt = '$' + (pb * ingrLargeMult(info.kind)).toFixed(3) + (info.kind === 'weight' ? ' /lb' : ' /gal');
       }
     }
-    html += '<tr style="border-bottom:1px solid var(--border);">' +
-      '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name) + '</td>' +
+    var isEditing = p.id === ingrEditingId;
+    html += '<tr style="border-bottom:1px solid var(--border);' + (isEditing ? 'background:#fef3c7;' : '') + '">' +
+      '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name) + (isEditing ? ' <span style="color:#b45309;font-size:11px;">(editing)</span>' : '') + '</td>' +
       '<td style="padding:8px;color:var(--text-muted);">' + escapeHtml(info.label) + '</td>' +
       '<td style="padding:8px;text-align:right;">' + packTxt + '</td>' +
       '<td style="padding:8px;text-align:right;">' + packPriceTxt + '</td>' +
       '<td style="padding:8px;text-align:right;">' + largeTxt + '</td>' +
       '<td style="padding:8px;text-align:right;">' + smallTxt + '</td>' +
+      '<td style="padding:8px;text-align:right;white-space:nowrap;">' +
+        '<button class="btn-secondary btn-icon" data-edit-ingr="' + p.id + '" title="Edit">✏️</button> ' +
+        '<button class="btn-danger btn-icon" data-del-ingr="' + p.id + '" title="Delete">🗑️</button>' +
+      '</td>' +
     '</tr>';
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
+  container.querySelectorAll('[data-edit-ingr]').forEach(function(btn) {
+    btn.addEventListener('click', function() { startEditIngr(btn.getAttribute('data-edit-ingr')); });
+  });
+  container.querySelectorAll('[data-del-ingr]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pid = btn.getAttribute('data-del-ingr');
+      var p = products.find(function(x){ return x.id === pid; });
+      if (!p) return;
+      // Block delete if referenced by any recipe component.
+      var refRecipes = recipes.filter(function(r) {
+        return (r.components || []).some(function(c){ return c.productId === pid; });
+      });
+      if (refRecipes.length > 0) {
+        toast('Cannot delete "' + p.name + '" — used in: ' + refRecipes.map(function(r){return r.name;}).join(', '));
+        return;
+      }
+      if (!confirm('Delete ingredient "' + p.name + '"?')) return;
+      products = products.filter(function(x){ return x.id !== pid; });
+      if (ingrEditingId === pid) cancelEditIngr();
+      saveProducts();
+      renderIngredients();
+      renderProducts();
+      renderOrderRows && renderOrderRows();
+      toast('Ingredient deleted ✓');
+    });
+  });
 }
 
 function ingrUpdateLabels() {
@@ -4244,21 +4324,41 @@ document.getElementById('addIngrBtn') && document.getElementById('addIngrBtn').a
   var msgEl = document.getElementById('ingrFormMsg');
   msgEl.textContent = '';
   if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
-  var newP = { id: id(), name: name, raw: 1, cooked: 1, unit: unit };
-  if (packSize > 0) newP.packSize = packSize;
-  if (!isNaN(packPrice) && packPrice > 0) {
-    newP.costPerUnit = packPrice;
-    newP.costMode = 'pack';
+  if (ingrEditingId) {
+    var existing = products.find(function(p){ return p.id === ingrEditingId; });
+    if (existing) {
+      existing.name = name;
+      existing.unit = unit;
+      if (packSize > 0) existing.packSize = packSize; else delete existing.packSize;
+      if (!isNaN(packPrice) && packPrice > 0) {
+        existing.costPerUnit = packPrice;
+        existing.costMode = 'pack';
+      } else {
+        delete existing.costPerUnit;
+        delete existing.costMode;
+      }
+    }
+    saveProducts();
+    cancelEditIngr();
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = 'Ingredient "' + name + '" updated ✓';
+  } else {
+    var newP = { id: id(), name: name, raw: 1, cooked: 1, unit: unit };
+    if (packSize > 0) newP.packSize = packSize;
+    if (!isNaN(packPrice) && packPrice > 0) {
+      newP.costPerUnit = packPrice;
+      newP.costMode = 'pack';
+    }
+    products.push(newP);
+    saveProducts();
+    document.getElementById('ingrName').value = '';
+    document.getElementById('ingrPackSize').value = '';
+    document.getElementById('ingrPackPrice').value = '';
+    document.getElementById('ingrPriceLarge').value = '';
+    document.getElementById('ingrPriceSmall').value = '';
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = 'Saved "' + name + '". Edit raw/cooked yield + advanced fields in the ⚙️ Products tab.';
   }
-  products.push(newP);
-  saveProducts();
-  document.getElementById('ingrName').value = '';
-  document.getElementById('ingrPackSize').value = '';
-  document.getElementById('ingrPackPrice').value = '';
-  document.getElementById('ingrPriceLarge').value = '';
-  document.getElementById('ingrPriceSmall').value = '';
-  msgEl.style.color = '#15803d';
-  msgEl.textContent = 'Saved "' + name + '". Edit raw/cooked yield + advanced fields in the ⚙️ Products tab.';
   renderIngredients();
   renderProducts();
   renderOrderRows && renderOrderRows();
@@ -4370,6 +4470,49 @@ function potShapeLabel(p) {
   return 'Round D' + format(p.dimD || 0) + '×H' + format(p.dimH || 0) + '"';
 }
 
+var potEditingId = null;
+function startEditPot(potId) {
+  var p = pots.find(function(x){ return x.id === potId; });
+  if (!p) return;
+  potEditingId = potId;
+  document.getElementById('potName').value = p.name || '';
+  document.getElementById('potShape').value = p.shape || 'round';
+  togglePotShape();
+  ['potDimD','potDimHround','potDimL','potDimW','potDimH','potCapLb'].forEach(function(eid) {
+    var el = document.getElementById(eid); if (el) el.value = '';
+  });
+  if (p.shape === 'rect') {
+    document.getElementById('potDimL').value = p.dimL > 0 ? p.dimL : '';
+    document.getElementById('potDimW').value = p.dimW > 0 ? p.dimW : '';
+    document.getElementById('potDimH').value = p.dimH > 0 ? p.dimH : '';
+  } else {
+    document.getElementById('potDimD').value = p.dimD > 0 ? p.dimD : '';
+    document.getElementById('potDimHround').value = p.dimH > 0 ? p.dimH : '';
+  }
+  document.getElementById('potCapLb').value = p.capacityLb > 0 ? p.capacityLb : '';
+  updatePotVolumePreview();
+  document.getElementById('addPotBtn').textContent = 'Update equipment';
+  document.getElementById('potEditCancel').style.display = '';
+  var msgEl = document.getElementById('potFormMsg');
+  msgEl.style.color = 'var(--primary)';
+  msgEl.textContent = '✏️ Editing "' + p.name + '" — change fields and click Update.';
+  document.getElementById('potName').scrollIntoView({behavior:'smooth', block:'center'});
+  renderPots();
+}
+function cancelEditPot() {
+  potEditingId = null;
+  document.getElementById('potName').value = '';
+  ['potDimD','potDimHround','potDimL','potDimW','potDimH','potCapLb'].forEach(function(eid) {
+    var el = document.getElementById(eid); if (el) el.value = '';
+  });
+  updatePotVolumePreview();
+  document.getElementById('addPotBtn').textContent = 'Save equipment';
+  document.getElementById('potEditCancel').style.display = 'none';
+  document.getElementById('potFormMsg').textContent = '';
+  renderPots();
+}
+document.getElementById('potEditCancel') && document.getElementById('potEditCancel').addEventListener('click', cancelEditPot);
+
 function renderPots() {
   var container = document.getElementById('potsTable');
   if (!container) return;
@@ -4384,26 +4527,34 @@ function renderPots() {
       '<th style="padding:8px;text-align:left;">Shape · Dims</th>' +
       '<th style="padding:8px;text-align:right;">Volume</th>' +
       '<th style="padding:8px;text-align:right;">Capacity</th>' +
-      '<th style="padding:8px;width:36px;"></th>' +
+      '<th style="padding:8px;width:80px;"></th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(p) {
     var vol = p.volumeOz || potVolumeOz(p);
     var cap = (p.capacityLb > 0) ? format(p.capacityLb) + ' lb' : '<span style="color:var(--text-muted);">—</span>';
-    html += '<tr style="border-bottom:1px solid var(--border);">' +
-      '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name || '') + '</td>' +
+    var isEditing = p.id === potEditingId;
+    html += '<tr style="border-bottom:1px solid var(--border);' + (isEditing ? 'background:#fef3c7;' : '') + '">' +
+      '<td style="padding:8px;font-weight:600;">' + escapeHtml(p.name || '') + (isEditing ? ' <span style="color:#b45309;font-size:11px;">(editing)</span>' : '') + '</td>' +
       '<td style="padding:8px;color:var(--text-muted);">' + escapeHtml(potShapeLabel(p)) + '</td>' +
       '<td style="padding:8px;text-align:right;">' + (vol > 0 ? vol.toFixed(1) + ' fl oz<br><span style="color:var(--text-muted);font-size:11px;">' + (vol / 128).toFixed(2) + ' gal</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
       '<td style="padding:8px;text-align:right;">' + cap + '</td>' +
-      '<td style="padding:8px;text-align:right;"><button class="btn-danger btn-icon" data-del-pot="' + p.id + '" title="Delete">🗑️</button></td>' +
+      '<td style="padding:8px;text-align:right;white-space:nowrap;">' +
+        '<button class="btn-secondary btn-icon" data-edit-pot="' + p.id + '" title="Edit">✏️</button> ' +
+        '<button class="btn-danger btn-icon" data-del-pot="' + p.id + '" title="Delete">🗑️</button>' +
+      '</td>' +
     '</tr>';
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
+  container.querySelectorAll('[data-edit-pot]').forEach(function(btn) {
+    btn.addEventListener('click', function() { startEditPot(btn.getAttribute('data-edit-pot')); });
+  });
   container.querySelectorAll('[data-del-pot]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var pid = btn.getAttribute('data-del-pot');
-      if (!confirm('Delete this pot?')) return;
+      if (!confirm('Delete this equipment?')) return;
       pots = pots.filter(function(x){ return x.id !== pid; });
+      if (potEditingId === pid) cancelEditPot();
       savePots();
       renderPots();
       toast('Equipment deleted ✓');
@@ -4448,28 +4599,49 @@ document.getElementById('addPotBtn') && document.getElementById('addPotBtn').add
   var msgEl = document.getElementById('potFormMsg');
   msgEl.textContent = '';
   if (!name) { msgEl.style.color = '#b91c1c'; msgEl.textContent = 'Name is required.'; return; }
-  var pot = { id: id(), name: name, shape: shape };
+  var dims = { dimL: 0, dimW: 0, dimH: 0, dimD: 0 };
   if (shape === 'rect') {
-    pot.dimL = parseFloat(document.getElementById('potDimL').value) || 0;
-    pot.dimW = parseFloat(document.getElementById('potDimW').value) || 0;
-    pot.dimH = parseFloat(document.getElementById('potDimH').value) || 0;
+    dims.dimL = parseFloat(document.getElementById('potDimL').value) || 0;
+    dims.dimW = parseFloat(document.getElementById('potDimW').value) || 0;
+    dims.dimH = parseFloat(document.getElementById('potDimH').value) || 0;
   } else {
-    pot.dimD = parseFloat(document.getElementById('potDimD').value) || 0;
-    pot.dimH = parseFloat(document.getElementById('potDimHround').value) || 0;
+    dims.dimD = parseFloat(document.getElementById('potDimD').value) || 0;
+    dims.dimH = parseFloat(document.getElementById('potDimHround').value) || 0;
   }
-  pot.volumeOz = potVolumeOz(pot);
   var capLb = parseFloat(document.getElementById('potCapLb').value);
-  if (capLb > 0) pot.capacityLb = capLb;
-  pots.push(pot);
-  savePots();
-  // reset form
-  document.getElementById('potName').value = '';
-  ['potDimD','potDimHround','potDimL','potDimW','potDimH','potCapLb'].forEach(function(eid) {
-    var el = document.getElementById(eid); if (el) el.value = '';
-  });
-  updatePotVolumePreview();
-  msgEl.style.color = '#15803d';
-  msgEl.textContent = 'Equipment "' + name + '" saved ✓';
+
+  if (potEditingId) {
+    var existing = pots.find(function(p){ return p.id === potEditingId; });
+    if (existing) {
+      existing.name = name;
+      existing.shape = shape;
+      // Wipe old shape's dims, set new shape's dims.
+      delete existing.dimL; delete existing.dimW; delete existing.dimD;
+      if (shape === 'rect') { existing.dimL = dims.dimL; existing.dimW = dims.dimW; existing.dimH = dims.dimH; }
+      else { existing.dimD = dims.dimD; existing.dimH = dims.dimH; }
+      existing.volumeOz = potVolumeOz(existing);
+      if (capLb > 0) existing.capacityLb = capLb; else delete existing.capacityLb;
+    }
+    savePots();
+    cancelEditPot();
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = 'Equipment "' + name + '" updated ✓';
+  } else {
+    var pot = { id: id(), name: name, shape: shape };
+    if (shape === 'rect') { pot.dimL = dims.dimL; pot.dimW = dims.dimW; pot.dimH = dims.dimH; }
+    else { pot.dimD = dims.dimD; pot.dimH = dims.dimH; }
+    pot.volumeOz = potVolumeOz(pot);
+    if (capLb > 0) pot.capacityLb = capLb;
+    pots.push(pot);
+    savePots();
+    document.getElementById('potName').value = '';
+    ['potDimD','potDimHround','potDimL','potDimW','potDimH','potCapLb'].forEach(function(eid) {
+      var el = document.getElementById(eid); if (el) el.value = '';
+    });
+    updatePotVolumePreview();
+    msgEl.style.color = '#15803d';
+    msgEl.textContent = 'Equipment "' + name + '" saved ✓';
+  }
   renderPots();
 });
 
