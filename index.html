@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.3</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.4</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2289,6 +2289,14 @@ function renderRecipes() {
   });
   // After cards are in the DOM, populate any pot-pick selects inside them.
   if (typeof populatePotPicks === 'function') populatePotPicks();
+  // Restore edit-card's reference equipment picker from saved recipe value.
+  if (recipeEditingId) {
+    var editingRecForPot = recipes.find(function(x){ return x.id === recipeEditingId; });
+    var refPicker = document.querySelector('[data-pot-pick="edit-' + recipeEditingId + '"]');
+    if (refPicker && editingRecForPot && editingRecForPot.referenceEquipmentId) {
+      refPicker.value = editingRecForPot.referenceEquipmentId;
+    }
+  }
   // Populate pack-multi lists for the edit card (if any).
   if (typeof populatePackMultiLists === 'function' && recipeEditingId) {
     var editingRec = recipes.find(function(x){ return x.id === recipeEditingId; });
@@ -2319,6 +2327,7 @@ function renderRecipes() {
       if (r.yieldCooked > 0) { copy.yieldCooked = r.yieldCooked; copy.yieldUnit = r.yieldUnit || 'oz'; }
       if (r.referenceText) copy.referenceText = r.referenceText;
       if (Array.isArray(r.packIds) && r.packIds.length > 0) copy.packIds = r.packIds.slice();
+      if (r.referenceEquipmentId) copy.referenceEquipmentId = r.referenceEquipmentId;
       recipes.push(copy);
       saveRecipes();
       renderRecipes();
@@ -2359,6 +2368,8 @@ function renderRecipes() {
       if (!(yieldCooked > 0)) { toast('Yield / batch is required — without it the calculation cannot scale the order'); if (yEl) yEl.focus(); return; }
       if (comps.length === 0) { toast('Add at least one ingredient'); return; }
       var packIds = collectSelectedPackIds('edit-' + rid);
+      var refEqEl = document.querySelector('[data-pot-pick="edit-' + rid + '"]');
+      var refEqId = refEqEl ? (refEqEl.value || '') : '';
       r.name = name;
       r.components = comps;
       r.yieldCooked = yieldCooked;
@@ -2366,6 +2377,7 @@ function renderRecipes() {
       if (leadProductId) r.leadProductId = leadProductId; else delete r.leadProductId;
       if (referenceText) r.referenceText = referenceText; else delete r.referenceText;
       if (packIds.length > 0) r.packIds = packIds; else delete r.packIds;
+      if (refEqId) r.referenceEquipmentId = refEqId; else delete r.referenceEquipmentId;
       saveRecipes();
       recipeEditingId = null;
       renderRecipes();
@@ -2393,15 +2405,18 @@ document.getElementById('addRecipeBtn').addEventListener('click', function() {
   if (!(yieldCooked > 0)) { toast('Yield / batch is required — without it the calculation cannot scale the order'); document.getElementById('newRecipeYield').focus(); return; }
   if (comps.length === 0) { toast('Add at least one ingredient'); return; }
   var packIds = collectSelectedPackIds('add');
+  var refEqId = (document.getElementById('newRecipePotPick') || {}).value || '';
   var recipe = { id: id(), name: name, components: comps, yieldCooked: yieldCooked, yieldUnit: yieldUnit };
   if (leadProductId) recipe.leadProductId = leadProductId;
   if (referenceText) recipe.referenceText = referenceText;
   if (packIds.length > 0) recipe.packIds = packIds;
+  if (refEqId) recipe.referenceEquipmentId = refEqId;
   recipes.push(recipe);
   saveRecipes();
   document.getElementById('newRecipeName').value = '';
   document.getElementById('newRecipeYield').value = '';
   document.getElementById('newRecipeRef').value = '';
+  if (document.getElementById('newRecipePotPick')) document.getElementById('newRecipePotPick').value = '';
   setComponentListContent(listEl, [], null);
   populatePackMultiLists({ add: [] });
   renderRecipes();
@@ -2455,10 +2470,12 @@ document.getElementById('dishModalSaveBtn') && document.getElementById('dishModa
   if (!(yieldCooked > 0)) { toast('Yield / batch is required — without it the calculation cannot scale the order'); document.getElementById('dishModalYield').focus(); return; }
   if (comps.length === 0) { toast('Add at least one ingredient'); return; }
   var packIds = collectSelectedPackIds('modal');
+  var refEqId = (document.getElementById('dishModalPotPick') || {}).value || '';
   var recipe = { id: id(), name: name, components: comps, yieldCooked: yieldCooked, yieldUnit: yieldUnit };
   if (leadProductId) recipe.leadProductId = leadProductId;
   if (referenceText) recipe.referenceText = referenceText;
   if (packIds.length > 0) recipe.packIds = packIds;
+  if (refEqId) recipe.referenceEquipmentId = refEqId;
   recipes.push(recipe);
   saveRecipes();
   closeDishModal();
