@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.5</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.7.6</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -753,7 +753,7 @@
   <div class="tab" data-tab="ingredients">🥕 Ingredients</div>
   <div class="tab" data-tab="pots">🧰 Equipment</div>
   <div class="tab" data-tab="packs">📦 Packaging</div>
-  <div class="tab" data-tab="products">⚙️ Products</div>
+  <div class="tab" data-tab="products">🧑‍🍳 Dish Setup</div>
   <div class="tab" data-tab="recipes">🍲 Recipes</div>
   <div class="tab" data-tab="help">❓ Help</div>
 </nav>
@@ -845,15 +845,11 @@
     <div class="card-title">🍲 Dish List</div>
     <input type="text" id="dishSearch" placeholder="🔍 Search dishes…" autocomplete="off" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
     <div id="dishesList"></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">A dish = composite recipe (Kugel, Rice plate, …). To edit a single ingredient's pricing use the <strong>🥕 Ingredients</strong> tab.</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Click ✏️ to set up equipment + cook/pack labor for each dish. To create a new dish go to the <strong>🍲 Recipes</strong> tab.</div>
   </div>
-
-  <div class="card" style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 100%);color:white;">
-    <div class="card-title" style="color:white;">🍲 Compose a dish from ingredients</div>
-    <p style="font-size:13px;color:rgba(255,255,255,0.9);margin-bottom:10px;">Click below to define a new dish (recipe). You'll pick components from the <strong>🥕 Ingredients</strong> catalog, set yield per batch, and mark a ⭐ lead ingredient.</p>
-    <button class="btn-primary" id="addDishBtn" style="background:white;color:#0f766e;width:100%;font-weight:700;">➕ Add Dish</button>
-  </div>
-
+</section>
+<!-- Legacy "Compose a dish" + "Add New Product" cards removed in v2.7.6. -->
+<section class="tab-content" id="tab-products-legacy" style="display:none;">
   <div class="card">
     <div class="card-title">➕ Add New Product</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A product has a raw → cooked conversion plus advanced fields (packaging, labor, pots). For simple priced raw materials use the <strong>🥕 Ingredients</strong> tab. Combine products into a meal in the <strong>🍲 Recipes</strong> tab.</p>
@@ -977,7 +973,7 @@
     <div class="card-title">📋 All ingredients</div>
     <input type="text" id="ingrSearch" placeholder="Search by name…" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
     <div id="ingredientsTable"></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Edit existing items in the <strong>⚙️ Products</strong> tab (raw / cooked yield, packaging, labor, pots).</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Click ✏️ on any row to edit it inline. Equipment + labor for whole dishes lives in the <strong>🧑‍🍳 Dish Setup</strong> tab.</div>
   </div>
 
   <div class="card">
@@ -1293,7 +1289,7 @@ Pasta,oz,8,16"></textarea>
 
     <h3>Tabs</h3>
     <p><strong>📊 Calculate</strong> — build the order and see results.<br>
-       <strong>⚙️ Products</strong> — set up your ingredient catalog and run reverse calculations.<br>
+       <strong>🧑‍🍳 Dish Setup</strong> — pick equipment + cook/pack labor per dish.<br>
        <strong>🍲 Recipes</strong> — define composite dishes (one meal = several ingredients).<br>
        <strong>❓ Help</strong> — this page.</p>
 
@@ -2535,7 +2531,7 @@ document.addEventListener('change', function(e) {
 function renderOrderRows() {
   var container = document.getElementById('orderRows');
   if (recipes.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍲</div><div>No dishes yet. Go to the <strong>⚙️ Products</strong> tab and click <strong>+ Add Dish</strong> to define your first one.</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍲</div><div>No dishes yet. Go to the <strong>🍲 Recipes</strong> tab and add your first dish.</div></div>';
     return;
   }
   if (orderRows.length === 0) {
@@ -2563,7 +2559,7 @@ function renderOrderRows() {
           var sel = r.id === row.recipeId ? ' selected' : '';
           return '<option value="' + r.id + '"' + sel + '>' + escapeHtml(r.name) + '</option>';
         }).join('');
-      if (!recOpts) recOpts = '<option value="">(no dishes — add one in the Products tab)</option>';
+      if (!recOpts) recOpts = '<option value="">(no dishes — add one in the Recipes tab)</option>';
 
       var dishRec = recipes.find(function(r){ return r.id === row.recipeId; });
       var dishUnit = (dishRec && dishRec.yieldUnit) ? unitLabel(dishRec.yieldUnit) : 'oz';
@@ -2857,7 +2853,7 @@ function updateGroupSummary(rowId) {
 }
 
 document.getElementById('addDishRowBtn').addEventListener('click', function() {
-  if (recipes.length === 0) { toast('No dishes yet — go to the ⚙️ Products tab and click "+ Add Dish" to create one'); return; }
+  if (recipes.length === 0) { toast('No dishes yet — go to the 🍲 Recipes tab and add one'); return; }
   var pickedRecipe = recipes[recipes.length - 1];
   var defaultPortionSize = (pickedRecipe && pickedRecipe.yieldCooked > 0) ? pickedRecipe.yieldCooked : 0;
   orderRows.push({
@@ -4769,7 +4765,7 @@ document.getElementById('addIngrBtn') && document.getElementById('addIngrBtn').a
     document.getElementById('ingrPriceSmall').value = '';
     ingrUpdateTotalPreview();
     msgEl.style.color = '#15803d';
-    msgEl.textContent = 'Saved "' + name + '". Edit raw/cooked yield + advanced fields in the ⚙️ Products tab.';
+    msgEl.textContent = 'Saved "' + name + '". Edit raw/cooked yield + advanced fields by clicking ✏️ on the row.';
   }
   renderIngredients();
   renderProducts();
