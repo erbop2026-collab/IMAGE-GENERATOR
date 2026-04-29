@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.3</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.4</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1198,6 +1198,10 @@ Pasta,oz,8,16"></textarea>
       <button class="btn-secondary btn-small" type="button" data-component-add="add">+ Add ingredient</button>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much of it goes into one meal. The unit is taken from the ingredient.</div>
     </div>
+    <div class="field">
+      <label>Default packaging <span style="color:var(--text-muted);font-weight:400;">(pick any from the 📦 Packaging catalog)</span></label>
+      <div class="pack-multi-list" data-pack-multi="add"></div>
+    </div>
     <button class="btn-primary" id="addRecipeBtn">Save Recipe</button>
   </div>
 
@@ -1356,6 +1360,10 @@ Pasta,oz,8,16"></textarea>
       <div class="component-list" data-component-list="modal"></div>
       <button class="btn-secondary btn-small" type="button" data-component-add="modal">+ Add ingredient</button>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much of it goes into one meal. The unit is taken from the ingredient.</div>
+    </div>
+    <div class="field">
+      <label>Default packaging <span style="color:var(--text-muted);font-weight:400;">(pick any from the 📦 Packaging catalog)</span></label>
+      <div class="pack-multi-list" data-pack-multi="modal"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
       <button class="btn-primary" id="dishModalSaveBtn" style="flex:1;">Save Dish</button>
@@ -2051,12 +2059,21 @@ function buildRecipeViewCard(r) {
   var refLine = r.referenceText
     ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;font-style:italic;">' + escapeHtml(r.referenceText) + '</div>'
     : '';
+  var packLine = '';
+  if (Array.isArray(r.packIds) && r.packIds.length > 0) {
+    var packNames = r.packIds.map(function(pid) {
+      var pk = packs.find(function(x){ return x.id === pid; });
+      return pk ? escapeHtml(pk.name) : '<em>?</em>';
+    }).join(' · ');
+    packLine = '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📦 ' + packNames + '</div>';
+  }
   div.innerHTML =
     '<div class="product-item-header">' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="recipe-name">' + escapeHtml(r.name) + '</div>' +
         refLine +
         yieldLine +
+        packLine +
         '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Per single meal:</div>' +
         '<ul class="recipe-components-list">' + componentLines + '</ul>' +
       '</div>' +
@@ -2109,6 +2126,10 @@ function buildRecipeEditCard(r) {
         '<div class="component-list" data-component-list="edit-' + r.id + '">' + compsHTML + '</div>' +
         '<button class="btn-secondary btn-small" type="button" data-component-add="edit-' + r.id + '">+ Add ingredient</button>' +
       '</div>' +
+      '<div class="field">' +
+        '<label>Default packaging</label>' +
+        '<div class="pack-multi-list" data-pack-multi="edit-' + r.id + '"></div>' +
+      '</div>' +
       '<div class="edit-form-buttons">' +
         '<button class="btn-primary" data-save-recipe="' + r.id + '">Save</button>' +
         '<button class="btn-secondary" data-cancel-recipe="' + r.id + '">Cancel</button>' +
@@ -2131,6 +2152,15 @@ function renderRecipes() {
   });
   // After cards are in the DOM, populate any pot-pick selects inside them.
   if (typeof populatePotPicks === 'function') populatePotPicks();
+  // Populate pack-multi lists for the edit card (if any).
+  if (typeof populatePackMultiLists === 'function' && recipeEditingId) {
+    var editingRec = recipes.find(function(x){ return x.id === recipeEditingId; });
+    var sel = {};
+    sel['edit-' + recipeEditingId] = (editingRec && Array.isArray(editingRec.packIds)) ? editingRec.packIds.slice() : [];
+    populatePackMultiLists(sel);
+  } else if (typeof populatePackMultiLists === 'function') {
+    populatePackMultiLists();
+  }
 
   list.querySelectorAll('[data-edit-recipe]').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -2151,6 +2181,7 @@ function renderRecipes() {
       if (r.leadProductId) copy.leadProductId = r.leadProductId;
       if (r.yieldCooked > 0) { copy.yieldCooked = r.yieldCooked; copy.yieldUnit = r.yieldUnit || 'oz'; }
       if (r.referenceText) copy.referenceText = r.referenceText;
+      if (Array.isArray(r.packIds) && r.packIds.length > 0) copy.packIds = r.packIds.slice();
       recipes.push(copy);
       saveRecipes();
       renderRecipes();
@@ -2190,12 +2221,14 @@ function renderRecipes() {
       if (!name) { toast('Enter a recipe name'); return; }
       if (!(yieldCooked > 0)) { toast('Yield / batch is required — without it the calculation cannot scale the order'); if (yEl) yEl.focus(); return; }
       if (comps.length === 0) { toast('Add at least one ingredient'); return; }
+      var packIds = collectSelectedPackIds('edit-' + rid);
       r.name = name;
       r.components = comps;
       r.yieldCooked = yieldCooked;
       r.yieldUnit = yieldUnit;
       if (leadProductId) r.leadProductId = leadProductId; else delete r.leadProductId;
       if (referenceText) r.referenceText = referenceText; else delete r.referenceText;
+      if (packIds.length > 0) r.packIds = packIds; else delete r.packIds;
       saveRecipes();
       recipeEditingId = null;
       renderRecipes();
@@ -2222,15 +2255,18 @@ document.getElementById('addRecipeBtn').addEventListener('click', function() {
   if (!name) { toast('Enter a recipe name'); return; }
   if (!(yieldCooked > 0)) { toast('Yield / batch is required — without it the calculation cannot scale the order'); document.getElementById('newRecipeYield').focus(); return; }
   if (comps.length === 0) { toast('Add at least one ingredient'); return; }
+  var packIds = collectSelectedPackIds('add');
   var recipe = { id: id(), name: name, components: comps, yieldCooked: yieldCooked, yieldUnit: yieldUnit };
   if (leadProductId) recipe.leadProductId = leadProductId;
   if (referenceText) recipe.referenceText = referenceText;
+  if (packIds.length > 0) recipe.packIds = packIds;
   recipes.push(recipe);
   saveRecipes();
   document.getElementById('newRecipeName').value = '';
   document.getElementById('newRecipeYield').value = '';
   document.getElementById('newRecipeRef').value = '';
   setComponentListContent(listEl, [], null);
+  populatePackMultiLists({ add: [] });
   renderRecipes();
   renderOrderRows();
   toast('Recipe added ✓');
@@ -2248,6 +2284,7 @@ function openDishModal(prefilledName) {
   if (potPick) potPick.value = '';
   setComponentListContent(document.querySelector('[data-component-list="modal"]'), [], null);
   if (typeof populatePotPicks === 'function') populatePotPicks();
+  if (typeof populatePackMultiLists === 'function') populatePackMultiLists({ modal: [] });
   overlay.style.display = 'flex';
   setTimeout(function(){ document.getElementById('dishModalName').focus(); }, 50);
 }
@@ -2280,9 +2317,11 @@ document.getElementById('dishModalSaveBtn') && document.getElementById('dishModa
   if (!name) { toast('Enter a dish name'); return; }
   if (!(yieldCooked > 0)) { toast('Yield / batch is required — without it the calculation cannot scale the order'); document.getElementById('dishModalYield').focus(); return; }
   if (comps.length === 0) { toast('Add at least one ingredient'); return; }
+  var packIds = collectSelectedPackIds('modal');
   var recipe = { id: id(), name: name, components: comps, yieldCooked: yieldCooked, yieldUnit: yieldUnit };
   if (leadProductId) recipe.leadProductId = leadProductId;
   if (referenceText) recipe.referenceText = referenceText;
+  if (packIds.length > 0) recipe.packIds = packIds;
   recipes.push(recipe);
   saveRecipes();
   closeDishModal();
@@ -4164,12 +4203,21 @@ function renderDishesList() {
       var leadP = products.find(function(x){ return x.id === r.leadProductId; });
       if (leadP) leadHtml = ' · <span title="Lead ingredient" style="color:#b45309;">⭐</span> ' + escapeHtml(leadP.name);
     }
+    var packHtml = '';
+    if (Array.isArray(r.packIds) && r.packIds.length > 0) {
+      var packNames = r.packIds.map(function(pid) {
+        var pk = packs.find(function(x){ return x.id === pid; });
+        return pk ? escapeHtml(pk.name) : '?';
+      }).join(' · ');
+      packHtml = '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📦 ' + packNames + '</div>';
+    }
     return '<div class="recipe-item">' +
       '<div class="product-item-header">' +
         '<div style="flex:1;min-width:0;">' +
           '<div class="recipe-name">' + escapeHtml(r.name) + '</div>' +
           refStr +
           '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + yieldStr + ' · ' + compCount + ' component' + (compCount === 1 ? '' : 's') + leadHtml + '</div>' +
+          packHtml +
         '</div>' +
         '<div class="product-actions">' +
           '<button class="btn-secondary btn-icon" data-edit-dish="' + r.id + '" title="Edit">✏️</button>' +
@@ -4425,9 +4473,41 @@ function populatePackPicks() {
     if (current) sel.value = current;
   });
 }
+// Multi-pack picker: a checkbox list per dish form (Add Dish modal,
+// Recipes Add form, Recipes Edit card). currentByKey maps key →
+// array of currently-selected pack ids; pass {} for empty.
+function populatePackMultiLists(currentByKey) {
+  var sortedPacks = packs.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  document.querySelectorAll('[data-pack-multi]').forEach(function(box) {
+    var key = box.getAttribute('data-pack-multi');
+    var current = (currentByKey && currentByKey[key]) || [];
+    if (sortedPacks.length === 0) {
+      box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0;">No packaging defined yet — add some in the 📦 Packaging tab.</div>';
+      return;
+    }
+    box.innerHTML = sortedPacks.map(function(pk) {
+      var isSel = current.indexOf(pk.id) >= 0;
+      var unitTxt = pk.sizeUnit === 'ct' ? 'portions' : unitLabel(pk.sizeUnit || 'oz');
+      var sizeTxt = pk.sizeQty > 0 ? format(pk.sizeQty) + ' ' + unitTxt : '—';
+      var priceTxt = pk.price > 0 ? '$' + pk.price.toFixed(2) : 'no price';
+      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:13px;cursor:pointer;background:' + (isSel ? '#ecfdf5' : '#fff') + ';">' +
+        '<input type="checkbox" value="' + pk.id + '"' + (isSel ? ' checked' : '') + '>' +
+        '<span style="flex:1;"><strong>' + escapeHtml(pk.name || '') + '</strong> <span style="color:var(--text-muted);">· ' + sizeTxt + ' · ' + priceTxt + '</span></span>' +
+      '</label>';
+    }).join('');
+  });
+}
+function collectSelectedPackIds(key) {
+  var box = document.querySelector('[data-pack-multi="' + key + '"]');
+  if (!box) return [];
+  return Array.prototype.slice.call(box.querySelectorAll('input[type=checkbox]:checked')).map(function(el) {
+    return el.value;
+  });
+}
+
 // Hook saves to refresh picks
 var _origSavePots = savePots; savePots = function() { _origSavePots(); populatePotPicks(); };
-var _origSavePacks = savePacks; savePacks = function() { _origSavePacks(); populatePackPicks(); };
+var _origSavePacks = savePacks; savePacks = function() { _origSavePacks(); populatePackPicks(); populatePackMultiLists(); };
 
 // Pot pick → fill yield + unit
 document.addEventListener('change', function(e) {
@@ -4495,6 +4575,7 @@ renderPacks();
 togglePotShape();
 populatePotPicks();
 populatePackPicks();
+populatePackMultiLists();
 renderOrderRows();
 renderHistory();
 renderReverseSelect();
