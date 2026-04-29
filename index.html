@@ -794,22 +794,41 @@
         <input type="number" id="newProductPackaging" placeholder="e.g. 0.30" step="any" min="0" inputmode="decimal">
       </div>
       <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">👥 Labor (per batch — uses Pot capacity above)</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🍳 Cooking labor (per batch — uses Pot capacity)</div>
         <div class="row-grid-3">
-          <div class="field">
-            <label>Hours / batch</label>
-            <input type="number" id="newProductLaborHours" placeholder="0.5" step="any" min="0" inputmode="decimal">
-          </div>
-          <div class="field">
-            <label>Workers</label>
-            <input type="number" id="newProductLaborWorkers" placeholder="2" step="any" min="0" inputmode="decimal">
-          </div>
-          <div class="field">
-            <label>$ / hour</label>
-            <input type="number" id="newProductLaborRate" placeholder="20" step="any" min="0" inputmode="decimal">
-          </div>
+          <div class="field"><label>Hours/batch</label>
+            <input type="number" id="newProductLaborHours" placeholder="0.5" step="any" min="0" inputmode="decimal"></div>
+          <div class="field"><label>Workers</label>
+            <input type="number" id="newProductLaborWorkers" placeholder="2" step="any" min="0" inputmode="decimal"></div>
+          <div class="field"><label>$ / hour</label>
+            <input type="number" id="newProductLaborRate" placeholder="20" step="any" min="0" inputmode="decimal"></div>
         </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Labor cost = batches × hours × workers × rate. If Pot capacity is empty, labor is treated as 1 flat batch.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">batches = ceil(cooked / Pot capacity). Empty Pot ⇒ 1 flat batch.</div>
+      </div>
+
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">📦 Packaging labor</div>
+        <div class="field" style="margin-bottom:8px;">
+          <label>Charge per</label>
+          <select id="newProductPackLaborBasis" style="font-size:13px;padding:8px 10px;">
+            <option value="portion">Per single portion</option>
+            <option value="carton">Per carton of N portions</option>
+            <option value="batch">Per cooking batch</option>
+          </select>
+        </div>
+        <div class="field" id="newProductCartonSizeWrap" style="display:none;">
+          <label>Portions per carton</label>
+          <input type="number" id="newProductCartonSize" placeholder="e.g. 12" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="row-grid-3">
+          <div class="field"><label>Hours/unit</label>
+            <input type="number" id="newProductPackLaborHours" placeholder="0.05" step="any" min="0" inputmode="decimal"></div>
+          <div class="field"><label>Workers</label>
+            <input type="number" id="newProductPackLaborWorkers" placeholder="1" step="any" min="0" inputmode="decimal"></div>
+          <div class="field"><label>$ / hour</label>
+            <input type="number" id="newProductPackLaborRate" placeholder="20" step="any" min="0" inputmode="decimal"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Pack cost = units × hours × workers × rate. "unit" = portion / carton / batch per choice above.</div>
       </div>
     </div>
 
@@ -1034,7 +1053,15 @@ function buildProductViewCard(p) {
   if (p.packagingCost > 0) pillBits.push('<span class="info-pill pkg">📦 pkg $' + p.packagingCost + '</span>');
   if (p.laborHours > 0 && p.laborWorkers > 0 && p.laborRate > 0) {
     var perBatch = p.laborHours * p.laborWorkers * p.laborRate;
-    pillBits.push('<span class="info-pill labor">👥 $' + perBatch.toFixed(2) + '/batch</span>');
+    pillBits.push('<span class="info-pill labor">🍳 $' + perBatch.toFixed(2) + '/batch</span>');
+  }
+  if (p.packLaborHours > 0 && p.packLaborWorkers > 0 && p.packLaborRate > 0) {
+    var perPackUnit = p.packLaborHours * p.packLaborWorkers * p.packLaborRate;
+    var basis = p.packLaborBasis || 'portion';
+    var basisLabel = basis === 'carton' ? ('carton/' + (p.cartonSize || '?'))
+                   : basis === 'batch'  ? 'batch'
+                   :                       'portion';
+    pillBits.push('<span class="info-pill labor">📦 $' + perPackUnit.toFixed(2) + '/' + basisLabel + '</span>');
   }
   if (pillBits.length) pillsHtml = '<div class="product-pills">' + pillBits.join('') + '</div>';
   var div = document.createElement('div');
@@ -1079,6 +1106,15 @@ function buildProductEditCard(p) {
   var lhVal   = (p.laborHours > 0) ? p.laborHours : '';
   var lwVal   = (p.laborWorkers > 0) ? p.laborWorkers : '';
   var lrVal   = (p.laborRate > 0) ? p.laborRate : '';
+  var plhVal  = (p.packLaborHours > 0) ? p.packLaborHours : '';
+  var plwVal  = (p.packLaborWorkers > 0) ? p.packLaborWorkers : '';
+  var plrVal  = (p.packLaborRate > 0) ? p.packLaborRate : '';
+  var plBasis = p.packLaborBasis || 'portion';
+  var ctnVal  = (p.cartonSize > 0) ? p.cartonSize : '';
+  var plBasisOpts =
+    '<option value="portion"' + (plBasis === 'portion' ? ' selected' : '') + '>Per single portion</option>' +
+    '<option value="carton"'  + (plBasis === 'carton'  ? ' selected' : '') + '>Per carton of N portions</option>' +
+    '<option value="batch"'   + (plBasis === 'batch'   ? ' selected' : '') + '>Per cooking batch</option>';
   var costModeOpts =
     '<option value="measure"' + (costModeVal === 'measure' ? ' selected' : '') + '>Per measurement unit</option>' +
     '<option value="pack"' + (costModeVal === 'pack' ? ' selected' : '') + '>Per pack</option>' +
@@ -1130,7 +1166,7 @@ function buildProductEditCard(p) {
           '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packagingCost" data-eid="' + p.id + '" value="' + pkgVal + '">' +
         '</div>' +
         '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">' +
-          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">👥 Labor (per batch)</div>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🍳 Cooking labor (per batch)</div>' +
           '<div class="row-grid-3">' +
             '<div class="field"><label>Hours/batch</label>' +
               '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborHours" data-eid="' + p.id + '" value="' + lhVal + '"></div>' +
@@ -1138,6 +1174,25 @@ function buildProductEditCard(p) {
               '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborWorkers" data-eid="' + p.id + '" value="' + lwVal + '"></div>' +
             '<div class="field"><label>$/hour</label>' +
               '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="laborRate" data-eid="' + p.id + '" value="' + lrVal + '"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">📦 Packaging labor</div>' +
+          '<div class="field" style="margin-bottom:8px;">' +
+            '<label>Charge per</label>' +
+            '<select data-edit-field="packLaborBasis" data-eid="' + p.id + '" style="font-size:13px;padding:8px 10px;">' + plBasisOpts + '</select>' +
+          '</div>' +
+          '<div class="field" data-carton-wrap-eid="' + p.id + '" style="' + (plBasis === 'carton' ? '' : 'display:none;') + '">' +
+            '<label>Portions per carton</label>' +
+            '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="cartonSize" data-eid="' + p.id + '" value="' + ctnVal + '">' +
+          '</div>' +
+          '<div class="row-grid-3">' +
+            '<div class="field"><label>Hours/unit</label>' +
+              '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packLaborHours" data-eid="' + p.id + '" value="' + plhVal + '"></div>' +
+            '<div class="field"><label>Workers</label>' +
+              '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packLaborWorkers" data-eid="' + p.id + '" value="' + plwVal + '"></div>' +
+            '<div class="field"><label>$/hour</label>' +
+              '<input type="number" step="any" min="0" inputmode="decimal" data-edit-field="packLaborRate" data-eid="' + p.id + '" value="' + plrVal + '"></div>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -1224,6 +1279,12 @@ function renderProducts() {
       var lhVal   = parseFloat(document.querySelector('[data-edit-field="laborHours"][data-eid="' + pid + '"]').value);
       var lwVal   = parseFloat(document.querySelector('[data-edit-field="laborWorkers"][data-eid="' + pid + '"]').value);
       var lrVal   = parseFloat(document.querySelector('[data-edit-field="laborRate"][data-eid="' + pid + '"]').value);
+      var plhVal  = parseFloat(document.querySelector('[data-edit-field="packLaborHours"][data-eid="' + pid + '"]').value);
+      var plwVal  = parseFloat(document.querySelector('[data-edit-field="packLaborWorkers"][data-eid="' + pid + '"]').value);
+      var plrVal  = parseFloat(document.querySelector('[data-edit-field="packLaborRate"][data-eid="' + pid + '"]').value);
+      var plBasisVal = document.querySelector('[data-edit-field="packLaborBasis"][data-eid="' + pid + '"]').value;
+      var ctnEl   = document.querySelector('[data-edit-field="cartonSize"][data-eid="' + pid + '"]');
+      var ctnVal  = ctnEl ? parseFloat(ctnEl.value) : 0;
       if (!name) { toast('Enter a product name'); return; }
       if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
       p.name = name; p.raw = raw; p.cooked = cooked; p.unit = unit;
@@ -1240,6 +1301,17 @@ function renderProducts() {
       if (lhVal > 0)  p.laborHours = lhVal;    else delete p.laborHours;
       if (lwVal > 0)  p.laborWorkers = lwVal;  else delete p.laborWorkers;
       if (lrVal > 0)  p.laborRate = lrVal;     else delete p.laborRate;
+      if (plhVal > 0) p.packLaborHours = plhVal;     else delete p.packLaborHours;
+      if (plwVal > 0) p.packLaborWorkers = plwVal;   else delete p.packLaborWorkers;
+      if (plrVal > 0) p.packLaborRate = plrVal;      else delete p.packLaborRate;
+      if (plhVal > 0 || plwVal > 0 || plrVal > 0) {
+        p.packLaborBasis = plBasisVal || 'portion';
+        if (p.packLaborBasis === 'carton' && ctnVal > 0) p.cartonSize = ctnVal;
+        else delete p.cartonSize;
+      } else {
+        delete p.packLaborBasis;
+        delete p.cartonSize;
+      }
       saveProducts();
       productEditingId = null;
       renderProducts();
@@ -1285,6 +1357,18 @@ document.addEventListener('click', function(e) {
   if (target) target.classList.add('active');
 });
 
+// Show/hide carton size field based on packLaborBasis dropdown (Add + Edit forms)
+document.getElementById('newProductPackLaborBasis').addEventListener('change', function(e) {
+  document.getElementById('newProductCartonSizeWrap').style.display = e.target.value === 'carton' ? '' : 'none';
+});
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.matches && e.target.matches('[data-edit-field="packLaborBasis"]')) {
+    var pid = e.target.getAttribute('data-eid');
+    var wrap = document.querySelector('[data-carton-wrap-eid="' + pid + '"]');
+    if (wrap) wrap.style.display = e.target.value === 'carton' ? '' : 'none';
+  }
+});
+
 document.getElementById('addProductBtn').addEventListener('click', function() {
   var name = document.getElementById('newProductName').value.trim();
   var raw = parseFloat(document.getElementById('newProductRaw').value);
@@ -1298,6 +1382,11 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   var lhRaw   = parseFloat(document.getElementById('newProductLaborHours').value);
   var lwRaw   = parseFloat(document.getElementById('newProductLaborWorkers').value);
   var lrRaw   = parseFloat(document.getElementById('newProductLaborRate').value);
+  var plBasis = document.getElementById('newProductPackLaborBasis').value;
+  var plCarton= parseFloat(document.getElementById('newProductCartonSize').value);
+  var plhRaw  = parseFloat(document.getElementById('newProductPackLaborHours').value);
+  var plwRaw  = parseFloat(document.getElementById('newProductPackLaborWorkers').value);
+  var plrRaw  = parseFloat(document.getElementById('newProductPackLaborRate').value);
   if (!name) { toast('Enter a product name'); return; }
   if (!(raw > 0) || !(cooked > 0)) { toast('Enter valid amounts'); return; }
   var prod = { id: id(), name: name, raw: raw, cooked: cooked, unit: unit };
@@ -1311,6 +1400,13 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   if (lhRaw > 0)   prod.laborHours = lhRaw;
   if (lwRaw > 0)   prod.laborWorkers = lwRaw;
   if (lrRaw > 0)   prod.laborRate = lrRaw;
+  if (plhRaw > 0)  prod.packLaborHours = plhRaw;
+  if (plwRaw > 0)  prod.packLaborWorkers = plwRaw;
+  if (plrRaw > 0)  prod.packLaborRate = plrRaw;
+  if (plhRaw > 0 || plwRaw > 0 || plrRaw > 0) {
+    prod.packLaborBasis = plBasis || 'portion';
+    if (prod.packLaborBasis === 'carton' && plCarton > 0) prod.cartonSize = plCarton;
+  }
   products.push(prod);
   saveProducts();
   document.getElementById('newProductName').value = '';
@@ -1324,6 +1420,12 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
   document.getElementById('newProductLaborHours').value = '';
   document.getElementById('newProductLaborWorkers').value = '';
   document.getElementById('newProductLaborRate').value = '';
+  document.getElementById('newProductPackLaborBasis').value = 'portion';
+  document.getElementById('newProductCartonSize').value = '';
+  document.getElementById('newProductCartonSizeWrap').style.display = 'none';
+  document.getElementById('newProductPackLaborHours').value = '';
+  document.getElementById('newProductPackLaborWorkers').value = '';
+  document.getElementById('newProductPackLaborRate').value = '';
   renderProducts();
   renderOrderRows();
   renderReverseSelect();
@@ -1624,6 +1726,11 @@ function computeTotals() {
         laborHours: p.laborHours || 0,
         laborWorkers: p.laborWorkers || 0,
         laborRate: p.laborRate || 0,
+        packLaborHours: p.packLaborHours || 0,
+        packLaborWorkers: p.packLaborWorkers || 0,
+        packLaborRate: p.packLaborRate || 0,
+        packLaborBasis: p.packLaborBasis || 'portion',
+        cartonSize: p.cartonSize || 0,
         sizeBreakdown: []
       };
       var t = totals[p.id];
@@ -1668,11 +1775,37 @@ function computeIngredientCost(t) {
   return { cost: t.raw * t.costPerUnit, note: format(t.raw) + ' × $' + t.costPerUnit + '/' + u };
 }
 
-function computeLaborCost(t) {
+function computeCookLaborCost(t) {
   if (!(t.laborHours > 0 && t.laborWorkers > 0 && t.laborRate > 0)) return { cost: 0, batches: 0 };
   var batches = (t.unitsPerPot > 0) ? Math.ceil(t.cooked / t.unitsPerPot) : 1;
   var cost = batches * t.laborHours * t.laborWorkers * t.laborRate;
   return { cost: cost, batches: batches };
+}
+
+function computePackLaborCost(t) {
+  if (!(t.packLaborHours > 0 && t.packLaborWorkers > 0 && t.packLaborRate > 0)) return { cost: 0, units: 0, unitLabel: '' };
+  var basis = t.packLaborBasis || 'portion';
+  var units, label;
+  if (basis === 'carton') {
+    var cs = (t.cartonSize > 0) ? t.cartonSize : 1;
+    units = Math.ceil(t.portionsCount / cs);
+    label = 'carton' + (units !== 1 ? 's' : '') + ' of ' + cs;
+  } else if (basis === 'batch') {
+    units = (t.unitsPerPot > 0) ? Math.ceil(t.cooked / t.unitsPerPot) : 1;
+    label = 'batch' + (units !== 1 ? 'es' : '');
+  } else {
+    units = t.portionsCount;
+    label = 'portion' + (units !== 1 ? 's' : '');
+  }
+  var cost = units * t.packLaborHours * t.packLaborWorkers * t.packLaborRate;
+  return { cost: cost, units: units, unitLabel: label };
+}
+
+// Back-compat shim — old call sites; returns combined cook+pack
+function computeLaborCost(t) {
+  var c = computeCookLaborCost(t);
+  var p = computePackLaborCost(t);
+  return { cost: c.cost + p.cost, batches: c.batches };
 }
 
 function renderResults(totalsArr) {
@@ -1704,12 +1837,14 @@ function renderResults(totalsArr) {
 
     var ing = computeIngredientCost(t);
     var packagingTotal = (t.packagingCost > 0) ? t.portionsCount * t.packagingCost : 0;
-    var lab = computeLaborCost(t);
-    var lineCost = ing.cost + packagingTotal + lab.cost;
+    var cookLab = computeCookLaborCost(t);
+    var packLab = computePackLaborCost(t);
+    var lineCost = ing.cost + packagingTotal + cookLab.cost + packLab.cost;
 
     if (ing.cost > 0)        extras.push('💰 Ingredient: $' + ing.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + ing.note + ')</span>');
     if (packagingTotal > 0)  extras.push('📦 Packaging: $' + packagingTotal.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + t.portionsCount + ' × $' + t.packagingCost + ')</span>');
-    if (lab.cost > 0)        extras.push('👥 Labor: $' + lab.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + lab.batches + ' batch' + (lab.batches !== 1 ? 'es' : '') + ' × ' + format(t.laborHours) + 'h × ' + format(t.laborWorkers) + ' workers × $' + t.laborRate + '/h)</span>');
+    if (cookLab.cost > 0)    extras.push('🍳 Cook labor: $' + cookLab.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + cookLab.batches + ' batch' + (cookLab.batches !== 1 ? 'es' : '') + ' × ' + format(t.laborHours) + 'h × ' + format(t.laborWorkers) + 'w × $' + t.laborRate + '/h)</span>');
+    if (packLab.cost > 0)    extras.push('📦 Pack labor: $' + packLab.cost.toFixed(2) + ' <span style="opacity:.7;font-weight:500;">(' + packLab.units + ' ' + packLab.unitLabel + ' × ' + format(t.packLaborHours) + 'h × ' + format(t.packLaborWorkers) + 'w × $' + t.packLaborRate + '/h)</span>');
     if (lineCost > 0) {
       orderTotalCost += lineCost;
       hasAnyCost = true;
@@ -1736,7 +1871,7 @@ function renderResults(totalsArr) {
     if ((t.sizeBreakdown && t.sizeBreakdown.length) && lineCost > 0) {
       // effective $ per cooked unit accounts for pack/piece rounding correctly
       var effectiveIngPerCooked = (t.cooked > 0) ? ing.cost / t.cooked : 0;
-      var laborPerPortion = (t.portionsCount > 0) ? lab.cost / t.portionsCount : 0;
+      var laborPerPortion = (t.portionsCount > 0) ? (cookLab.cost + packLab.cost) / t.portionsCount : 0;
       t.sizeBreakdown.forEach(function(b) {
         var perPortionIng = b.portionSize * effectiveIngPerCooked;
         var perPortionPkg = (t.packagingCost > 0) ? t.packagingCost : 0;
@@ -1902,6 +2037,11 @@ function pushHistory(totals) {
         laborHours: t.laborHours || 0,
         laborWorkers: t.laborWorkers || 0,
         laborRate: t.laborRate || 0,
+        packLaborHours: t.packLaborHours || 0,
+        packLaborWorkers: t.packLaborWorkers || 0,
+        packLaborRate: t.packLaborRate || 0,
+        packLaborBasis: t.packLaborBasis || 'portion',
+        cartonSize: t.cartonSize || 0,
         sizeBreakdown: t.sizeBreakdown || []
       };
     })
@@ -2075,15 +2215,16 @@ function formatOfficeExport() {
     grandPortions += t.portionsCount || 0;
     var ing = computeIngredientCost(t);
     var pkg = (t.packagingCost > 0) ? t.portionsCount * t.packagingCost : 0;
-    var lab = computeLaborCost(t);
-    var lineCost = ing.cost + pkg + lab.cost;
+    var cookLab = computeCookLaborCost(t);
+    var packLab = computePackLaborCost(t);
+    var lineCost = ing.cost + pkg + cookLab.cost + packLab.cost;
     grandTotal += lineCost;
     lines.push('');
     lines.push('▸ ' + t.name);
     lines.push('  Raw: ' + format(t.raw) + ' ' + u + '  |  Cooked: ' + format(t.cooked) + ' ' + u + '  |  ' + (t.portionsCount || 0) + ' portions');
     if (t.sizeBreakdown && t.sizeBreakdown.length && lineCost > 0) {
       var effIng = (t.cooked > 0) ? ing.cost / t.cooked : 0;
-      var laborPP = (t.portionsCount > 0) ? lab.cost / t.portionsCount : 0;
+      var laborPP = (t.portionsCount > 0) ? (cookLab.cost + packLab.cost) / t.portionsCount : 0;
       lines.push('  Per-portion price:');
       t.sizeBreakdown.forEach(function(b) {
         var perIng = b.portionSize * effIng;
@@ -2092,11 +2233,12 @@ function formatOfficeExport() {
         lines.push('    • ' + b.portions + ' × ' + format(b.portionSize) + ' ' + u + '  →  $' + perTotal.toFixed(2) + ' each');
       });
     }
-    if (ing.cost > 0)  lines.push('  Ingredient: $' + ing.cost.toFixed(2).padStart(9, ' ') + '   (' + ing.note + ')');
-    if (pkg > 0)       lines.push('  Packaging:  $' + pkg.toFixed(2).padStart(9, ' ') + '   (' + t.portionsCount + ' × $' + t.packagingCost + ')');
-    if (lab.cost > 0)  lines.push('  Labor:      $' + lab.cost.toFixed(2).padStart(9, ' ') + '   (' + lab.batches + ' batch' + (lab.batches !== 1 ? 'es' : '') + ' × ' + format(t.laborHours) + 'h × ' + format(t.laborWorkers) + 'w × $' + t.laborRate + '/h)');
-    if (lineCost > 0)  lines.push('  ───────────────────');
-    if (lineCost > 0)  lines.push('  Subtotal:   $' + lineCost.toFixed(2).padStart(9, ' '));
+    if (ing.cost > 0)      lines.push('  Ingredient:  $' + ing.cost.toFixed(2).padStart(9, ' ') + '   (' + ing.note + ')');
+    if (pkg > 0)           lines.push('  Packaging:   $' + pkg.toFixed(2).padStart(9, ' ') + '   (' + t.portionsCount + ' × $' + t.packagingCost + ')');
+    if (cookLab.cost > 0)  lines.push('  Cook labor:  $' + cookLab.cost.toFixed(2).padStart(9, ' ') + '   (' + cookLab.batches + ' batch' + (cookLab.batches !== 1 ? 'es' : '') + ' × ' + format(t.laborHours) + 'h × ' + format(t.laborWorkers) + 'w × $' + t.laborRate + '/h)');
+    if (packLab.cost > 0)  lines.push('  Pack labor:  $' + packLab.cost.toFixed(2).padStart(9, ' ') + '   (' + packLab.units + ' ' + packLab.unitLabel + ' × ' + format(t.packLaborHours) + 'h × ' + format(t.packLaborWorkers) + 'w × $' + t.packLaborRate + '/h)');
+    if (lineCost > 0)      lines.push('  ───────────────────');
+    if (lineCost > 0)      lines.push('  Subtotal:    $' + lineCost.toFixed(2).padStart(9, ' '));
   });
   lines.push('');
   lines.push('═════════════════════════');
