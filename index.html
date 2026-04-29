@@ -953,16 +953,10 @@
   </div>
 
   <div class="card">
-    <div class="card-title">📦 Product List</div>
-    <div class="search-row">
-      <input type="text" id="productSearch" placeholder="🔍 Search products…" autocomplete="off">
-      <select id="productSort">
-        <option value="recent">Recent first</option>
-        <option value="name">Name A→Z</option>
-        <option value="mostused">Most used</option>
-      </select>
-    </div>
-    <div id="productsList"></div>
+    <div class="card-title">🍲 Dish List</div>
+    <input type="text" id="dishSearch" placeholder="🔍 Search dishes…" autocomplete="off" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+    <div id="dishesList"></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">A dish = composite recipe (Kugel, Rice plate, …). To edit a single ingredient's pricing use the <strong>🥕 Ingredients</strong> tab.</div>
   </div>
 
 </section>
@@ -1406,7 +1400,10 @@ function saveProducts() {
   localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
   if (typeof renderIngredients === 'function') renderIngredients();
 }
-function saveRecipes()  { localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes)); }
+function saveRecipes()  {
+  localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes));
+  if (typeof renderDishesList === 'function') renderDishesList();
+}
 function saveOrder()    { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(orderRows)); }
 function saveHistory()  { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyEntries)); }
 function saveMeta()     { localStorage.setItem(STORAGE_KEY_META, JSON.stringify(orderMeta)); }
@@ -1626,6 +1623,7 @@ function buildProductEditCard(p) {
 
 function renderProducts() {
   var list = document.getElementById('productsList');
+  if (!list) return; // products list card removed in v2.5.1 — Ingredients tab is the catalog now
   if (products.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>No ingredients yet. Add one above.</div></div>';
     return;
@@ -1751,11 +1749,13 @@ function renderProducts() {
   });
 }
 
-document.getElementById('productSearch').addEventListener('input', function(e) {
+var _ps = document.getElementById('productSearch');
+if (_ps) _ps.addEventListener('input', function(e) {
   productSearch = e.target.value;
   renderProducts();
 });
-document.getElementById('productSort').addEventListener('change', function(e) {
+var _psort = document.getElementById('productSort');
+if (_psort) _psort.addEventListener('change', function(e) {
   productSort = e.target.value;
   renderProducts();
 });
@@ -3959,12 +3959,84 @@ document.getElementById('addIngrBtn') && document.getElementById('addIngrBtn').a
 document.getElementById('ingrSearch') && document.getElementById('ingrSearch').addEventListener('input', renderIngredients);
 ingrUpdateLabels();
 
+// ============ DISH LIST (Products tab, v2.5.1) ============
+function renderDishesList() {
+  var container = document.getElementById('dishesList');
+  if (!container) return;
+  var search = ((document.getElementById('dishSearch') || {}).value || '').toLowerCase();
+  var dishes = recipes.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  if (search) dishes = dishes.filter(function(r){ return (r.name||'').toLowerCase().indexOf(search) !== -1; });
+  if (dishes.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🍲</div><div>No dishes yet. Click <strong>+ Add Dish</strong> above to define the first one.</div></div>';
+    return;
+  }
+  container.innerHTML = dishes.map(function(r) {
+    var yieldStr = (r.yieldCooked > 0)
+      ? format(r.yieldCooked) + ' ' + escapeHtml(unitLabel(r.yieldUnit || 'oz')) + ' cooked / batch'
+      : '<em style="color:var(--text-muted);">no yield set</em>';
+    var refStr = r.referenceText
+      ? '<div style="font-size:12px;font-style:italic;color:var(--text-muted);margin-top:2px;">' + escapeHtml(r.referenceText) + '</div>'
+      : '';
+    var compCount = (r.components || []).length;
+    var leadHtml = '';
+    if (r.leadProductId) {
+      var leadP = products.find(function(x){ return x.id === r.leadProductId; });
+      if (leadP) leadHtml = ' · <span title="Lead ingredient" style="color:#b45309;">⭐</span> ' + escapeHtml(leadP.name);
+    }
+    return '<div class="recipe-item">' +
+      '<div class="product-item-header">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="recipe-name">' + escapeHtml(r.name) + '</div>' +
+          refStr +
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + yieldStr + ' · ' + compCount + ' component' + (compCount === 1 ? '' : 's') + leadHtml + '</div>' +
+        '</div>' +
+        '<div class="product-actions">' +
+          '<button class="btn-secondary btn-icon" data-edit-dish="' + r.id + '" title="Edit">✏️</button>' +
+          '<button class="btn-danger btn-icon" data-del-dish="' + r.id + '" title="Delete">🗑️</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  container.querySelectorAll('[data-edit-dish]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-edit-dish');
+      // Switch to Recipes tab and open inline edit (full editor with all fields).
+      var recipesTabBtn = document.querySelector('.tab[data-tab="recipes"]');
+      if (recipesTabBtn) recipesTabBtn.click();
+      recipeEditingId = rid;
+      renderRecipes();
+      setTimeout(function() {
+        var card = document.querySelector('.recipe-item.editing');
+        if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 80);
+    });
+  });
+  container.querySelectorAll('[data-del-dish]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var rid = btn.getAttribute('data-del-dish');
+      var inUse = orderRows.some(function(row){ return row.kind === 'recipe' && row.recipeId === rid; });
+      var msg = inUse ? 'This dish is used in the current order. Delete anyway?' : 'Delete this dish?';
+      if (!confirm(msg)) return;
+      recipes = recipes.filter(function(x){ return x.id !== rid; });
+      orderRows = orderRows.filter(function(row){ return !(row.kind === 'recipe' && row.recipeId === rid); });
+      saveRecipes();
+      saveOrder();
+      renderRecipes();
+      renderOrderRows();
+      toast('Dish deleted ✓');
+    });
+  });
+}
+document.getElementById('dishSearch') && document.getElementById('dishSearch').addEventListener('input', renderDishesList);
+
 // ============ INIT ============
 loadState();
 syncOrderMetaInputs();
 renderProducts();
 renderRecipes();
 renderIngredients();
+renderDishesList();
 renderOrderRows();
 renderHistory();
 renderReverseSelect();
