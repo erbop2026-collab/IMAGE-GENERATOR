@@ -740,7 +740,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.2</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.6.3</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -4467,7 +4467,19 @@ document.addEventListener('change', function(e) {
       var pid2 = pkKey.slice(5);
       costEl = document.querySelector('[data-edit="packagingCost"][data-pid="' + pid2 + '"]');
     }
-    if (costEl && pk.price > 0) costEl.value = pk.price.toFixed(2);
+    if (costEl && pk.price > 0) {
+      // The form field is "$ per single portion". For count-based packs
+      // (e.g. "Box for 4 portions, $1.20"), divide price by sizeQty so
+      // the field shows the per-portion amount ($0.30) — not the pack price.
+      // For other units (oz/lb/floz/...) we don't know the dish's portion
+      // size at this point, so use the raw pack price and let the user
+      // adjust manually if needed.
+      var perPortion = pk.price;
+      if (pk.sizeUnit === 'ct' && pk.sizeQty > 0) {
+        perPortion = pk.price / pk.sizeQty;
+      }
+      costEl.value = perPortion.toFixed(2);
+    }
   }
 });
 
