@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.8.0</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.8.1</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1263,10 +1263,10 @@ Pasta,oz,8,16"></textarea>
       <input type="text" id="newRecipeRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
     </div>
     <div class="field">
-      <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE meal — click ☆ for ⭐ lead)</span></label>
+      <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE batch / instance — click ☆ for ⭐ lead)</span></label>
       <div class="component-list" data-component-list="add"></div>
       <button class="btn-secondary btn-small" type="button" data-component-add="add">+ Add ingredient</button>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much <strong>raw / uncooked</strong> goes into one meal. The unit is taken from the ingredient. Cooked yield comes from the dish-level <strong>Yield / batch</strong> field above.</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much <strong>raw / uncooked</strong> goes into one batch / instance of the dish. The unit is taken from the ingredient. Cooked yield comes from the dish-level <strong>Yield / batch</strong> field above.</div>
     </div>
     <div class="field">
       <label>Default packaging <span style="color:var(--text-muted);font-weight:400;">(pick any from the 📦 Packaging catalog)</span></label>
@@ -1428,10 +1428,10 @@ Pasta,oz,8,16"></textarea>
       <input type="text" id="dishModalRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
     </div>
     <div class="field">
-      <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE meal — click ☆ for ⭐ lead)</span></label>
+      <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE batch / instance — click ☆ for ⭐ lead)</span></label>
       <div class="component-list" data-component-list="modal"></div>
       <button class="btn-secondary btn-small" type="button" data-component-add="modal">+ Add ingredient</button>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much <strong>raw / uncooked</strong> goes into one meal. The unit is taken from the ingredient. Cooked yield comes from the dish-level <strong>Yield / batch</strong> field above.</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Pick an ingredient, enter how much <strong>raw / uncooked</strong> goes into one batch / instance of the dish. The unit is taken from the ingredient. Cooked yield comes from the dish-level <strong>Yield / batch</strong> field above.</div>
     </div>
     <div class="field">
       <label>Default packaging <span style="color:var(--text-muted);font-weight:400;">(pick any from the 📦 Packaging catalog)</span></label>
@@ -2262,7 +2262,7 @@ function buildRecipeEditCard(r) {
         '<input type="text" data-recipe-edit="ref" data-rid="' + r.id + '" value="' + escapeHtml(r.referenceText || '') + '" placeholder=\'e.g. "1 Kugel = 1 pan 9×13"\'>' +
       '</div>' +
       '<div class="field">' +
-        '<label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE meal — click ☆ for ⭐ lead)</span></label>' +
+        '<label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE batch / instance — click ☆ for ⭐ lead)</span></label>' +
         '<div class="component-list" data-component-list="edit-' + r.id + '">' + compsHTML + '</div>' +
         '<button class="btn-secondary btn-small" type="button" data-component-add="edit-' + r.id + '">+ Add ingredient</button>' +
       '</div>' +
