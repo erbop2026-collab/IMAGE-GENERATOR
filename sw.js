@@ -1,5 +1,5 @@
 // Service Worker for Kitchen Portion Calculator
-var CACHE_NAME = 'portion-calc-v2.11.0';
+var CACHE_NAME = 'portion-calc-v2.11.1';
 var URLS_TO_CACHE = [
   './',
   './index.html',
@@ -9,41 +9,47 @@ var URLS_TO_CACHE = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
 ];
 
-self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(URLS_TO_CACHE).catch(function(){});
-    })
-  );
+async function installCache() {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(URLS_TO_CACHE);
+  } catch (e) { /* ignore — install proceeds */ }
+}
+
+self.addEventListener('install', function (event) {
+  event.waitUntil(installCache());
   self.skipWaiting();
 });
 
-self.addEventListener('activate', function(event) {
-  event.waitUntil(
-    caches.keys().then(function(names) {
-      return Promise.all(
-        names.filter(function(name) { return name !== CACHE_NAME; })
-          .map(function(name) { return caches.delete(name); })
-      );
-    })
+async function clearStaleCaches() {
+  const names = await caches.keys();
+  await Promise.all(
+    names
+      .filter(function (name) { return name !== CACHE_NAME; })
+      .map(function (name) { return caches.delete(name); })
   );
+}
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(clearStaleCaches());
   self.clients.claim();
 });
 
-self.addEventListener('fetch', function(event) {
+async function networkAndUpdateCache(request) {
+  const response = await fetch(request);
+  if (response && response.ok) {
+    const clone = response.clone();
+    const cache = await caches.open(CACHE_NAME);
+    cache.put(request, clone);
+  }
+  return response;
+}
+
+self.addEventListener('fetch', function (event) {
   if (event.request.method !== 'GET') return;
-  event.respondWith(
-    caches.match(event.request).then(function(cached) {
-      var network = fetch(event.request).then(function(response) {
-        if (response && response.ok) {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      }).catch(function() { return cached; });
-      return cached || network;
-    })
-  );
+  event.respondWith((async function () {
+    const cached = await caches.match(event.request);
+    const networkPromise = networkAndUpdateCache(event.request).catch(function () { return cached; });
+    return cached || networkPromise;
+  })());
 });
