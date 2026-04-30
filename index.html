@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.8.8</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.9.0</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1638,6 +1638,18 @@ function loadState() {
     recipesDirty = true;
   });
   if (recipesDirty) localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes));
+
+  // v2.9.0 seed: standard US commercial sizes for Equipment + Packaging.
+  // Idempotent — only adds items whose name doesn't already exist (case-
+  // insensitive). Versioned via 'std_seed_v' so we can extend the catalog
+  // in future versions without dropping user data.
+  if (typeof seedStandardsCatalog === 'function') {
+    var seedV = parseInt(localStorage.getItem('std_seed_v') || '0', 10);
+    if (seedV < 1) {
+      seedStandardsCatalog();
+      localStorage.setItem('std_seed_v', '1');
+    }
+  }
   try {
     var m = localStorage.getItem(STORAGE_KEY_META);
     if (m) {
@@ -1670,6 +1682,114 @@ function saveMeta()     { localStorage.setItem(STORAGE_KEY_META, JSON.stringify(
 function savePots()     { localStorage.setItem(STORAGE_KEY_POTS, JSON.stringify(pots)); }
 function savePacks()    { localStorage.setItem(STORAGE_KEY_PACKS, JSON.stringify(packs)); }
 function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// ============ STANDARDS CATALOG SEED (v2.9.0) ============
+// US commercial kitchen standards. Idempotent — only adds items whose name
+// doesn't already exist in the target catalog (case-insensitive match).
+function seedStandardsCatalog() {
+  function nameTaken(arr, name) {
+    var lc = name.toLowerCase();
+    return arr.some(function(x){ return (x.name || '').toLowerCase() === lc; });
+  }
+  function calcVol(o) {
+    if (o.shape === 'rect') return (o.dimL||0) * (o.dimW||0) * (o.dimH||0) * 0.554;
+    return Math.PI * Math.pow((o.dimD||0)/2, 2) * (o.dimH||0) * 0.554;
+  }
+  function addPot(name, fields) {
+    if (nameTaken(pots, name)) return;
+    var p = Object.assign({ id: id(), name: name }, fields);
+    p.volumeOz = calcVol(p);
+    pots.push(p);
+  }
+  function addPack(name, fields) {
+    if (nameTaken(packs, name)) return;
+    packs.push(Object.assign({ id: id(), name: name }, fields));
+  }
+
+  // ---- EQUIPMENT (reusable cooking gear) ----
+
+  // Stock pots (round) — capacityLb ≈ qt × 2.087 (water density)
+  addPot('Stock pot 8 qt',   { shape: 'round', dimD: 9.5,  dimH: 8.25, capacityLb: 16 });
+  addPot('Stock pot 12 qt',  { shape: 'round', dimD: 11,   dimH: 7.6,  capacityLb: 25 });
+  addPot('Stock pot 16 qt',  { shape: 'round', dimD: 11.5, dimH: 10,   capacityLb: 33 });
+  addPot('Stock pot 20 qt',  { shape: 'round', dimD: 13,   dimH: 8.9,  capacityLb: 42 });
+  addPot('Stock pot 32 qt',  { shape: 'round', dimD: 14,   dimH: 12.5, capacityLb: 67 });
+  addPot('Stock pot 50 qt',  { shape: 'round', dimD: 16,   dimH: 12,   capacityLb: 104 });
+  addPot('Stock pot 60 qt',  { shape: 'round', dimD: 16.5, dimH: 12.5, capacityLb: 125 });
+  addPot('Stock pot 80 qt',  { shape: 'round', dimD: 18,   dimH: 13.5, capacityLb: 167 });
+  addPot('Stock pot 100 qt', { shape: 'round', dimD: 20,   dimH: 14,   capacityLb: 209 });
+
+  // Steam-jacketed kettles / tilt skillets (large industrial, round)
+  addPot('Steam kettle 20 gal',  { shape: 'round', dimD: 24, dimH: 12, capacityLb: 167 });
+  addPot('Steam kettle 30 gal',  { shape: 'round', dimD: 27, dimH: 13, capacityLb: 250 });
+  addPot('Steam kettle 40 gal',  { shape: 'round', dimD: 30, dimH: 14, capacityLb: 333 });
+  addPot('Steam kettle 60 gal',  { shape: 'round', dimD: 34, dimH: 16, capacityLb: 500 });
+  addPot('Steam kettle 80 gal',  { shape: 'round', dimD: 38, dimH: 18, capacityLb: 667 });
+  addPot('Steam kettle 100 gal', { shape: 'round', dimD: 42, dimH: 20, capacityLb: 833 });
+
+  // Hotel / steam-table pans (stainless steel rect)
+  addPot('Hotel pan, full 12x20x2.5 (steel)',  { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 2.5, capacityLb: 21 });
+  addPot('Hotel pan, full 12x20x4 (steel)',    { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 4,   capacityLb: 33 });
+  addPot('Hotel pan, full 12x20x6 (steel)',    { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 6,   capacityLb: 50 });
+  addPot('Hotel pan, half 12x10x2.5 (steel)',  { shape: 'rect', dimL: 12.75,  dimW: 10.4,  dimH: 2.5, capacityLb: 10 });
+  addPot('Hotel pan, half 12x10x4 (steel)',    { shape: 'rect', dimL: 12.75,  dimW: 10.4,  dimH: 4,   capacityLb: 16 });
+  addPot('Hotel pan, third 12x7x2.5 (steel)',  { shape: 'rect', dimL: 12.75,  dimW: 6.9,   dimH: 2.5, capacityLb: 7 });
+  addPot('Hotel pan, third 12x7x4 (steel)',    { shape: 'rect', dimL: 12.75,  dimW: 6.9,   dimH: 4,   capacityLb: 11 });
+  addPot('Hotel pan, quarter 10x6x2.5 (steel)',{ shape: 'rect', dimL: 10.4,   dimW: 6.4,   dimH: 2.5, capacityLb: 5 });
+  addPot('Hotel pan, quarter 10x6x4 (steel)',  { shape: 'rect', dimL: 10.4,   dimW: 6.4,   dimH: 4,   capacityLb: 8 });
+  addPot('Hotel pan, sixth 6.9x6.4x2.5 (steel)', { shape: 'rect', dimL: 6.9,  dimW: 6.4,   dimH: 2.5, capacityLb: 3 });
+  addPot('Hotel pan, sixth 6.9x6.4x4 (steel)',   { shape: 'rect', dimL: 6.9,  dimW: 6.4,   dimH: 4,   capacityLb: 5 });
+
+  // Sheet pans (steel, flat — capacity is approximate / not for liquids)
+  addPot('Sheet pan, full 26x18 (steel)',     { shape: 'rect', dimL: 26, dimW: 18, dimH: 1, capacityLb: 16 });
+  addPot('Sheet pan, half 18x13 (steel)',     { shape: 'rect', dimL: 18, dimW: 13, dimH: 1, capacityLb: 8 });
+  addPot('Sheet pan, quarter 13x9 (steel)',   { shape: 'rect', dimL: 13, dimW: 9.5, dimH: 1, capacityLb: 4 });
+
+  // Cake & loaf pans (steel)
+  addPot('Cake pan 9x13x2 (steel)',     { shape: 'rect', dimL: 13,  dimW: 9,   dimH: 2,   capacityLb: 8 });
+  addPot('Brownie pan 8x8x2 (steel)',   { shape: 'rect', dimL: 8,   dimW: 8,   dimH: 2,   capacityLb: 4 });
+  addPot('Loaf pan 8.5x4.5x2.5 (steel)',{ shape: 'rect', dimL: 8.5, dimW: 4.5, dimH: 2.5, capacityLb: 3 });
+
+  // ---- PACKAGING (single-use, disposable) ----
+
+  // Aluminum foil pans (rect)
+  addPack('Aluminum foil pan, full 21x13x3.5',     { sizeQty: 24, sizeUnit: 'lb' });
+  addPack('Aluminum foil pan, half 12.5x10x3',     { sizeQty: 12, sizeUnit: 'lb' });
+  addPack('Aluminum foil pan, half deep 12.5x10x4',{ sizeQty: 16, sizeUnit: 'lb' });
+  addPack('Aluminum foil pan, quarter 8.5x6.5x2',  { sizeQty: 5,  sizeUnit: 'lb' });
+  addPack('Aluminum foil loaf pan, 5 lb (8x4x2.5)',{ sizeQty: 5,  sizeUnit: 'lb' });
+  addPack('Aluminum foil loaf pan, 2.25 lb (7x4x2)',{sizeQty: 2.25,sizeUnit: 'lb' });
+  addPack('Aluminum foil hotel pan, full 12x20x2.5',{sizeQty: 21, sizeUnit: 'lb' });
+  addPack('Aluminum foil hotel pan, full 12x20x4', { sizeQty: 33, sizeUnit: 'lb' });
+
+  // Plastic deli containers (round) — separate lid
+  addPack('Plastic deli container 8 oz (round)',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Plastic deli container 12 oz (round)', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Plastic deli container 16 oz (round)', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Plastic deli container 24 oz (round)', { sizeQty: 24, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Plastic deli container 32 oz (round)', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Plastic deli container 64 oz (round)', { sizeQty: 64, sizeUnit: 'floz', hasSeparateLid: true });
+
+  // Paper soup cups + lids
+  addPack('Paper soup cup 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Paper soup cup 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Paper soup cup 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Paper soup cup 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
+
+  // Plastic hinged clamshells (1-compartment)
+  addPack('Plastic clamshell 6x6x3 (1-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Plastic clamshell 8x8x3 (1-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Plastic clamshell 9x9x3 (1-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+
+  // Plastic hinged clamshells (multi-compartment)
+  addPack('Plastic clamshell 9x6x3 (2-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Plastic clamshell 9x9x3 (3-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+
+  // Plastic catering trays + lids
+  addPack('Plastic catering tray, small 12x9 (with lid)',  { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Plastic catering tray, medium 16x11 (with lid)',{ sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Plastic catering tray, large 18x14 (with lid)', { sizeQty: 1, sizeUnit: 'ct' });
+}
 
 // ============ TABS ============
 document.querySelectorAll('.tab').forEach(function(t) {
