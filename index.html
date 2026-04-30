@@ -464,7 +464,7 @@
 
   .size-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 36px;
+    grid-template-columns: 90px minmax(0, 1fr) 36px;
     gap: 8px;
     align-items: end;
     padding: 8px;
@@ -473,9 +473,18 @@
     border-radius: 8px;
     margin-bottom: 6px;
   }
-  .size-row .field { margin: 0; }
+  .size-row .field { margin: 0; min-width: 0; }
   .size-row label { font-size: 11px; }
   .size-row input { padding: 8px 10px; font-size: 14px; }
+  /* v2.13.11: packaging name is long — give the select full column width
+     and let it wrap onto its own line on narrow screens. */
+  .size-row select { width: 100%; padding: 8px 10px; font-size: 14px; }
+  @media (max-width: 480px) {
+    .size-row { grid-template-columns: 1fr 36px; grid-template-areas: 'portions trash' 'packaging packaging'; }
+    .size-row .field:nth-of-type(1) { grid-area: portions; }
+    .size-row .field:nth-of-type(2) { grid-area: packaging; }
+    .size-row .btn-danger { grid-area: trash; }
+  }
   .size-row .btn-danger { width: 32px; height: 32px; padding: 0; font-size: 14px; }
   .size-row-summary {
     grid-column: 1 / -1;
@@ -753,7 +762,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.10</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.11</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2130,6 +2139,16 @@ function setupSyncListeners() {
       if (!data || !Array.isArray(data.items)) return;
       // Skip our own writes echoing back.
       if (data.updatedBy === deviceId) return;
+      // v2.13.11 — guard: if our last local save is newer than the cloud
+      // snapshot, the cloud is stale (e.g. device-id reset, persistence
+      // cache delivering an old version). Keep local and re-push.
+      var localSaveAt = getLocalSaveAt(t.id);
+      var cloudAt = data.updatedAt || 0;
+      if (localSaveAt > 0 && cloudAt < localSaveAt) {
+        console.log('[sync] cloud stale for ' + t.id + ' (cloud=' + cloudAt + ', local=' + localSaveAt + ') — re-pushing local');
+        pushToCloud(t.id);
+        return;
+      }
       t.set(data.items);
       t.render();
     }, function(err) {
@@ -2182,15 +2201,26 @@ function flushPendingPushes() {
 window.addEventListener('beforeunload', flushPendingPushes);
 window.addEventListener('pagehide',     flushPendingPushes);
 
-// Wrap save functions so every save also pushes to cloud.
+// v2.13.11 — track when each catalog was last saved locally. The listener
+// uses this to refuse cloud snapshots that are OLDER than our last local
+// save (otherwise a stale cloud cache snapshot from a previous device-id
+// can clobber prices the user just typed in).
+function setLocalSaveAt(targetId) {
+  try { localStorage.setItem('_saveAt_' + targetId, String(Date.now())); } catch(e) {}
+}
+function getLocalSaveAt(targetId) {
+  return parseInt(localStorage.getItem('_saveAt_' + targetId) || '0', 10);
+}
+
+// Wrap save functions so every save also pushes to cloud + records timestamp.
 var _origSaveProducts = saveProducts;
-saveProducts = function() { _origSaveProducts.apply(this, arguments); pushToCloud('products'); };
+saveProducts = function() { _origSaveProducts.apply(this, arguments); setLocalSaveAt('products'); pushToCloud('products'); };
 var _origSaveRecipes = saveRecipes;
-saveRecipes = function() { _origSaveRecipes.apply(this, arguments); pushToCloud('recipes'); };
+saveRecipes = function() { _origSaveRecipes.apply(this, arguments); setLocalSaveAt('recipes'); pushToCloud('recipes'); };
 var _origSavePots = savePots;
-savePots = function() { _origSavePots.apply(this, arguments); pushToCloud('pots'); };
+savePots = function() { _origSavePots.apply(this, arguments); setLocalSaveAt('pots'); pushToCloud('pots'); };
 var _origSavePacks = savePacks;
-savePacks = function() { _origSavePacks.apply(this, arguments); pushToCloud('packs'); };
+savePacks = function() { _origSavePacks.apply(this, arguments); setLocalSaveAt('packs'); pushToCloud('packs'); };
 
 // Run the seeds AFTER Firestore has had a chance to deliver cloud state,
 // so the seed merges with whatever already exists in the cloud rather
