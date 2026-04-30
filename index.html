@@ -744,7 +744,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.8.1</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.8.8</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -4955,12 +4955,6 @@ function buildDishSetupEditor(r) {
     '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">⚙️ Dish setup — "' + escapeHtml(r.name) + '"</div>' +
 
     '<div class="field">' +
-      '<label>Reference equipment <span style="color:var(--text-muted);font-weight:400;">(vessel that holds 1 batch cooked)</span></label>' +
-      '<select data-pot-pick="dse-ref-' + r.id + '" data-dse-refpick="1"><option value="">— none —</option></select>' +
-      '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Picking auto-fills the yield on the Recipes tab.</div>' +
-    '</div>' +
-
-    '<div class="field">' +
       '<label>Equipment for cooking + packing <span style="color:var(--text-muted);font-weight:400;">(can have multiple sizes)</span></label>' +
       '<div data-dse-equipment-rows="1">' + rowsHtml + '</div>' +
       '<button class="btn-secondary btn-small" type="button" data-dse-add-eq="1">+ Add equipment</button>' +
@@ -5032,14 +5026,11 @@ function renderDishesList() {
     '</div>';
   }).join('');
 
-  // Populate equipment dropdowns + reference picker + packaging multi-list inside editor.
+  // Populate equipment dropdowns + packaging multi-list inside editor.
   if (dishSetupEditingId) {
     if (typeof populatePotPicks === 'function') populatePotPicks();
     var editingRec = recipes.find(function(x){ return x.id === dishSetupEditingId; });
     if (editingRec) {
-      // Reference equipment value
-      var refSel = document.querySelector('[data-pot-pick="dse-ref-' + dishSetupEditingId + '"]');
-      if (refSel && editingRec.referenceEquipmentId) refSel.value = editingRec.referenceEquipmentId;
       // Equipment row dropdowns: set selected per saved equipmentId.
       (editingRec.equipment || []).forEach(function(ent, idx) {
         var sel = document.querySelector('[data-dse-eqsel="' + idx + '"]');
@@ -5121,12 +5112,6 @@ function renderDishesList() {
 
 // Pull editor inputs back into the recipe object (used on Add/Remove/Save).
 function collectDishSetupFromDOM(r) {
-  // Reference equipment
-  var refSel = document.querySelector('[data-pot-pick="dse-ref-' + r.id + '"]');
-  if (refSel) {
-    if (refSel.value) r.referenceEquipmentId = refSel.value;
-    else delete r.referenceEquipmentId;
-  }
   // Equipment rows
   var rowEls = document.querySelectorAll('[data-dse-row]');
   if (rowEls.length > 0) {
