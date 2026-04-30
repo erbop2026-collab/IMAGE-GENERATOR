@@ -755,7 +755,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.11.2</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.12.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1250,7 +1250,7 @@ Pasta,oz,8,16"></textarea>
     <div class="row-grid">
       <div class="field">
         <label>Yield / batch (cooked) <span style="color:#dc2626;font-weight:600;">*</span></label>
-        <input type="number" id="newRecipeYield" step="any" min="0" placeholder="e.g. 80" inputmode="decimal">
+        <input type="number" id="newRecipeYield" step="any" min="0" placeholder="e.g. 10" inputmode="decimal">
       </div>
       <div class="field">
         <label>Yield unit</label>
@@ -1265,8 +1265,23 @@ Pasta,oz,8,16"></textarea>
         </select>
       </div>
     </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Volume occupied <span style="color:var(--text-muted);font-weight:400;">(optional — for volume-based packaging)</span></label>
+        <input type="number" id="newRecipeYieldVolume" step="any" min="0" placeholder="e.g. 200" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Volume unit</label>
+        <select id="newRecipeYieldVolumeUnit">
+          <option value="floz">fl oz</option>
+          <option value="cup">cup</option>
+          <option value="qt">qt</option>
+          <option value="gal">gal</option>
+        </select>
+      </div>
+    </div>
     <div class="field">
-      <label>Or pick equipment to auto-fill yield <span style="color:var(--text-muted);font-weight:400;">(from the 🧰 Equipment catalog)</span></label>
+      <label>Or pick equipment to auto-fill yield + volume <span style="color:var(--text-muted);font-weight:400;">(from the 🧰 Equipment catalog)</span></label>
       <select id="newRecipePotPick" data-pot-pick="add"><option value="">— manual entry —</option></select>
     </div>
     <div class="field">
@@ -1649,6 +1664,22 @@ function loadState() {
     recipesDirty = true;
   });
   if (recipesDirty) localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes));
+
+  // v2.12.0: auto-fill yieldCookedVolume from referenceEquipmentId when the
+  // recipe has a reference pot but no explicit volume yield. Lets old
+  // recipes get the new volume bridging without manual entry.
+  var volumeMigDirty = false;
+  recipes.forEach(function(r) {
+    if (r.referenceEquipmentId && !(r.yieldCookedVolume > 0)) {
+      var pot = pots.find(function(p){ return p.id === r.referenceEquipmentId; });
+      if (pot && pot.volumeOz > 0) {
+        r.yieldCookedVolume = +pot.volumeOz.toFixed(1);
+        r.yieldVolumeUnit = 'floz';
+        volumeMigDirty = true;
+      }
+    }
+  });
+  if (volumeMigDirty) localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes));
 
   // v2.11.0: catalog seed deferred — see scheduleCatalogSeed() below.
   // The seed used to run inline here, but with Firestore sync that race-
@@ -2747,6 +2778,11 @@ function buildRecipeEditCard(r) {
     return '<option value="' + u + '"' + (u === yieldUnit ? ' selected' : '') + '>' + u + '</option>';
   }).join('');
   var yieldVal = (r.yieldCooked > 0) ? r.yieldCooked : '';
+  var volVal   = (r.yieldCookedVolume > 0) ? r.yieldCookedVolume : '';
+  var volUnit  = r.yieldVolumeUnit || 'floz';
+  var volUnitOpts = ['floz','cup','qt','gal'].map(function(u) {
+    return '<option value="' + u + '"' + (u === volUnit ? ' selected' : '') + '>' + u + '</option>';
+  }).join('');
   div.innerHTML =
     '<div class="edit-form">' +
       '<div class="field">' +
@@ -2756,15 +2792,25 @@ function buildRecipeEditCard(r) {
       '<div class="row-grid">' +
         '<div class="field">' +
           '<label>Yield / batch (cooked)</label>' +
-          '<input type="number" step="any" min="0" inputmode="decimal" data-recipe-edit="yield" data-rid="' + r.id + '" value="' + yieldVal + '" placeholder="e.g. 80">' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-recipe-edit="yield" data-rid="' + r.id + '" value="' + yieldVal + '" placeholder="e.g. 10">' +
         '</div>' +
         '<div class="field">' +
           '<label>Yield unit</label>' +
           '<select data-recipe-edit="yieldUnit" data-rid="' + r.id + '">' + yieldUnitOpts + '</select>' +
         '</div>' +
       '</div>' +
+      '<div class="row-grid">' +
+        '<div class="field">' +
+          '<label>Volume occupied <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>' +
+          '<input type="number" step="any" min="0" inputmode="decimal" data-recipe-edit="yieldVolume" data-rid="' + r.id + '" value="' + volVal + '" placeholder="e.g. 200">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Volume unit</label>' +
+          '<select data-recipe-edit="yieldVolumeUnit" data-rid="' + r.id + '">' + volUnitOpts + '</select>' +
+        '</div>' +
+      '</div>' +
       '<div class="field">' +
-        '<label>Or pick equipment to auto-fill yield</label>' +
+        '<label>Or pick equipment to auto-fill yield + volume</label>' +
         '<select data-pot-pick="edit-' + r.id + '"><option value="">— manual entry —</option></select>' +
       '</div>' +
       '<div class="field">' +
@@ -2883,10 +2929,16 @@ function renderRecipes() {
       var packIds = collectSelectedPackIds('edit-' + rid);
       var refEqEl = document.querySelector('[data-pot-pick="edit-' + rid + '"]');
       var refEqId = refEqEl ? (refEqEl.value || '') : '';
+      var yvEl = document.querySelector('[data-recipe-edit="yieldVolume"][data-rid="' + rid + '"]');
+      var yvuEl = document.querySelector('[data-recipe-edit="yieldVolumeUnit"][data-rid="' + rid + '"]');
+      var yieldVolume = yvEl ? parseFloat(yvEl.value) : NaN;
+      var yieldVolumeUnit = yvuEl ? yvuEl.value : 'floz';
       r.name = name;
       r.components = comps;
       r.yieldCooked = yieldCooked;
       r.yieldUnit = yieldUnit;
+      if (yieldVolume > 0) { r.yieldCookedVolume = yieldVolume; r.yieldVolumeUnit = yieldVolumeUnit; }
+      else { delete r.yieldCookedVolume; delete r.yieldVolumeUnit; }
       if (leadProductId) r.leadProductId = leadProductId; else delete r.leadProductId;
       if (referenceText) r.referenceText = referenceText; else delete r.referenceText;
       if (packIds.length > 0) r.packIds = packIds; else delete r.packIds;
@@ -2919,17 +2971,21 @@ document.getElementById('addRecipeBtn').addEventListener('click', function() {
   if (comps.length === 0) { toast('Add at least one ingredient'); return; }
   var packIds = collectSelectedPackIds('add');
   var refEqId = (document.getElementById('newRecipePotPick') || {}).value || '';
+  var yieldVolume = parseFloat((document.getElementById('newRecipeYieldVolume') || {}).value);
+  var yieldVolumeUnit = (document.getElementById('newRecipeYieldVolumeUnit') || {}).value || 'floz';
   var recipe = { id: id(), name: name, components: comps, yieldCooked: yieldCooked, yieldUnit: yieldUnit };
   if (leadProductId) recipe.leadProductId = leadProductId;
   if (referenceText) recipe.referenceText = referenceText;
   if (packIds.length > 0) recipe.packIds = packIds;
   if (refEqId) recipe.referenceEquipmentId = refEqId;
+  if (yieldVolume > 0) { recipe.yieldCookedVolume = yieldVolume; recipe.yieldVolumeUnit = yieldVolumeUnit; }
   recipes.push(recipe);
   saveRecipes();
   document.getElementById('newRecipeName').value = '';
   document.getElementById('newRecipeYield').value = '';
   document.getElementById('newRecipeRef').value = '';
   if (document.getElementById('newRecipePotPick')) document.getElementById('newRecipePotPick').value = '';
+  if (document.getElementById('newRecipeYieldVolume')) document.getElementById('newRecipeYieldVolume').value = '';
   setComponentListContent(listEl, [], null);
   populatePackMultiLists({ add: [] });
   renderRecipes();
@@ -3862,6 +3918,32 @@ function convertWithinKind(qty, fromUnit, toUnit) {
   return qty * f.base / t.base;
 }
 
+// v2.12.0: cross-kind conversion using a recipe's dual yield (weight +
+// volume). Bridges weight↔volume when the recipe declares both.
+function convertViaRecipe(rec, qty, fromUnit, toUnit) {
+  var direct = convertWithinKind(qty, fromUnit, toUnit);
+  if (direct !== null) return direct;
+  if (!rec || !(rec.yieldCooked > 0) || !(rec.yieldCookedVolume > 0)) return null;
+  var weightUnit = rec.yieldUnit || 'oz';
+  var volumeUnit = rec.yieldVolumeUnit || 'floz';
+  var fromInfo = UNIT_INFO[fromUnit];
+  var toInfo   = UNIT_INFO[toUnit];
+  if (!fromInfo || !toInfo) return null;
+  // weight → volume
+  if (fromInfo.kind === 'weight' && toInfo.kind === 'volume') {
+    var weightMatched = convertWithinKind(rec.yieldCooked, weightUnit, fromUnit);
+    var volumeMatched = convertWithinKind(rec.yieldCookedVolume, volumeUnit, toUnit);
+    if (weightMatched > 0 && volumeMatched !== null) return qty * (volumeMatched / weightMatched);
+  }
+  // volume → weight
+  if (fromInfo.kind === 'volume' && toInfo.kind === 'weight') {
+    var volumeMatched2 = convertWithinKind(rec.yieldCookedVolume, volumeUnit, fromUnit);
+    var weightMatched2 = convertWithinKind(rec.yieldCooked, weightUnit, toUnit);
+    if (volumeMatched2 > 0 && weightMatched2 !== null) return qty * (weightMatched2 / volumeMatched2);
+  }
+  return null;
+}
+
 function computePackPlanHtml() {
   var rows = [];
   orderRows.forEach(function(row) {
@@ -3886,9 +3968,10 @@ function computePackPlanHtml() {
         if (pk.sizeQty > 0) count = Math.ceil(totalPortions / pk.sizeQty);
         capLabel = format(pk.sizeQty || 0) + ' portions / pack';
       } else {
-        var conv = convertWithinKind(pk.sizeQty || 0, pk.sizeUnit, dishUnit);
+        // v2.12.0: try direct convert first, then bridge via recipe's dual yield.
+        var conv = convertViaRecipe(dish, pk.sizeQty || 0, pk.sizeUnit, dishUnit);
         if (conv === null) {
-          note = 'unit mismatch — can\'t auto-compute';
+          note = 'unit mismatch — set Volume on the recipe to bridge weight ↔ volume';
           capLabel = format(pk.sizeQty || 0) + ' ' + escapeHtml(unitLabel(pk.sizeUnit));
         } else if (conv > 0) {
           count = Math.ceil(totalCooked / conv);
@@ -6154,21 +6237,30 @@ document.addEventListener('change', function(e) {
     if (!potId) return;
     var pot = pots.find(function(p){ return p.id === potId; });
     if (!pot) return;
-    var yieldEl, unitEl;
+    var yieldEl, unitEl, volEl, volUnitEl;
     if (key === 'modal') {
       yieldEl = document.getElementById('dishModalYield');
       unitEl = document.getElementById('dishModalYieldUnit');
     } else if (key === 'add') {
       yieldEl = document.getElementById('newRecipeYield');
       unitEl = document.getElementById('newRecipeYieldUnit');
+      volEl = document.getElementById('newRecipeYieldVolume');
+      volUnitEl = document.getElementById('newRecipeYieldVolumeUnit');
     } else if (key.indexOf('edit-') === 0) {
       var rid = key.slice(5);
       yieldEl = document.querySelector('[data-recipe-edit="yield"][data-rid="' + rid + '"]');
       unitEl = document.querySelector('[data-recipe-edit="yieldUnit"][data-rid="' + rid + '"]');
+      volEl = document.querySelector('[data-recipe-edit="yieldVolume"][data-rid="' + rid + '"]');
+      volUnitEl = document.querySelector('[data-recipe-edit="yieldVolumeUnit"][data-rid="' + rid + '"]');
     }
     if (!yieldEl || !unitEl) return;
     if (pot.capacityLb > 0) { yieldEl.value = pot.capacityLb; unitEl.value = 'lb'; }
     else if (pot.volumeOz > 0) { yieldEl.value = pot.volumeOz.toFixed(1); unitEl.value = 'floz'; }
+    // v2.12.0: also fill the volume yield from the pot's geometry.
+    if (volEl && volUnitEl && pot.volumeOz > 0) {
+      volEl.value = pot.volumeOz.toFixed(1);
+      volUnitEl.value = 'floz';
+    }
     return;
   }
   if (e.target.matches('[data-pack-pick]')) {
