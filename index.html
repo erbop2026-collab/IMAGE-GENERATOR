@@ -755,7 +755,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.12.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -3138,7 +3138,51 @@ function renderOrderRows() {
       var dishUnit = (dishRec && dishRec.yieldUnit) ? unitLabel(dishRec.yieldUnit) : 'oz';
 
       var rsizes = Array.isArray(row.sizes) ? row.sizes : [];
+      var dishYieldUnit = dishRec ? (dishRec.yieldUnit || 'oz') : 'oz';
+      // v2.13.0: Portion size is now a dropdown of packaging options from
+      // the catalog. Each option's underlying value is the pack's size
+      // converted into the dish's yield unit (using convertViaRecipe to
+      // bridge weight↔volume when needed). Skip 'ct' packs (no size).
+      function packagingOptionsFor(sz) {
+        var opts = [];
+        var seenVals = {};
+        (packs || []).forEach(function(pk) {
+          if (!pk || pk.sizeUnit === 'ct') return;
+          if (!(pk.sizeQty > 0)) return;
+          var conv = (typeof convertViaRecipe === 'function')
+            ? convertViaRecipe(dishRec, pk.sizeQty, pk.sizeUnit, dishYieldUnit)
+            : convertWithinKind(pk.sizeQty, pk.sizeUnit, dishYieldUnit);
+          if (!(conv > 0)) return;
+          var rounded = +conv.toFixed(4);
+          var key = rounded + '_' + pk.id;
+          if (seenVals[key]) return;
+          seenVals[key] = true;
+          var label = pk.name + ' — ' + format(pk.sizeQty) + ' ' + unitLabel(pk.sizeUnit);
+          if (Math.abs(rounded - pk.sizeQty) > 0.001 || pk.sizeUnit !== dishYieldUnit) {
+            label += ' (≈ ' + format(rounded) + ' ' + unitLabel(dishYieldUnit) + ')';
+          }
+          opts.push({ val: rounded, label: label });
+        });
+        // Sort ascending by converted value.
+        opts.sort(function(a, b){ return a.val - b.val; });
+        // Current portionSize that doesn't match any catalog pack — keep
+        // the value visible as a "Custom" option so existing orders stay.
+        if (sz.portionSize > 0 && !opts.some(function(o){ return Math.abs(o.val - sz.portionSize) < 0.001; })) {
+          opts.unshift({ val: +sz.portionSize.toFixed(4), label: 'Custom: ' + format(sz.portionSize) + ' ' + unitLabel(dishYieldUnit), custom: true });
+        }
+        return opts;
+      }
       var rsizesHtml = rsizes.map(function(sz) {
+        var pOpts = packagingOptionsFor(sz);
+        var optHtml;
+        if (pOpts.length === 0) {
+          optHtml = '<option value="">(no compatible packaging — add one in 📦 Packaging)</option>';
+        } else {
+          optHtml = '<option value="">— pick packaging —</option>' + pOpts.map(function(o) {
+            var sel = (sz.portionSize > 0 && Math.abs(o.val - sz.portionSize) < 0.001) ? ' selected' : '';
+            return '<option value="' + o.val + '"' + sel + '>' + escapeHtml(o.label) + '</option>';
+          }).join('');
+        }
         return (
           '<div class="size-row" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
             '<div class="field">' +
@@ -3146,8 +3190,8 @@ function renderOrderRows() {
               '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 100" value="' + (sz.portions > 0 ? sz.portions : '') + '" data-size-field="portions" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
             '</div>' +
             '<div class="field">' +
-              '<label>Portion size (' + escapeHtml(dishUnit) + ' cooked)</label>' +
-              '<input type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 8" value="' + (sz.portionSize > 0 ? sz.portionSize : '') + '" data-size-field="portionSize" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' +
+              '<label>Packaging size (' + escapeHtml(dishUnit) + ' cooked)</label>' +
+              '<select data-size-field="portionSize" data-size-id="' + sz.id + '" data-row-id="' + row.id + '">' + optHtml + '</select>' +
             '</div>' +
             '<button class="btn-danger btn-icon" data-rmsize="' + sz.id + '" data-row-id="' + row.id + '" title="Remove this size">🗑️</button>' +
             '<div class="size-row-summary" id="size-sum-' + sz.id + '"></div>' +
