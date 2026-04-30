@@ -747,7 +747,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.10.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.11.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1642,17 +1642,12 @@ function loadState() {
   });
   if (recipesDirty) localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes));
 
-  // v2.9.0 seed: standard US commercial sizes for Equipment + Packaging.
-  // Idempotent — only adds items whose name doesn't already exist (case-
-  // insensitive). Versioned via 'std_seed_v' so we can extend the catalog
-  // in future versions without dropping user data.
-  if (typeof seedStandardsCatalog === 'function') {
-    var seedV = parseInt(localStorage.getItem('std_seed_v') || '0', 10);
-    if (seedV < 1) {
-      seedStandardsCatalog();
-      localStorage.setItem('std_seed_v', '1');
-    }
-  }
+  // v2.11.0: catalog seed deferred — see scheduleCatalogSeed() below.
+  // The seed used to run inline here, but with Firestore sync that race-
+  // conditioned with the listener's first snapshot (cloud's older state
+  // would overwrite the just-seeded items locally). Now we wait until
+  // after the first sync settles, then add missing items idempotently
+  // and push the merged result back up.
   try {
     var m = localStorage.getItem(STORAGE_KEY_META);
     if (m) {
@@ -1792,6 +1787,173 @@ function seedStandardsCatalog() {
   addPack('Plastic catering tray, small 12x9 (with lid)',  { sizeQty: 1, sizeUnit: 'ct' });
   addPack('Plastic catering tray, medium 16x11 (with lid)',{ sizeQty: 1, sizeUnit: 'ct' });
   addPack('Plastic catering tray, large 18x14 (with lid)', { sizeQty: 1, sizeUnit: 'ct' });
+}
+
+// v2.11.0: Ingredients seed — kosher catering vendor list (preserves user's
+// spellings; he can rename via ✏️ in the Ingredients tab).
+function seedIngredientsCatalog() {
+  function nameTaken(name) {
+    var lc = name.toLowerCase();
+    return products.some(function(x){ return (x.name || '').toLowerCase() === lc; });
+  }
+  function addIngr(name, fields) {
+    if (nameTaken(name)) return;
+    products.push(Object.assign({ id: id(), name: name, raw: 1, cooked: 1, unit: 'oz', unitsPerPack: 1 }, fields));
+  }
+  // Liquids / oils / juices (sold by volume)
+  addIngr('Cooking Spray',          { unit: 'floz' });
+  addIngr('kiwi drink syrup',       { unit: 'floz' });
+  addIngr('Honey',                  { unit: 'floz' });
+  addIngr('Pineapple Juice',        { unit: 'floz' });
+  addIngr('Grape Juice 32 oz',      { unit: 'floz' });
+  addIngr('Lemon Juice',            { unit: 'floz' });
+  addIngr('Tomato Juice',           { unit: 'floz' });
+  addIngr('Oil',                    { unit: 'floz' });
+  addIngr('Olive Oil',              { unit: 'floz' });
+  addIngr('Vinegar',                { unit: 'floz' });
+  addIngr('Chocolate Syrup',        { unit: 'floz' });
+  addIngr('almond milk',            { unit: 'floz' });
+  addIngr('coffee creamer',         { unit: 'floz' });
+  addIngr('Primex, Fryer Shortening',{ unit: 'lb' });
+
+  // Sauces / condiments (volume)
+  addIngr('Duck Sauce',             { unit: 'floz' });
+  addIngr('Soy Sauce kikomine',     { unit: 'floz' });
+  addIngr('Mustard',                { unit: 'floz' });
+  addIngr('Ketchup #10',            { unit: 'floz' });
+  addIngr('Ketchup - Squeeze Bottles',{ unit: 'floz' });
+  addIngr('Mayonnaise  $40',        { unit: 'floz' });
+  addIngr('BBQ Sauce hickory',      { unit: 'floz' });
+  addIngr('Sweet & Sour Sauce',     { unit: 'floz' });
+  addIngr('Teriyaki Sauce',         { unit: 'floz' });
+  addIngr('Marinara Sauce',         { unit: 'floz' });
+  addIngr('Tomato Sauce',           { unit: 'floz' });
+  addIngr('Tomato Paste',           { unit: 'oz' });
+  addIngr('Apricot Jam',            { unit: 'oz' });
+  addIngr('Pinacolada Mix',         { unit: 'floz' });
+  addIngr('Gravy Seasoning',        { unit: 'oz' });
+
+  // Pasta / noodles (lb)
+  addIngr('Spahgetti',              { unit: 'lb' });
+  addIngr('Bow Ties - Small',       { unit: 'lb' });
+  addIngr('Medium Noodles',         { unit: 'lb' });
+  addIngr('Fine Noodles',           { unit: 'lb' });
+  addIngr('Orzo',                   { unit: 'lb' });
+  addIngr('Angel Hair',             { unit: 'lb' });
+  addIngr('Egg Barley FRESH',       { unit: 'lb' });
+  addIngr('Couscous',               { unit: 'lb' });
+
+  // Grains / beans / rice (lb)
+  addIngr('Pearl Barley',           { unit: 'lb' });
+  addIngr('Split Yellow Peas',      { unit: 'lb' });
+  addIngr('Split Green Peas',       { unit: 'lb' });
+  addIngr('Pinto Beans',            { unit: 'lb' });
+  addIngr('Navy Beans',             { unit: 'lb' });
+  addIngr('Garbanzo Beans',         { unit: 'lb' });
+  addIngr('Large Lima Beans',       { unit: 'lb' });
+  addIngr("Rice, White (Uncle Ben's)",{ unit: 'lb' });
+  addIngr('Wild Rice, Black',       { unit: 'lb' });
+  addIngr('quenoa  only vacuum packed',{ unit: 'lb' });
+
+  // Bulk dry (lb)
+  addIngr('Flour 50lb',             { unit: 'lb' });
+  addIngr('Sugar',                  { unit: 'lb' });
+  addIngr('Brown Sugar',            { unit: 'lb' });
+  addIngr('Confectionaries Sugar',  { unit: 'lb' });
+  addIngr('Vanilla Sugar',          { unit: 'oz' });
+  addIngr('Sugar Dots',             { unit: 'oz' });
+
+  // Canned / packed produce (oz)
+  addIngr('Mandarin Segments - Broken',{ unit: 'oz' });
+  addIngr('Pineapple, Tid-Bits/crushed the cheaper',{ unit: 'oz' });
+  addIngr('Pineapple, Chunks',      { unit: 'oz' });
+  addIngr('Pineapple, Crushed',     { unit: 'oz' });
+  addIngr('Diced Peaches only diced',{ unit: 'oz' });
+  addIngr('apricot halves',         { unit: 'oz' });
+  addIngr('Fruit Mix',              { unit: 'oz' });
+  addIngr('Tomatos Diced',          { unit: 'oz' });
+  addIngr('Tomatos Crushed',        { unit: 'oz' });
+  addIngr('Marachino Cherries',     { unit: 'oz' });
+  addIngr('Pimentos - Sweet peper Strips',{ unit: 'oz' });
+  addIngr('Olives, Green Pitted, #10',{ unit: 'oz' });
+  addIngr('Olives, Black Pitted, #10',{ unit: 'oz' });
+  addIngr('Bamboo Shoots',          { unit: 'oz' });
+  addIngr('Baby Corn',              { unit: 'oz' });
+  addIngr('Hot Peppers',            { unit: 'oz' });
+  addIngr('Water Chestnuts',        { unit: 'oz' });
+  addIngr('corn krnals',            { unit: 'oz' });
+  addIngr('pickled eggplant',       { unit: 'oz' });
+  addIngr('Pickels R&l mini',       { unit: 'oz' });
+  addIngr('isrealy pickles small',  { unit: 'oz' });
+
+  // Pie fillings (oz)
+  addIngr('Apple Pie Filling buckets',{ unit: 'oz' });
+  addIngr('Cherry Pie Filling',     { unit: 'oz' });
+  addIngr('Blueberry Pie Filling',  { unit: 'oz' });
+  addIngr('pie crust graham',       { unit: 'oz' });
+
+  // Spices / seasonings (oz, small quantities)
+  addIngr('Table Salt',             { unit: 'oz' });
+  addIngr('Salt (kosher)',          { unit: 'oz' });
+  addIngr('sour salt',              { unit: 'oz' });
+  addIngr('Black Pepper - Ground',  { unit: 'oz' });
+  addIngr('White Pepper',           { unit: 'oz' });
+  addIngr('Crushed Red Pepper',     { unit: 'oz' });
+  addIngr('Paprika',                { unit: 'oz' });
+  addIngr('Cinnamon',               { unit: 'oz' });
+  addIngr('Cinnamon Sticks',        { unit: 'oz' });
+  addIngr('Onion Powder',           { unit: 'oz' });
+  addIngr('Granulated Garlic',      { unit: 'oz' });
+  addIngr('basil',                  { unit: 'oz' });
+  addIngr('Oregano',                { unit: 'oz' });
+  addIngr('Bay Leavs',              { unit: 'oz' });
+  addIngr('Ginger Spice',           { unit: 'oz' });
+  addIngr('Parsley Flakes',         { unit: 'oz' });
+  addIngr('Pickling Spices',        { unit: 'oz' });
+  addIngr('Shwarma Spice',          { unit: 'oz' });
+  addIngr('Baking powder',          { unit: 'oz' });
+  addIngr('Corn Starch ARGO BOXES', { unit: 'oz' });
+
+  // Bread products / crackers (oz)
+  addIngr('Cornflakes Crumbs',      { unit: 'oz' });
+  addIngr('panko yellow only yellow',{ unit: 'oz' });
+  addIngr('Crutons (Onion - Garlic)',{ unit: 'oz' });
+  addIngr('Snacker Crackers',       { unit: 'oz' });
+  addIngr('Flatbreads',             { unit: 'oz' });
+  addIngr('nish nosh',              { unit: 'oz' });
+  addIngr('Breadsticks - Reg',      { unit: 'oz' });
+  addIngr('Breadsticks - Long',     { unit: 'oz' });
+  addIngr('matzoh whole wheat',     { unit: 'oz' });
+  addIngr('Matzo Meal',             { unit: 'oz' });
+  addIngr('wraps plain',            { unit: 'ct' });
+  addIngr('wraps whole wheat',      { unit: 'ct' });
+
+  // Seeds / nuts / dried fruits (oz)
+  addIngr('Sesame Seeds - White',   { unit: 'oz' });
+  addIngr('Sesame Seeds - Black',   { unit: 'oz' });
+  addIngr('Almonds, Sliced',        { unit: 'oz' });
+  addIngr('cocunut flakes',         { unit: 'oz' });
+  addIngr('Craisins',               { unit: 'oz' });
+  addIngr('chocolate chips',        { unit: 'oz' });
+  addIngr('mini marshmello',        { unit: 'oz' });
+
+  // Soups / mixes (oz)
+  addIngr('Soup Mix, Mushroom osem',{ unit: 'oz' });
+  addIngr('Soup Mix, osem Chicken bulk',{ unit: 'oz' });
+  addIngr('Soup Mix, Onion osem',   { unit: 'oz' });
+  addIngr('Potato Flakes',          { unit: 'oz' });
+  addIngr('Gel - Strawberry (Jello)',{ unit: 'oz' });
+  addIngr('Jello lime',             { unit: 'oz' });
+
+  // Misc (oz)
+  addIngr('margerine',              { unit: 'lb' });
+  addIngr('acai',                   { unit: 'oz' });
+  addIngr('Coffee JARS PLEASE',     { unit: 'oz' });
+
+  // Counted items (ct)
+  addIngr('Sugar Packets',          { unit: 'ct' });
+  addIngr('Splenda  packets',       { unit: 'ct' });
+  addIngr('Tea Bags indevidual boxes',{ unit: 'ct' });
 }
 
 // ============ FIREBASE / FIRESTORE SYNC (v2.10.0) ============
@@ -1971,6 +2133,45 @@ var _origSavePots = savePots;
 savePots = function() { _origSavePots.apply(this, arguments); pushToCloud('pots'); };
 var _origSavePacks = savePacks;
 savePacks = function() { _origSavePacks.apply(this, arguments); pushToCloud('packs'); };
+
+// Run the seeds AFTER Firestore has had a chance to deliver cloud state,
+// so the seed merges with whatever already exists in the cloud rather
+// than getting overwritten by a stale snapshot. Idempotent on item name —
+// nothing already in the catalog gets duplicated.
+function scheduleCatalogSeed() {
+  setTimeout(function() {
+    var seedV = parseInt(localStorage.getItem('std_seed_v') || '0', 10);
+    var didSeed = false;
+    if (typeof seedStandardsCatalog === 'function' &&
+        (seedV < 1 || (pots.length === 0 && packs.length === 0))) {
+      seedStandardsCatalog();
+      didSeed = true;
+    }
+    if (typeof seedIngredientsCatalog === 'function' && seedV < 2) {
+      seedIngredientsCatalog();
+      didSeed = true;
+    }
+    if (didSeed) {
+      // Direct localStorage save + cloud push (avoids the wrapped saveX
+      // chain that was causing a recursion loop with the listener).
+      localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+      localStorage.setItem(STORAGE_KEY_POTS, JSON.stringify(pots));
+      localStorage.setItem(STORAGE_KEY_PACKS, JSON.stringify(packs));
+      if (firestoreReady) {
+        pushToCloud('products');
+        pushToCloud('pots');
+        pushToCloud('packs');
+      }
+      try { if (typeof renderIngredients === 'function') renderIngredients(); } catch(e){}
+      try { if (typeof renderPots === 'function') renderPots(); } catch(e){}
+      try { if (typeof renderPacks === 'function') renderPacks(); } catch(e){}
+      try { if (typeof populatePotPicks === 'function') populatePotPicks(); } catch(e){}
+      try { if (typeof populatePackPicks === 'function') populatePackPicks(); } catch(e){}
+      try { if (typeof populatePackMultiLists === 'function') populatePackMultiLists(); } catch(e){}
+    }
+    localStorage.setItem('std_seed_v', '2');
+  }, 3500); // 3.5s gives Firestore listeners time to deliver first snapshot.
+}
 
 // ============ TABS ============
 document.querySelectorAll('.tab').forEach(function(t) {
@@ -6025,7 +6226,12 @@ renderReverseResult();
 })();
 
 // v2.10.0 Firebase init runs after the deferred SDK scripts finish loading.
-window.addEventListener('load', function() { initFirebase(); });
+// v2.11.0 catalog seed runs ~3.5s later, after Firestore listeners have
+// delivered the first snapshot.
+window.addEventListener('load', function() {
+  initFirebase();
+  scheduleCatalogSeed();
+});
 </script>
 </body>
 </html>
