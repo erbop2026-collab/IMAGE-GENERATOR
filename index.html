@@ -740,11 +740,14 @@
     .row-grid { grid-template-columns: 1fr; }
   }
 </style>
+<!-- Firebase SDK (v2.10.0) — loaded lazily; app works fully without it. -->
+<script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.9.0</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.10.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1790,6 +1793,184 @@ function seedStandardsCatalog() {
   addPack('Plastic catering tray, medium 16x11 (with lid)',{ sizeQty: 1, sizeUnit: 'ct' });
   addPack('Plastic catering tray, large 18x14 (with lid)', { sizeQty: 1, sizeUnit: 'ct' });
 }
+
+// ============ FIREBASE / FIRESTORE SYNC (v2.10.0) ============
+// Catalog (products, recipes, pots, packs) syncs across devices via a
+// public Firestore project. orderRows + history stay device-local.
+// No auth — Firestore rules are open. Last-write-wins; small-team trust.
+var firebaseConfig = {
+  apiKey: "AIzaSyDAmJpJMLW4Ib1y_vYmc6ENjzg3hVHzSiA",
+  authDomain: "portioncalc.firebaseapp.com",
+  projectId: "portioncalc",
+  storageBucket: "portioncalc.firebasestorage.app",
+  messagingSenderId: "568730355169",
+  appId: "1:568730355169:web:fb07f955b72582c88b3ea0"
+};
+var db = null;
+var deviceId = null;
+var firestoreReady = false;
+
+function getDeviceId() {
+  var k = 'kitchen_calc_device_id';
+  var d = localStorage.getItem(k);
+  if (!d) {
+    d = 'dev-' + Math.random().toString(36).slice(2, 12) + '-' + Date.now().toString(36);
+    localStorage.setItem(k, d);
+  }
+  return d;
+}
+
+function updateSyncStatus(state, detail) {
+  var el = document.getElementById('syncStatus');
+  if (!el) return;
+  var labels = {
+    online:  '☁️ Synced',
+    offline: '📵 Offline',
+    error:   '⚠️ Sync err',
+    syncing: '🔄 Syncing',
+    waiting: '⏳ …'
+  };
+  el.textContent = labels[state] || state;
+  if (detail) el.title = detail;
+}
+
+// Catalog sync targets — each is one Firestore document under collection 'catalog'.
+var SYNC_TARGETS = null;
+function buildSyncTargets() {
+  return [
+    { id: 'products',
+      get: function(){ return products; },
+      set: function(v){ products = v; localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products)); },
+      render: function(){
+        if (typeof renderProducts === 'function') renderProducts();
+        if (typeof renderIngredients === 'function') renderIngredients();
+        if (typeof renderOrderRows === 'function') renderOrderRows();
+      }
+    },
+    { id: 'recipes',
+      get: function(){ return recipes; },
+      set: function(v){ recipes = v; localStorage.setItem(STORAGE_KEY_RECIPES, JSON.stringify(recipes)); },
+      render: function(){
+        if (typeof renderRecipes === 'function') renderRecipes();
+        if (typeof renderDishesList === 'function') renderDishesList();
+        if (typeof renderOrderRows === 'function') renderOrderRows();
+      }
+    },
+    { id: 'pots',
+      get: function(){ return pots; },
+      set: function(v){ pots = v; localStorage.setItem(STORAGE_KEY_POTS, JSON.stringify(pots)); },
+      render: function(){
+        if (typeof renderPots === 'function') renderPots();
+        if (typeof populatePotPicks === 'function') populatePotPicks();
+      }
+    },
+    { id: 'packs',
+      get: function(){ return packs; },
+      set: function(v){ packs = v; localStorage.setItem(STORAGE_KEY_PACKS, JSON.stringify(packs)); },
+      render: function(){
+        if (typeof renderPacks === 'function') renderPacks();
+        if (typeof populatePackPicks === 'function') populatePackPicks();
+        if (typeof populatePackMultiLists === 'function') populatePackMultiLists();
+      }
+    }
+  ];
+}
+
+function initFirebase() {
+  if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+    updateSyncStatus('offline', 'Firebase SDK not loaded — running offline-only.');
+    return;
+  }
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    db.enablePersistence({ synchronizeTabs: true }).catch(function(){
+      // Persistence not available (multi-tab without sync, or unsupported browser).
+    });
+  } catch(e) {
+    console.error('[sync] init failed:', e);
+    updateSyncStatus('error', String(e));
+    return;
+  }
+  deviceId = getDeviceId();
+  firestoreReady = true;
+  SYNC_TARGETS = buildSyncTargets();
+  updateSyncStatus('syncing', 'Connecting to Firestore…');
+  bootstrapFromCloud();
+  setupSyncListeners();
+  // Reflect online/offline transitions.
+  window.addEventListener('online',  function(){ updateSyncStatus('online'); });
+  window.addEventListener('offline', function(){ updateSyncStatus('offline'); });
+  if (!navigator.onLine) updateSyncStatus('offline');
+  else setTimeout(function(){ updateSyncStatus('online'); }, 1500);
+}
+
+// First-time bootstrap: if Firestore doc is empty, seed it from local data.
+// If it has data, the snapshot listener will deliver it shortly.
+function bootstrapFromCloud() {
+  SYNC_TARGETS.forEach(function(t) {
+    db.collection('catalog').doc(t.id).get().then(function(snap) {
+      if (snap.exists) return;
+      var local = t.get();
+      if (Array.isArray(local) && local.length > 0) {
+        db.collection('catalog').doc(t.id).set({
+          items: local,
+          updatedAt: Date.now(),
+          updatedBy: deviceId
+        }).catch(function(e){ console.error('[sync] bootstrap push failed for ' + t.id + ':', e); });
+      }
+    }).catch(function(){ /* offline; listener will populate when back online */ });
+  });
+}
+
+function setupSyncListeners() {
+  SYNC_TARGETS.forEach(function(t) {
+    db.collection('catalog').doc(t.id).onSnapshot(function(snap) {
+      if (!snap.exists) return;
+      var data = snap.data();
+      if (!data || !Array.isArray(data.items)) return;
+      // Skip our own writes echoing back.
+      if (data.updatedBy === deviceId) return;
+      t.set(data.items);
+      t.render();
+    }, function(err) {
+      console.error('[sync] listener error for ' + t.id + ':', err);
+      updateSyncStatus('error', String(err));
+    });
+  });
+}
+
+// Debounced push of a target's current local state to Firestore.
+var _pushTimers = {};
+function pushToCloud(targetId) {
+  if (!firestoreReady || !db || !SYNC_TARGETS) return;
+  var t = SYNC_TARGETS.find(function(x){ return x.id === targetId; });
+  if (!t) return;
+  clearTimeout(_pushTimers[targetId]);
+  _pushTimers[targetId] = setTimeout(function() {
+    updateSyncStatus('syncing', 'Pushing ' + targetId + '…');
+    db.collection('catalog').doc(targetId).set({
+      items: t.get(),
+      updatedAt: Date.now(),
+      updatedBy: deviceId
+    }).then(function(){
+      updateSyncStatus('online');
+    }).catch(function(e){
+      console.error('[sync] push failed for ' + targetId + ':', e);
+      updateSyncStatus('error', String(e));
+    });
+  }, 500);
+}
+
+// Wrap save functions so every save also pushes to cloud.
+var _origSaveProducts = saveProducts;
+saveProducts = function() { _origSaveProducts.apply(this, arguments); pushToCloud('products'); };
+var _origSaveRecipes = saveRecipes;
+saveRecipes = function() { _origSaveRecipes.apply(this, arguments); pushToCloud('recipes'); };
+var _origSavePots = savePots;
+savePots = function() { _origSavePots.apply(this, arguments); pushToCloud('pots'); };
+var _origSavePacks = savePacks;
+savePacks = function() { _origSavePacks.apply(this, arguments); pushToCloud('packs'); };
 
 // ============ TABS ============
 document.querySelectorAll('.tab').forEach(function(t) {
@@ -5842,6 +6023,9 @@ renderReverseResult();
     if (banner) banner.style.display = 'none';
   });
 })();
+
+// v2.10.0 Firebase init runs after the deferred SDK scripts finish loading.
+window.addEventListener('load', function() { initFirebase(); });
 </script>
 </body>
 </html>
