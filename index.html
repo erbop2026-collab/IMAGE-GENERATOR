@@ -762,7 +762,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.13</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.14.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1477,6 +1477,36 @@ Pasta,oz,8,16"></textarea>
   </div>
 </div>
 
+<!-- v2.14.0 — Cloud Backups modal: list versioned snapshots of each catalog and restore one. -->
+<div id="backupsModalOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:2000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 20px;">
+  <div style="background:white;border-radius:12px;max-width:680px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+      <h3 style="margin:0;font-size:18px;color:var(--primary);">💾 Cloud Backups</h3>
+      <button type="button" id="backupsModalCloseBtn" style="background:none;border:none;font-size:28px;cursor:pointer;color:#94a3b8;line-height:1;padding:0 4px;">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px 0;">Every save creates a versioned snapshot in the cloud. The last 10 per catalog are kept. Pick one to restore — this will replace the current catalog on every device.</p>
+    <div id="backupsModalBody" style="font-size:13px;color:var(--text);max-height:60vh;overflow-y:auto;">
+      <div style="text-align:center;color:var(--text-muted);padding:24px 0;">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <button class="btn-primary" id="backupsRestoreBtn" style="flex:1;" disabled>Restore selected</button>
+      <button class="btn-secondary" id="backupsModalCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- v2.14.0 — Big-delta confirm modal: shown when a push would shrink the cloud catalog significantly. -->
+<div id="bigDeltaOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:2100;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:12px;max-width:480px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <h3 style="margin:0 0 12px 0;font-size:17px;color:#dc2626;">⚠️ Confirm cloud push</h3>
+    <p id="bigDeltaMsg" style="font-size:13px;color:var(--text);margin:0 0 16px 0;line-height:1.5;"></p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" id="bigDeltaCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn-primary" id="bigDeltaConfirmBtn" style="flex:1;background:#dc2626;border-color:#dc2626;">Push anyway</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -1705,14 +1735,14 @@ function loadState() {
     }
   } catch(e) { orderMeta = { name: '', eventDate: '' }; }
 
-  if (products.length === 0) {
-    products = [
-      { id: id(), name: 'White Rice', raw: 12, cooked: 36, unit: 'oz' },
-      { id: id(), name: 'Pasta',      raw: 8,  cooked: 16, unit: 'oz' }
-    ];
-    saveProducts();
-  }
-  // No auto-seed — orderRows starts empty, user clicks "+ Add Dish to Order".
+  // v2.14.0 — REMOVED legacy `products = [White Rice, Pasta]` init for empty
+  // catalogs. Reason: the saveProducts() it called was wrapped to push to
+  // Firestore, which on a fresh device fired BEFORE the listener delivered
+  // cloud state. The listener then saw localSaveAt > cloudAt, triggered
+  // the "stale" branch, and re-pushed our 2 dummies to cloud — clobbering
+  // the real catalog. Fresh devices now wait for the listener (or for the
+  // 3.5s deferred seed) to populate products. The seed runs even offline,
+  // so first-time UX is still functional.
 }
 function saveProducts() {
   localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
@@ -2126,10 +2156,12 @@ function initFirebase() {
 function bootstrapFromCloud() {
   SYNC_TARGETS.forEach(function(t) {
     db.collection('catalog').doc(t.id).get().then(function(snap) {
-      // v2.13.13 — record that we now know the cloud state for this target
-      // (whether the doc exists or not). The seed uses this to avoid
-      // clobbering an unloaded cloud catalog.
-      firstSnapshotReceived[t.id] = true;
+      // v2.14.0 — DO NOT mark firstSnapshotReceived here. .get() resolving
+      // means we know whether the doc exists, but the actual `items` haven't
+      // been delivered into local state yet — that's the listener's job, and
+      // it fires separately. If we mark "received" here, the seed runs while
+      // products[] is still empty, then re-creates everything and pushes,
+      // clobbering the cloud catalog. Only the listener should mark received.
       if (snap.exists) return;
       var local = t.get();
       if (Array.isArray(local) && local.length > 0) {
@@ -2182,6 +2214,10 @@ function setupSyncListeners() {
         }
       }
       t.set(data.items);
+      // v2.14.0 — track the size of the catalog as the cloud has it. The
+      // big-delta guard uses this to refuse pushes that would shrink the
+      // cloud by more than the safe threshold.
+      setLastKnownCloudSize(t.id, data.items.length);
       t.render();
     }, function(err) {
       console.error('[sync] listener error for ' + t.id + ':', err);
@@ -2192,30 +2228,50 @@ function setupSyncListeners() {
 
 // Debounced push of a target's current local state to Firestore.
 var _pushTimers = {};
-function _doPush(targetId) {
+function _doPush(targetId, opts) {
+  opts = opts || {};
   if (!firestoreReady || !db || !SYNC_TARGETS) return;
   var t = SYNC_TARGETS.find(function(x){ return x.id === targetId; });
   if (!t) return;
+  var items = t.get();
+  // v2.14.0 — big-delta guard. Refuse pushes that would shrink the cloud
+  // catalog past the safety threshold, unless the caller explicitly opted
+  // in (e.g. a user-confirmed restore from backup).
+  if (!opts.skipDeltaCheck) {
+    var check = bigDeltaCheck(targetId, items);
+    if (!check.ok) {
+      console.warn('[sync] BIG-DELTA blocked for ' + targetId + ':', check.reason);
+      try { toast('⚠️ Big change blocked — open 💾 Backups to override'); } catch(e){}
+      // Stash the pending push so the modal can resume it after confirm.
+      _pendingBigDelta[targetId] = items.length;
+      promptBigDeltaConfirm(targetId, items.length, lastKnownCloudSize(targetId));
+      return;
+    }
+  }
   updateSyncStatus('syncing', 'Pushing ' + targetId + '…');
   return db.collection('catalog').doc(targetId).set({
-    items: t.get(),
+    items: items,
     updatedAt: Date.now(),
     updatedBy: deviceId
   }).then(function(){
+    setLastKnownCloudSize(targetId, items.length);
+    // v2.14.0 — versioned snapshot AFTER successful main write so we never
+    // leave a version pointer to a payload that didn't land.
+    writeVersionSnapshot(targetId, items);
     updateSyncStatus('online');
   }).catch(function(e){
     console.error('[sync] push failed for ' + targetId + ':', e);
     updateSyncStatus('error', String(e));
   });
 }
-function pushToCloud(targetId) {
+function pushToCloud(targetId, opts) {
   if (!firestoreReady || !db || !SYNC_TARGETS) return;
   clearTimeout(_pushTimers[targetId]);
   // v2.13.10 — debounce reduced 500ms→150ms so quick refresh after Save is
   // less likely to lose data before the cloud has it.
   _pushTimers[targetId] = setTimeout(function() {
     _pushTimers[targetId] = null;
-    _doPush(targetId);
+    _doPush(targetId, opts);
   }, 150);
 }
 // v2.13.10 — flush all pending pushes synchronously on page unload, so a
@@ -2245,10 +2301,12 @@ function getLocalSaveAt(targetId) {
 }
 
 // Wrap save functions so every save also pushes to cloud + records timestamp.
+// v2.14.0 — saves to products or recipes also run the referential-integrity
+// check and surface any orphaned recipe components as a warning toast.
 var _origSaveProducts = saveProducts;
-saveProducts = function() { _origSaveProducts.apply(this, arguments); setLocalSaveAt('products'); pushToCloud('products'); };
+saveProducts = function() { _origSaveProducts.apply(this, arguments); setLocalSaveAt('products'); pushToCloud('products'); warnIfRecipesOrphaned(); };
 var _origSaveRecipes = saveRecipes;
-saveRecipes = function() { _origSaveRecipes.apply(this, arguments); setLocalSaveAt('recipes'); pushToCloud('recipes'); };
+saveRecipes = function() { _origSaveRecipes.apply(this, arguments); setLocalSaveAt('recipes'); pushToCloud('recipes'); warnIfRecipesOrphaned(); };
 var _origSavePots = savePots;
 savePots = function() { _origSavePots.apply(this, arguments); setLocalSaveAt('pots'); pushToCloud('pots'); };
 var _origSavePacks = savePacks;
@@ -2347,6 +2405,233 @@ function scheduleCatalogSeed() {
     tick();
   }, DEFER_MS);
 }
+
+// ============ DATA SAFETY (v2.14.0) ============
+// Three layers protecting the cloud catalog from accidental wipes:
+//   1. Versioned cloud snapshots — every successful push also archives the
+//      new state to `catalog_versions/<targetId>_<ts>`. The Backups modal
+//      lets the user restore any of the last 10 per target.
+//   2. Big-delta guard — a push that would shrink the cloud catalog past
+//      the safety threshold is blocked; the user gets a confirm modal.
+//      Restores from the Backups UI bypass the guard explicitly.
+//   3. Referential integrity — saves that orphan recipe components show a
+//      warning toast (doesn't block; surfaces invisible corruption).
+
+// --- Layer 1: versioned cloud snapshots ---
+var VERSIONS_COLLECTION = 'catalog_versions';
+var VERSIONS_KEEP = 10;
+function writeVersionSnapshot(targetId, items) {
+  if (!firestoreReady || !db || !navigator.onLine) return;
+  var ts = Date.now();
+  return db.collection(VERSIONS_COLLECTION).doc(targetId + '_' + ts).set({
+    targetId: targetId, ts: ts, deviceId: deviceId, items: items
+  }).then(function(){ return cleanupOldVersions(targetId); })
+    .catch(function(e){ console.warn('[versions] write failed for ' + targetId + ':', e); });
+}
+function cleanupOldVersions(targetId) {
+  return db.collection(VERSIONS_COLLECTION)
+    .where('targetId', '==', targetId)
+    .get()
+    .then(function(snap) {
+      var docs = snap.docs.slice().sort(function(a, b) { return b.data().ts - a.data().ts; });
+      if (docs.length <= VERSIONS_KEEP) return;
+      var batch = db.batch();
+      for (var i = VERSIONS_KEEP; i < docs.length; i++) batch.delete(docs[i].ref);
+      return batch.commit();
+    })
+    .catch(function(e){ console.warn('[versions] cleanup failed for ' + targetId + ':', e); });
+}
+function loadAllVersions() {
+  if (!firestoreReady || !db) return Promise.reject(new Error('Cloud not ready'));
+  return db.collection(VERSIONS_COLLECTION).get()
+    .then(function(snap) {
+      var byTarget = { products: [], recipes: [], pots: [], packs: [] };
+      snap.docs.forEach(function(d) {
+        var v = d.data();
+        if (byTarget[v.targetId]) byTarget[v.targetId].push({
+          docId: d.id, ts: v.ts, deviceId: v.deviceId,
+          itemCount: Array.isArray(v.items) ? v.items.length : 0,
+          items: v.items
+        });
+      });
+      Object.keys(byTarget).forEach(function(k) {
+        byTarget[k].sort(function(a, b){ return b.ts - a.ts; });
+      });
+      return byTarget;
+    });
+}
+
+// --- Layer 2: big-delta guard ---
+function lastKnownCloudSize(targetId) {
+  return parseInt(localStorage.getItem('_cloudSize_' + targetId) || '0', 10);
+}
+function setLastKnownCloudSize(targetId, n) {
+  try { localStorage.setItem('_cloudSize_' + targetId, String(n)); } catch(e) {}
+}
+// Returns { ok: true } or { ok: false, reason: <string> } when a push of
+// `newItems` would unsafely shrink the cloud catalog. Threshold is 30% — i.e.
+// a push that retains <70% of the last-known cloud size needs confirmation.
+function bigDeltaCheck(targetId, newItems) {
+  var n    = Array.isArray(newItems) ? newItems.length : 0;
+  var prev = lastKnownCloudSize(targetId);
+  if (prev === 0) return { ok: true };          // cloud was empty → any push is fine
+  if (n >= Math.ceil(prev * 0.7)) return { ok: true };
+  return {
+    ok: false,
+    reason: 'Push would replace cloud `' + targetId + '` (' + prev + ' items) with ' +
+            n + ' items — that\'s a >30% shrink. Blocked.'
+  };
+}
+var _pendingBigDelta = {};
+function promptBigDeltaConfirm(targetId, newCount, prevCount) {
+  var overlay = document.getElementById('bigDeltaOverlay');
+  var msg     = document.getElementById('bigDeltaMsg');
+  if (!overlay || !msg) return;
+  msg.innerHTML = 'About to push <strong>' + newCount + '</strong> ' + targetId +
+                  ' to the cloud, replacing <strong>' + prevCount + '</strong> currently there. ' +
+                  'This would delete ' + (prevCount - newCount) + ' items across every device. ' +
+                  'Continue only if this is intentional.';
+  overlay.style.display = 'flex';
+  overlay.dataset.target = targetId;
+}
+function dismissBigDelta(confirmed) {
+  var overlay = document.getElementById('bigDeltaOverlay');
+  if (!overlay) return;
+  var targetId = overlay.dataset.target;
+  overlay.style.display = 'none';
+  overlay.dataset.target = '';
+  if (confirmed && targetId) {
+    _doPush(targetId, { skipDeltaCheck: true });
+  } else if (targetId) {
+    delete _pendingBigDelta[targetId];
+  }
+}
+
+// --- Layer 3: referential integrity ---
+// Returns [{ recipeName, missingCount }] for every recipe that references at
+// least one productId not present in the current `products[]`.
+function findOrphanedRecipes() {
+  var idSet = {};
+  products.forEach(function(p){ idSet[p.id] = true; });
+  var orphans = [];
+  recipes.forEach(function(r) {
+    var missing = 0;
+    (r.components || []).forEach(function(c) {
+      if (!idSet[c.productId]) missing++;
+    });
+    if (missing > 0) orphans.push({ recipeName: r.name, missingCount: missing });
+  });
+  return orphans;
+}
+function warnIfRecipesOrphaned() {
+  var orphans = findOrphanedRecipes();
+  if (orphans.length === 0) return;
+  var sample = orphans.slice(0, 2).map(function(o){
+    return o.recipeName + ' (' + o.missingCount + ' missing)';
+  }).join(', ');
+  var more = orphans.length > 2 ? ' +' + (orphans.length - 2) + ' more' : '';
+  toast('⚠️ ' + orphans.length + ' recipe(s) reference missing ingredients: ' + sample + more);
+}
+
+// --- Backups modal wiring ---
+function openBackupsModal() {
+  var overlay = document.getElementById('backupsModalOverlay');
+  var body    = document.getElementById('backupsModalBody');
+  var btn     = document.getElementById('backupsRestoreBtn');
+  if (!overlay || !body || !btn) return;
+  btn.disabled = true;
+  body.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px 0;">Loading…</div>';
+  overlay.style.display = 'flex';
+  if (!firestoreReady) {
+    body.innerHTML = '<div style="color:#dc2626;text-align:center;padding:24px 0;">Cloud not ready — connect to the internet to view backups.</div>';
+    return;
+  }
+  loadAllVersions().then(function(byTarget) {
+    body.innerHTML = renderBackupsList(byTarget);
+    body.querySelectorAll('input[name=backupChoice]').forEach(function(input) {
+      input.addEventListener('change', function(){ btn.disabled = false; });
+    });
+  }).catch(function(e) {
+    body.innerHTML = '<div style="color:#dc2626;padding:12px 0;">Failed to load backups: ' +
+                     String(e.message || e) + '</div>';
+  });
+}
+function renderBackupsList(byTarget) {
+  var icons = { products: '🥕 Ingredients', recipes: '🍲 Recipes', pots: '🧰 Equipment', packs: '📦 Packaging' };
+  var html = '';
+  ['products', 'recipes', 'pots', 'packs'].forEach(function(targetId) {
+    var versions = byTarget[targetId] || [];
+    html += '<div style="margin-bottom:18px;">' +
+            '<div style="font-weight:600;color:var(--primary);margin-bottom:6px;">' + icons[targetId] +
+            ' <span style="color:var(--text-muted);font-weight:400;font-size:12px;">(' +
+            versions.length + ' version' + (versions.length === 1 ? '' : 's') + ')</span></div>';
+    if (versions.length === 0) {
+      html += '<div style="color:var(--text-muted);font-size:12px;padding-left:8px;">No backups yet — they accumulate as you save.</div>';
+    } else {
+      versions.forEach(function(v) {
+        var d  = new Date(v.ts);
+        var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                 String(d.getDate()).padStart(2, '0') + ' ' +
+                 String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        var dev = (v.deviceId === deviceId) ? 'this device' : (v.deviceId || 'unknown').slice(0, 14);
+        html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;" ' +
+                'onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">' +
+                '<input type="radio" name="backupChoice" value="' + targetId + '|' + v.docId + '" style="margin:0;">' +
+                '<span style="flex:1;">' + ds + '</span>' +
+                '<span style="color:var(--text-muted);">' + v.itemCount + ' items</span>' +
+                '<span style="color:var(--text-muted);font-size:11px;">' + dev + '</span>' +
+                '</label>';
+      });
+    }
+    html += '</div>';
+  });
+  return html;
+}
+function closeBackupsModal() {
+  var overlay = document.getElementById('backupsModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+function restoreSelectedBackup() {
+  var radio = document.querySelector('input[name=backupChoice]:checked');
+  if (!radio) return;
+  var parts    = radio.value.split('|');
+  var targetId = parts[0];
+  var docId    = parts[1];
+  if (!confirm('Replace your current ' + targetId + ' catalog with this backup? Every device syncing this account will see the change.')) return;
+  db.collection(VERSIONS_COLLECTION).doc(docId).get().then(function(snap) {
+    if (!snap.exists) { toast('Backup not found'); return; }
+    var data  = snap.data();
+    var items = Array.isArray(data.items) ? data.items : [];
+    var t = SYNC_TARGETS.find(function(x){ return x.id === targetId; });
+    if (!t) return;
+    t.set(items);
+    setLastKnownCloudSize(targetId, items.length);  // pre-set so the restore push doesn't itself trigger the guard
+    setLocalSaveAt(targetId);
+    _doPush(targetId, { skipDeltaCheck: true });
+    t.render();
+    closeBackupsModal();
+    toast('Restored ' + items.length + ' ' + targetId + ' from backup');
+  }).catch(function(e){
+    console.error('[restore] failed:', e);
+    toast('Restore failed: ' + String(e.message || e));
+  });
+}
+// Wire up modal buttons. Some elements may not exist yet if the script is
+// re-evaluated, so guard each lookup.
+(function() {
+  var btn = document.getElementById('backupsBtn');
+  if (btn) btn.addEventListener('click', openBackupsModal);
+  var closeBtn  = document.getElementById('backupsModalCloseBtn');
+  var cancelBtn = document.getElementById('backupsModalCancelBtn');
+  if (closeBtn)  closeBtn.addEventListener('click',  closeBackupsModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeBackupsModal);
+  var restoreBtn = document.getElementById('backupsRestoreBtn');
+  if (restoreBtn) restoreBtn.addEventListener('click', restoreSelectedBackup);
+  var bdCancel  = document.getElementById('bigDeltaCancelBtn');
+  var bdConfirm = document.getElementById('bigDeltaConfirmBtn');
+  if (bdCancel)  bdCancel.addEventListener('click',  function(){ dismissBigDelta(false); });
+  if (bdConfirm) bdConfirm.addEventListener('click', function(){ dismissBigDelta(true);  });
+})();
 
 // ============ TABS ============
 document.querySelectorAll('.tab').forEach(function(t) {
