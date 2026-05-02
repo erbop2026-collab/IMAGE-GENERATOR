@@ -762,7 +762,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.12</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.13</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2019,6 +2019,12 @@ var firebaseConfig = {
 var db = null;
 var deviceId = null;
 var firestoreReady = false;
+// v2.13.13 — per-target flag set when the Firestore listener (or initial .get())
+// has delivered AT LEAST ONE response for that catalog. Used by the seed to
+// decide whether the empty local state is real or just "snapshot hasn't arrived
+// yet". Prevents the seed from re-creating products with fresh IDs and
+// pushing them to the cloud, clobbering the user's real catalog.
+var firstSnapshotReceived = { products: false, recipes: false, pots: false, packs: false };
 
 function getDeviceId() {
   var k = 'kitchen_calc_device_id';
@@ -2120,6 +2126,10 @@ function initFirebase() {
 function bootstrapFromCloud() {
   SYNC_TARGETS.forEach(function(t) {
     db.collection('catalog').doc(t.id).get().then(function(snap) {
+      // v2.13.13 — record that we now know the cloud state for this target
+      // (whether the doc exists or not). The seed uses this to avoid
+      // clobbering an unloaded cloud catalog.
+      firstSnapshotReceived[t.id] = true;
       if (snap.exists) return;
       var local = t.get();
       if (Array.isArray(local) && local.length > 0) {
@@ -2136,6 +2146,10 @@ function bootstrapFromCloud() {
 function setupSyncListeners() {
   SYNC_TARGETS.forEach(function(t) {
     db.collection('catalog').doc(t.id).onSnapshot(function(snap) {
+      // v2.13.13 — mark target as "cloud state known" before any early returns.
+      // Even a non-existent doc counts: it tells us the cloud truly is empty
+      // here, so the seed can safely push.
+      firstSnapshotReceived[t.id] = true;
       if (!snap.exists) return;
       var data = snap.data();
       if (!data || !Array.isArray(data.items)) return;
@@ -2244,8 +2258,32 @@ savePacks = function() { _origSavePacks.apply(this, arguments); setLocalSaveAt('
 // so the seed merges with whatever already exists in the cloud rather
 // than getting overwritten by a stale snapshot. Idempotent on item name —
 // nothing already in the catalog gets duplicated.
+//
+// v2.13.13 — was a fixed 3.5s timeout, which on a slow network meant
+// `firestoreReady=true` but `products=[]` (snapshot not yet delivered).
+// The seed then re-created 129 ingredients with fresh IDs and pushed them
+// to Firestore, blowing away the real catalog. Now: poll up to 30s for the
+// Firestore listener to deliver every catalog, and even if we time out, refuse
+// to push to cloud any target that started empty without a snapshot — the
+// local seed still works for offline use, and the listener (if it ever
+// arrives) will replace the seeded copy with the real cloud catalog.
 function scheduleCatalogSeed() {
-  setTimeout(function() {
+  var DEFER_MS    = 3500;   // initial wait before first attempt
+  var POLL_MS     = 1000;   // re-check interval while waiting for snapshots
+  var MAX_WAIT_MS = 30000;  // give up waiting after this long total
+
+  function snapshotsReady() {
+    // If Firestore isn't initialized or we're offline, no snapshots are coming.
+    // Run the seed locally now — pushToCloud short-circuits when !firestoreReady,
+    // and the per-target push guard below handles the offline case too.
+    if (!firestoreReady || !navigator.onLine) return true;
+    return firstSnapshotReceived.products &&
+           firstSnapshotReceived.recipes  &&
+           firstSnapshotReceived.pots     &&
+           firstSnapshotReceived.packs;
+  }
+
+  function runSeedNow() {
     var seedV = parseInt(localStorage.getItem('std_seed_v') || '0', 10);
     var potsBefore = pots.length, packsBefore = packs.length, prodsBefore = products.length;
     var didSeed = false;
@@ -2268,9 +2306,22 @@ function scheduleCatalogSeed() {
       if (packsGrew) localStorage.setItem(STORAGE_KEY_PACKS,    JSON.stringify(packs));
       if (prodsGrew) localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
       if (firestoreReady) {
-        if (potsGrew)  { setLocalSaveAt('pots');     pushToCloud('pots');     }
-        if (packsGrew) { setLocalSaveAt('packs');    pushToCloud('packs');    }
-        if (prodsGrew) { setLocalSaveAt('products'); pushToCloud('products'); }
+        // Paranoid push guard: if a target started empty AND we never got a
+        // Firestore snapshot for it, the empty start may just be a slow
+        // listener — pushing the seed would clobber the real cloud catalog.
+        // Skip the push for that target.
+        var safeToPush = function(targetId, before, grew) {
+          if (!grew) return false;
+          if (before === 0 && !firstSnapshotReceived[targetId]) {
+            console.warn('[seed] suppressed cloud push for ' + targetId +
+              ' — started empty and no Firestore snapshot received yet (avoiding clobber).');
+            return false;
+          }
+          return true;
+        };
+        if (safeToPush('pots',     potsBefore,  potsGrew))  { setLocalSaveAt('pots');     pushToCloud('pots');     }
+        if (safeToPush('packs',    packsBefore, packsGrew)) { setLocalSaveAt('packs');    pushToCloud('packs');    }
+        if (safeToPush('products', prodsBefore, prodsGrew)) { setLocalSaveAt('products'); pushToCloud('products'); }
       }
       if (potsGrew)  { try { if (typeof renderPots === 'function') renderPots(); } catch(e){} }
       if (packsGrew) { try { if (typeof renderPacks === 'function') renderPacks(); } catch(e){} }
@@ -2280,7 +2331,21 @@ function scheduleCatalogSeed() {
       try { if (typeof populatePackMultiLists === 'function') populatePackMultiLists(); } catch(e){}
     }
     localStorage.setItem('std_seed_v', '2');
-  }, 3500); // 3.5s gives Firestore listeners time to deliver first snapshot.
+  }
+
+  setTimeout(function() {
+    var deadline = Date.now() + MAX_WAIT_MS;
+    function tick() {
+      if (snapshotsReady()) { runSeedNow(); return; }
+      if (Date.now() >= deadline) {
+        console.warn('[seed] timed out waiting for Firestore snapshots — running seed with cloud-push guard. State:', JSON.stringify(firstSnapshotReceived));
+        runSeedNow();
+        return;
+      }
+      setTimeout(tick, POLL_MS);
+    }
+    tick();
+  }, DEFER_MS);
 }
 
 // ============ TABS ============
