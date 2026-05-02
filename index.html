@@ -762,7 +762,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.11</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.13.12</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1553,11 +1553,13 @@ function migrateOrderRows(rows) {
       var sizes;
       if (Array.isArray(r.sizes) && r.sizes.length > 0) {
         sizes = r.sizes.map(function(s) {
-          return {
+          var sz = {
             id: s.id || id(),
             portions: s.portions || 0,
             portionSize: s.portionSize || 0
           };
+          if (s.packId) sz.packId = s.packId;
+          return sz;
         });
       } else {
         var rec = recipes.find(function(x){ return x.id === r.recipeId; });
@@ -2149,6 +2151,22 @@ function setupSyncListeners() {
         pushToCloud(t.id);
         return;
       }
+      // v2.13.12 — price-loss guard: never let cloud overwrite a pack that has
+      // a price locally with a cloud version that has no price. Re-push local
+      // so the cloud catches up, but don't discard the user's pricing work.
+      if (t.id === 'packs') {
+        var localPacks = t.get();
+        var wouldLosePrice = Array.isArray(data.items) && data.items.some(function(cp) {
+          var lp = localPacks.find(function(x){ return x.id === cp.id; });
+          return lp && (lp.casePrice > 0) && !(cp.casePrice > 0);
+        });
+        if (wouldLosePrice) {
+          console.log('[sync] cloud packs would remove local prices — keeping local, re-pushing');
+          setLocalSaveAt('packs');
+          pushToCloud('packs');
+          return;
+        }
+      }
       t.set(data.items);
       t.render();
     }, function(err) {
@@ -2229,6 +2247,7 @@ savePacks = function() { _origSavePacks.apply(this, arguments); setLocalSaveAt('
 function scheduleCatalogSeed() {
   setTimeout(function() {
     var seedV = parseInt(localStorage.getItem('std_seed_v') || '0', 10);
+    var potsBefore = pots.length, packsBefore = packs.length, prodsBefore = products.length;
     var didSeed = false;
     if (typeof seedStandardsCatalog === 'function' &&
         (seedV < 1 || (pots.length === 0 && packs.length === 0))) {
@@ -2240,19 +2259,22 @@ function scheduleCatalogSeed() {
       didSeed = true;
     }
     if (didSeed) {
-      // Direct localStorage save + cloud push (avoids the wrapped saveX
-      // chain that was causing a recursion loop with the listener).
-      localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
-      localStorage.setItem(STORAGE_KEY_POTS, JSON.stringify(pots));
-      localStorage.setItem(STORAGE_KEY_PACKS, JSON.stringify(packs));
+      // Only push catalogs that actually grew — avoids overwriting prices/data
+      // in Firestore when the seed ran but found all names already present.
+      var potsGrew  = pots.length     > potsBefore;
+      var packsGrew = packs.length    > packsBefore;
+      var prodsGrew = products.length > prodsBefore;
+      if (potsGrew)  localStorage.setItem(STORAGE_KEY_POTS,     JSON.stringify(pots));
+      if (packsGrew) localStorage.setItem(STORAGE_KEY_PACKS,    JSON.stringify(packs));
+      if (prodsGrew) localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
       if (firestoreReady) {
-        pushToCloud('products');
-        pushToCloud('pots');
-        pushToCloud('packs');
+        if (potsGrew)  { setLocalSaveAt('pots');     pushToCloud('pots');     }
+        if (packsGrew) { setLocalSaveAt('packs');    pushToCloud('packs');    }
+        if (prodsGrew) { setLocalSaveAt('products'); pushToCloud('products'); }
       }
-      try { if (typeof renderIngredients === 'function') renderIngredients(); } catch(e){}
-      try { if (typeof renderPots === 'function') renderPots(); } catch(e){}
-      try { if (typeof renderPacks === 'function') renderPacks(); } catch(e){}
+      if (potsGrew)  { try { if (typeof renderPots === 'function') renderPots(); } catch(e){} }
+      if (packsGrew) { try { if (typeof renderPacks === 'function') renderPacks(); } catch(e){} }
+      if (prodsGrew) { try { if (typeof renderIngredients === 'function') renderIngredients(); } catch(e){} }
       try { if (typeof populatePotPicks === 'function') populatePotPicks(); } catch(e){}
       try { if (typeof populatePackPicks === 'function') populatePackPicks(); } catch(e){}
       try { if (typeof populatePackMultiLists === 'function') populatePackMultiLists(); } catch(e){}
@@ -3534,7 +3556,10 @@ function updateGroupSummary(rowId) {
 }
 
 document.getElementById('addDishRowBtn').addEventListener('click', function() {
-  if (recipes.length === 0) { toast('No dishes yet — go to the 🍲 Recipes tab and add one'); return; }
+  if (recipes.length === 0) {
+    toast(firestoreReady ? 'No dishes yet — go to the 🍲 Recipes tab and add one' : 'Still syncing… wait for ☁️ Synced, then try again');
+    return;
+  }
   var pickedRecipe = recipes[recipes.length - 1];
   var defaultPortionSize = (pickedRecipe && pickedRecipe.yieldCooked > 0) ? pickedRecipe.yieldCooked : 0;
   orderRows.push({
