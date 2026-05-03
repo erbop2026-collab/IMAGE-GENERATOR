@@ -762,7 +762,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.14.1</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.15.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1804,67 +1804,67 @@ function seedStandardsCatalog() {
   addPot('Steam kettle 100 gal', { shape: 'round', dimD: 42, dimH: 20, capacityLb: 833 });
 
   // Hotel / steam-table pans (stainless steel rect)
-  addPot('Hotel pan, full 12x20x2.5 (steel)',  { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 2.5, capacityLb: 21 });
-  addPot('Hotel pan, full 12x20x4 (steel)',    { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 4,   capacityLb: 33 });
-  addPot('Hotel pan, full 12x20x6 (steel)',    { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 6,   capacityLb: 50 });
-  addPot('Hotel pan, half 12x10x2.5 (steel)',  { shape: 'rect', dimL: 12.75,  dimW: 10.4,  dimH: 2.5, capacityLb: 10 });
-  addPot('Hotel pan, half 12x10x4 (steel)',    { shape: 'rect', dimL: 12.75,  dimW: 10.4,  dimH: 4,   capacityLb: 16 });
-  addPot('Hotel pan, third 12x7x2.5 (steel)',  { shape: 'rect', dimL: 12.75,  dimW: 6.9,   dimH: 2.5, capacityLb: 7 });
-  addPot('Hotel pan, third 12x7x4 (steel)',    { shape: 'rect', dimL: 12.75,  dimW: 6.9,   dimH: 4,   capacityLb: 11 });
-  addPot('Hotel pan, quarter 10x6x2.5 (steel)',{ shape: 'rect', dimL: 10.4,   dimW: 6.4,   dimH: 2.5, capacityLb: 5 });
-  addPot('Hotel pan, quarter 10x6x4 (steel)',  { shape: 'rect', dimL: 10.4,   dimW: 6.4,   dimH: 4,   capacityLb: 8 });
-  addPot('Hotel pan, sixth 6.9x6.4x2.5 (steel)', { shape: 'rect', dimL: 6.9,  dimW: 6.4,   dimH: 2.5, capacityLb: 3 });
-  addPot('Hotel pan, sixth 6.9x6.4x4 (steel)',   { shape: 'rect', dimL: 6.9,  dimW: 6.4,   dimH: 4,   capacityLb: 5 });
+  addPot('Full 12x20x2.5',   { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 2.5, capacityLb: 21 });
+  addPot('Full 12x20x4',     { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 4,   capacityLb: 33 });
+  addPot('Full 12x20x6',     { shape: 'rect', dimL: 20.875, dimW: 12.75, dimH: 6,   capacityLb: 50 });
+  addPot('Half 12x10x2.5',   { shape: 'rect', dimL: 12.75,  dimW: 10.4,  dimH: 2.5, capacityLb: 10 });
+  addPot('Half 12x10x4',     { shape: 'rect', dimL: 12.75,  dimW: 10.4,  dimH: 4,   capacityLb: 16 });
+  addPot('Third 12x7x2.5',   { shape: 'rect', dimL: 12.75,  dimW: 6.9,   dimH: 2.5, capacityLb: 7 });
+  addPot('Third 12x7x4',     { shape: 'rect', dimL: 12.75,  dimW: 6.9,   dimH: 4,   capacityLb: 11 });
+  addPot('Quarter 10x6x2.5', { shape: 'rect', dimL: 10.4,   dimW: 6.4,   dimH: 2.5, capacityLb: 5 });
+  addPot('Quarter 10x6x4',   { shape: 'rect', dimL: 10.4,   dimW: 6.4,   dimH: 4,   capacityLb: 8 });
+  addPot('Sixth 6.9x6.4x2.5',{ shape: 'rect', dimL: 6.9,    dimW: 6.4,   dimH: 2.5, capacityLb: 3 });
+  addPot('Sixth 6.9x6.4x4',  { shape: 'rect', dimL: 6.9,    dimW: 6.4,   dimH: 4,   capacityLb: 5 });
 
-  // Sheet pans (steel, flat — capacity is approximate / not for liquids)
-  addPot('Sheet pan, full 26x18 (steel)',     { shape: 'rect', dimL: 26, dimW: 18, dimH: 1, capacityLb: 16 });
-  addPot('Sheet pan, half 18x13 (steel)',     { shape: 'rect', dimL: 18, dimW: 13, dimH: 1, capacityLb: 8 });
-  addPot('Sheet pan, quarter 13x9 (steel)',   { shape: 'rect', dimL: 13, dimW: 9.5, dimH: 1, capacityLb: 4 });
+  // Sheet pans (flat — capacity is approximate / not for liquids)
+  addPot('Sheet full 26x18',    { shape: 'rect', dimL: 26, dimW: 18,  dimH: 1, capacityLb: 16 });
+  addPot('Sheet half 18x13',    { shape: 'rect', dimL: 18, dimW: 13,  dimH: 1, capacityLb: 8 });
+  addPot('Sheet quarter 13x9',  { shape: 'rect', dimL: 13, dimW: 9.5, dimH: 1, capacityLb: 4 });
 
-  // Cake & loaf pans (steel)
-  addPot('Cake pan 9x13x2 (steel)',     { shape: 'rect', dimL: 13,  dimW: 9,   dimH: 2,   capacityLb: 8 });
-  addPot('Brownie pan 8x8x2 (steel)',   { shape: 'rect', dimL: 8,   dimW: 8,   dimH: 2,   capacityLb: 4 });
-  addPot('Loaf pan 8.5x4.5x2.5 (steel)',{ shape: 'rect', dimL: 8.5, dimW: 4.5, dimH: 2.5, capacityLb: 3 });
+  // Cake & loaf pans
+  addPot('Cake 9x13',     { shape: 'rect', dimL: 13,  dimW: 9,   dimH: 2,   capacityLb: 8 });
+  addPot('Brownie 8x8',   { shape: 'rect', dimL: 8,   dimW: 8,   dimH: 2,   capacityLb: 4 });
+  addPot('Loaf 8.5x4.5',  { shape: 'rect', dimL: 8.5, dimW: 4.5, dimH: 2.5, capacityLb: 3 });
 
   // ---- PACKAGING (single-use, disposable) ----
 
-  // Aluminum foil pans (rect)
-  addPack('Aluminum foil pan, full 21x13x3.5',     { sizeQty: 24, sizeUnit: 'lb' });
-  addPack('Aluminum foil pan, half 12.5x10x3',     { sizeQty: 12, sizeUnit: 'lb' });
-  addPack('Aluminum foil pan, half deep 12.5x10x4',{ sizeQty: 16, sizeUnit: 'lb' });
-  addPack('Aluminum foil pan, quarter 8.5x6.5x2',  { sizeQty: 5,  sizeUnit: 'lb' });
-  addPack('Aluminum foil loaf pan, 5 lb (8x4x2.5)',{ sizeQty: 5,  sizeUnit: 'lb' });
-  addPack('Aluminum foil loaf pan, 2.25 lb (7x4x2)',{sizeQty: 2.25,sizeUnit: 'lb' });
-  addPack('Aluminum foil hotel pan, full 12x20x2.5',{sizeQty: 21, sizeUnit: 'lb' });
-  addPack('Aluminum foil hotel pan, full 12x20x4', { sizeQty: 33, sizeUnit: 'lb' });
+  // Aluminum foil pans
+  addPack('Foil 21x13x3.5',    { sizeQty: 24,   sizeUnit: 'lb' });
+  addPack('Foil 12.5x10x3',    { sizeQty: 12,   sizeUnit: 'lb' });
+  addPack('Foil 12.5x10x4',    { sizeQty: 16,   sizeUnit: 'lb' });
+  addPack('Foil 8.5x6.5x2',    { sizeQty: 5,    sizeUnit: 'lb' });
+  addPack('Foil loaf 5 lb',    { sizeQty: 5,    sizeUnit: 'lb' });
+  addPack('Foil loaf 2.25 lb', { sizeQty: 2.25, sizeUnit: 'lb' });
+  addPack('Foil 12x20x2.5',    { sizeQty: 21,   sizeUnit: 'lb' });
+  addPack('Foil 12x20x4',      { sizeQty: 33,   sizeUnit: 'lb' });
 
-  // Plastic deli containers (round) — separate lid
-  addPack('Plastic deli container 8 oz (round)',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Plastic deli container 12 oz (round)', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Plastic deli container 16 oz (round)', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Plastic deli container 24 oz (round)', { sizeQty: 24, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Plastic deli container 32 oz (round)', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Plastic deli container 64 oz (round)', { sizeQty: 64, sizeUnit: 'floz', hasSeparateLid: true });
+  // Plastic deli containers — separate lid
+  addPack('Deli 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Deli 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Deli 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Deli 24 oz', { sizeQty: 24, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Deli 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Deli 64 oz', { sizeQty: 64, sizeUnit: 'floz', hasSeparateLid: true });
 
   // Paper soup cups + lids
-  addPack('Paper soup cup 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Paper soup cup 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Paper soup cup 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Paper soup cup 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Soup cup 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Soup cup 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Soup cup 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
+  addPack('Soup cup 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
 
-  // Plastic hinged clamshells (1-compartment)
-  addPack('Plastic clamshell 6x6x3 (1-comp)', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Plastic clamshell 8x8x3 (1-comp)', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Plastic clamshell 9x9x3 (1-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+  // Hinged clamshells (1-compartment)
+  addPack('Clamshell 6x6x3 1-comp', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Clamshell 8x8x3 1-comp', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Clamshell 9x9x3 1-comp', { sizeQty: 1, sizeUnit: 'ct' });
 
-  // Plastic hinged clamshells (multi-compartment)
-  addPack('Plastic clamshell 9x6x3 (2-comp)', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Plastic clamshell 9x9x3 (3-comp)', { sizeQty: 1, sizeUnit: 'ct' });
+  // Hinged clamshells (multi-compartment)
+  addPack('Clamshell 9x6x3 2-comp', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Clamshell 9x9x3 3-comp', { sizeQty: 1, sizeUnit: 'ct' });
 
-  // Plastic catering trays + lids
-  addPack('Plastic catering tray, small 12x9 (with lid)',  { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Plastic catering tray, medium 16x11 (with lid)',{ sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Plastic catering tray, large 18x14 (with lid)', { sizeQty: 1, sizeUnit: 'ct' });
+  // Catering trays + lids
+  addPack('Tray 12x9',  { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Tray 16x11', { sizeQty: 1, sizeUnit: 'ct' });
+  addPack('Tray 18x14', { sizeQty: 1, sizeUnit: 'ct' });
 }
 
 // v2.11.0: Ingredients seed — kosher catering vendor list (preserves user's
@@ -2325,6 +2325,71 @@ savePacks = function() { _origSavePacks.apply(this, arguments); setLocalSaveAt('
 // to push to cloud any target that started empty without a snapshot — the
 // local seed still works for offline use, and the listener (if it ever
 // arrives) will replace the seeded copy with the real cloud catalog.
+// v2.15.0 — one-time rename of verbose seeded equipment / packaging names.
+// Runs once per device (gated by 'name_cleanup_v') AFTER the first cloud
+// snapshot has arrived, so we operate on the post-sync state. IDs stay
+// untouched — recipe.equipment[].equipmentId, recipe.packIds[], and
+// sz.packId references remain valid across the rename.
+var POT_NAME_CLEANUP = {
+  'Hotel pan, full 12x20x2.5 (steel)':   'Full 12x20x2.5',
+  'Hotel pan, full 12x20x4 (steel)':     'Full 12x20x4',
+  'Hotel pan, full 12x20x6 (steel)':     'Full 12x20x6',
+  'Hotel pan, half 12x10x2.5 (steel)':   'Half 12x10x2.5',
+  'Hotel pan, half 12x10x4 (steel)':     'Half 12x10x4',
+  'Hotel pan, third 12x7x2.5 (steel)':   'Third 12x7x2.5',
+  'Hotel pan, third 12x7x4 (steel)':     'Third 12x7x4',
+  'Hotel pan, quarter 10x6x2.5 (steel)': 'Quarter 10x6x2.5',
+  'Hotel pan, quarter 10x6x4 (steel)':   'Quarter 10x6x4',
+  'Hotel pan, sixth 6.9x6.4x2.5 (steel)':'Sixth 6.9x6.4x2.5',
+  'Hotel pan, sixth 6.9x6.4x4 (steel)':  'Sixth 6.9x6.4x4',
+  'Sheet pan, full 26x18 (steel)':       'Sheet full 26x18',
+  'Sheet pan, half 18x13 (steel)':       'Sheet half 18x13',
+  'Sheet pan, quarter 13x9 (steel)':     'Sheet quarter 13x9',
+  'Cake pan 9x13x2 (steel)':             'Cake 9x13',
+  'Brownie pan 8x8x2 (steel)':           'Brownie 8x8',
+  'Loaf pan 8.5x4.5x2.5 (steel)':        'Loaf 8.5x4.5'
+};
+var PACK_NAME_CLEANUP = {
+  'Aluminum foil pan, full 21x13x3.5':       'Foil 21x13x3.5',
+  'Aluminum foil pan, half 12.5x10x3':       'Foil 12.5x10x3',
+  'Aluminum foil pan, half deep 12.5x10x4':  'Foil 12.5x10x4',
+  'Aluminum foil pan, quarter 8.5x6.5x2':    'Foil 8.5x6.5x2',
+  'Aluminum foil loaf pan, 5 lb (8x4x2.5)':  'Foil loaf 5 lb',
+  'Aluminum foil loaf pan, 2.25 lb (7x4x2)': 'Foil loaf 2.25 lb',
+  'Aluminum foil hotel pan, full 12x20x2.5': 'Foil 12x20x2.5',
+  'Aluminum foil hotel pan, full 12x20x4':   'Foil 12x20x4',
+  'Plastic deli container 8 oz (round)':     'Deli 8 oz',
+  'Plastic deli container 12 oz (round)':    'Deli 12 oz',
+  'Plastic deli container 16 oz (round)':    'Deli 16 oz',
+  'Plastic deli container 24 oz (round)':    'Deli 24 oz',
+  'Plastic deli container 32 oz (round)':    'Deli 32 oz',
+  'Plastic deli container 64 oz (round)':    'Deli 64 oz',
+  'Paper soup cup 8 oz':                     'Soup cup 8 oz',
+  'Paper soup cup 12 oz':                    'Soup cup 12 oz',
+  'Paper soup cup 16 oz':                    'Soup cup 16 oz',
+  'Paper soup cup 32 oz':                    'Soup cup 32 oz',
+  'Plastic clamshell 6x6x3 (1-comp)':        'Clamshell 6x6x3 1-comp',
+  'Plastic clamshell 8x8x3 (1-comp)':        'Clamshell 8x8x3 1-comp',
+  'Plastic clamshell 9x9x3 (1-comp)':        'Clamshell 9x9x3 1-comp',
+  'Plastic clamshell 9x6x3 (2-comp)':        'Clamshell 9x6x3 2-comp',
+  'Plastic clamshell 9x9x3 (3-comp)':        'Clamshell 9x9x3 3-comp',
+  'Plastic catering tray, small 12x9 (with lid)':  'Tray 12x9',
+  'Plastic catering tray, medium 16x11 (with lid)':'Tray 16x11',
+  'Plastic catering tray, large 18x14 (with lid)': 'Tray 18x14'
+};
+function cleanupCatalogNames() {
+  var changed = { pots: false, packs: false };
+  pots.forEach(function(pot) {
+    var newName = POT_NAME_CLEANUP[pot.name];
+    if (newName && newName !== pot.name) { pot.name = newName; changed.pots = true; }
+  });
+  packs.forEach(function(pk) {
+    var newName = PACK_NAME_CLEANUP[pk.name];
+    if (newName && newName !== pk.name) { pk.name = newName; changed.packs = true; }
+  });
+  return changed;
+}
+
 function scheduleCatalogSeed() {
   var DEFER_MS    = 3500;   // initial wait before first attempt
   var POLL_MS     = 1000;   // re-check interval while waiting for snapshots
@@ -2354,22 +2419,30 @@ function scheduleCatalogSeed() {
       seedIngredientsCatalog();
       didSeed = true;
     }
-    if (didSeed) {
-      // Only push catalogs that actually grew — avoids overwriting prices/data
-      // in Firestore when the seed ran but found all names already present.
-      var potsGrew  = pots.length     > potsBefore;
-      var packsGrew = packs.length    > packsBefore;
-      var prodsGrew = products.length > prodsBefore;
-      if (potsGrew)  localStorage.setItem(STORAGE_KEY_POTS,     JSON.stringify(pots));
-      if (packsGrew) localStorage.setItem(STORAGE_KEY_PACKS,    JSON.stringify(packs));
-      if (prodsGrew) localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+    // v2.15.0 — one-time rename of verbose seeded names. Same snapshot guards
+    // as the seed: only push if the target had a real cloud snapshot or was
+    // already non-empty before this run. Renames don't change item counts so
+    // the big-delta guard never trips.
+    var nameCleanupV = parseInt(localStorage.getItem('name_cleanup_v') || '0', 10);
+    var renamed = { pots: false, packs: false };
+    if (nameCleanupV < 1) {
+      renamed = cleanupCatalogNames();
+      localStorage.setItem('name_cleanup_v', '1');
+    }
+    var potsChanged  = (pots.length     > potsBefore) || renamed.pots;
+    var packsChanged = (packs.length    > packsBefore) || renamed.packs;
+    var prodsChanged = (products.length > prodsBefore);
+    if (didSeed || renamed.pots || renamed.packs) {
+      if (potsChanged)  localStorage.setItem(STORAGE_KEY_POTS,     JSON.stringify(pots));
+      if (packsChanged) localStorage.setItem(STORAGE_KEY_PACKS,    JSON.stringify(packs));
+      if (prodsChanged) localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
       if (firestoreReady) {
         // Paranoid push guard: if a target started empty AND we never got a
         // Firestore snapshot for it, the empty start may just be a slow
         // listener — pushing the seed would clobber the real cloud catalog.
         // Skip the push for that target.
-        var safeToPush = function(targetId, before, grew) {
-          if (!grew) return false;
+        var safeToPush = function(targetId, before, changed) {
+          if (!changed) return false;
           if (before === 0 && !firstSnapshotReceived[targetId]) {
             console.warn('[seed] suppressed cloud push for ' + targetId +
               ' — started empty and no Firestore snapshot received yet (avoiding clobber).');
@@ -2377,13 +2450,13 @@ function scheduleCatalogSeed() {
           }
           return true;
         };
-        if (safeToPush('pots',     potsBefore,  potsGrew))  { setLocalSaveAt('pots');     pushToCloud('pots');     }
-        if (safeToPush('packs',    packsBefore, packsGrew)) { setLocalSaveAt('packs');    pushToCloud('packs');    }
-        if (safeToPush('products', prodsBefore, prodsGrew)) { setLocalSaveAt('products'); pushToCloud('products'); }
+        if (safeToPush('pots',     potsBefore,  potsChanged))  { setLocalSaveAt('pots');     pushToCloud('pots');     }
+        if (safeToPush('packs',    packsBefore, packsChanged)) { setLocalSaveAt('packs');    pushToCloud('packs');    }
+        if (safeToPush('products', prodsBefore, prodsChanged)) { setLocalSaveAt('products'); pushToCloud('products'); }
       }
-      if (potsGrew)  { try { if (typeof renderPots === 'function') renderPots(); } catch(e){} }
-      if (packsGrew) { try { if (typeof renderPacks === 'function') renderPacks(); } catch(e){} }
-      if (prodsGrew) { try { if (typeof renderIngredients === 'function') renderIngredients(); } catch(e){} }
+      if (potsChanged)  { try { if (typeof renderPots === 'function') renderPots(); } catch(e){} }
+      if (packsChanged) { try { if (typeof renderPacks === 'function') renderPacks(); } catch(e){} }
+      if (prodsChanged) { try { if (typeof renderIngredients === 'function') renderIngredients(); } catch(e){} }
       try { if (typeof populatePotPicks === 'function') populatePotPicks(); } catch(e){}
       try { if (typeof populatePackPicks === 'function') populatePackPicks(); } catch(e){}
       try { if (typeof populatePackMultiLists === 'function') populatePackMultiLists(); } catch(e){}
@@ -4199,14 +4272,36 @@ function computeRecipeSummaries() {
 }
 
 // Resolves recipe.equipment[] into pot-size objects compatible with packIntoPots.
+// v2.15.0 — pot capacities are now converted into the recipe's yield unit so
+// `packIntoPots(totalCookedDish, sizes)` compares like-for-like. Previously the
+// capacity stayed in lb (water-mass) and was compared against a yield in
+// whatever unit the recipe used, inflating pot counts ~16× for oz recipes.
 function recipeEquipmentSizes(rec) {
   if (!Array.isArray(rec.equipment)) return [];
+  var dishUnit = rec.yieldUnit || 'oz';
+  var dishKind = (UNIT_INFO[dishUnit] || {}).kind;
   return rec.equipment.map(function(ent) {
     var pot = pots.find(function(p){ return p.id === ent.equipmentId; });
-    var capacity = pot && pot.capacityLb > 0 ? pot.capacityLb : (pot && pot.volumeOz > 0 ? pot.volumeOz / 16 : 0);
+    if (!pot) return null;
+    var capacity = 0;
+    if (dishKind === 'weight' && pot.capacityLb > 0) {
+      capacity = convertWithinKind(pot.capacityLb, 'lb', dishUnit) || 0;
+    } else if (dishKind === 'volume' && pot.volumeOz > 0) {
+      capacity = convertWithinKind(pot.volumeOz, 'floz', dishUnit) || 0;
+    }
+    if (!(capacity > 0) && pot.capacityLb > 0) {
+      capacity = convertViaRecipe(rec, pot.capacityLb, 'lb', dishUnit) || 0;
+    }
+    if (!(capacity > 0) && pot.volumeOz > 0) {
+      capacity = convertViaRecipe(rec, pot.volumeOz, 'floz', dishUnit) || 0;
+    }
+    // Last-ditch: water-density approximation (16 fl oz ≈ 1 lb of water).
+    if (!(capacity > 0) && pot.volumeOz > 0 && dishKind === 'weight') {
+      capacity = convertWithinKind(pot.volumeOz / 16, 'lb', dishUnit) || 0;
+    }
     if (!(capacity > 0)) return null;
     return {
-      name: pot ? pot.name : '',
+      name: pot.name,
       capacity: capacity,
       _entry: ent
     };
@@ -4360,6 +4455,13 @@ function renderResults(totalsArr) {
       if (d.equipment.packCost > 0) html += '<div style="font-size:13px;padding-left:6px;">Pack labor: $' + d.equipment.packCost.toFixed(2) + '</div>';
       if (d.equipmentSubtotal > 0)  html += '<div style="font-size:13px;padding-left:6px;font-weight:600;">Subtotal: $' + d.equipmentSubtotal.toFixed(2) + '</div>';
       html += '</div>';
+    }
+
+    // v2.15.0 — Packaging subtotal in the dish card (full breakdown lives in
+    // the separate Packaging plan card). Was missing entirely before, which
+    // also meant it never reached the Total order cost.
+    if (d.packagingSubtotal > 0) {
+      html += '<div style="margin-top:10px;font-size:13px;color:#475569;">📦 Packaging: <strong style="color:#1e293b;">$' + d.packagingSubtotal.toFixed(2) + '</strong></div>';
     }
 
     // Per-size pricing — REAL cost share, not avg
@@ -5141,28 +5243,96 @@ function computeDishBreakdown() {
     d.totalCooked  += rowCooked;
   });
 
-  return Object.keys(dishes).map(function(k){ return dishes[k]; }).map(function(d) {
+  var dishArr = Object.keys(dishes).map(function(k){ return dishes[k]; }).map(function(d) {
     d.batches = d.totalCooked / d.rec.yieldCooked;
     d.ingredients = (d.rec.components || []).map(function(comp) {
       var p = products.find(function(x){ return x.id === comp.productId; });
       if (!p || !(comp.amount > 0)) return null;
       var raw = d.batches * comp.amount;
       var cooked = (p.raw > 0 && p.cooked > 0) ? raw * (p.cooked / p.raw) : raw;
-      var ingCost = computeIngredientCost({
-        unit: p.unit, raw: raw, cooked: cooked,
-        packSize: p.packSize || 0,
-        unitsPerPack: p.unitsPerPack > 0 ? p.unitsPerPack : 1,
-        costPerUnit: p.costPerUnit || 0,
-        costMode: p.costMode || 'measure'
-      });
-      return { product: p, raw: raw, cooked: cooked, ingCost: ingCost };
+      // ingCost filled in later — see order-level rounding pass below.
+      return { product: p, raw: raw, cooked: cooked, ingCost: { cost: 0, note: '' } };
     }).filter(Boolean);
     d.equipment = computeRecipeEquipmentCost(d.rec, d.totalCooked);
-    d.ingredientSubtotal = d.ingredients.reduce(function(a, ig){ return a + (ig.ingCost.cost || 0); }, 0);
-    d.equipmentSubtotal  = d.equipment ? d.equipment.totalCost : 0;
-    d.dishCost = d.ingredientSubtotal + d.equipmentSubtotal;
+    d.packaging = computeDishPackaging(d.rec);
     return d;
   });
+
+  // v2.15.0 — pack-mode ingredient costs are rounded ONCE at the order level
+  // (sum raw across all dishes → ceil cases → multiply price), then pro-rated
+  // back to each dish by raw share. measure/piece modes stay linear, so
+  // raw × costPerUnit per dish equals the correct dish share. Previously each
+  // dish rounded independently, double-buying cases when an ingredient was
+  // shared across dishes.
+  var aggregateRaw = {};
+  dishArr.forEach(function(d) {
+    d.ingredients.forEach(function(ig) {
+      aggregateRaw[ig.product.id] = (aggregateRaw[ig.product.id] || 0) + ig.raw;
+    });
+  });
+  var aggregateCost = {};
+  Object.keys(aggregateRaw).forEach(function(pid) {
+    var p = products.find(function(x){ return x.id === pid; });
+    if (!p) return;
+    var ic = computeIngredientCost({
+      unit: p.unit, raw: aggregateRaw[pid], cooked: 0,
+      packSize: p.packSize || 0,
+      unitsPerPack: p.unitsPerPack > 0 ? p.unitsPerPack : 1,
+      costPerUnit: p.costPerUnit || 0,
+      costMode: p.costMode || 'measure'
+    });
+    aggregateCost[pid] = ic;
+  });
+  dishArr.forEach(function(d) {
+    d.ingredients.forEach(function(ig) {
+      var pid = ig.product.id;
+      var agg = aggregateCost[pid];
+      var totalRaw = aggregateRaw[pid];
+      if (!agg || !(totalRaw > 0)) { ig.ingCost = { cost: 0, note: '' }; return; }
+      var share = ig.raw / totalRaw;
+      ig.ingCost = { cost: agg.cost * share, note: agg.note };
+    });
+    d.ingredientSubtotal = d.ingredients.reduce(function(a, ig){ return a + (ig.ingCost.cost || 0); }, 0);
+    d.equipmentSubtotal  = d.equipment ? d.equipment.totalCost : 0;
+    d.packagingSubtotal  = d.packaging ? d.packaging.totalCost : 0;
+    d.dishCost = d.ingredientSubtotal + d.equipmentSubtotal + d.packagingSubtotal;
+  });
+  return dishArr;
+}
+
+// v2.15.0 — packaging cost per dish, summed from each row's per-size packId.
+// Mirrors the grouping in computePackPlanHtml so the dish card and the
+// Packaging plan card stay numerically aligned.
+function computeDishPackaging(rec) {
+  var byPack = {};
+  orderRows.forEach(function(row) {
+    if (row.kind !== 'recipe' || row.recipeId !== rec.id) return;
+    (row.sizes || []).forEach(function(sz) {
+      if (!(sz.portions > 0) || !(sz.portionSize > 0)) return;
+      var key = sz.packId || '';
+      if (!byPack[key]) byPack[key] = { packId: key, portions: 0 };
+      byPack[key].portions += sz.portions;
+    });
+  });
+  var entries = [];
+  var totalCost = 0;
+  Object.keys(byPack).forEach(function(k) {
+    var g = byPack[k];
+    if (!g.packId) {
+      entries.push({ name: 'Custom (no packaging)', portions: g.portions, cost: 0, missing: true });
+      return;
+    }
+    var pk = packs.find(function(p){ return p.id === g.packId; });
+    if (!pk) {
+      entries.push({ name: 'Pack deleted', portions: g.portions, cost: 0, missing: true });
+      return;
+    }
+    var eff = packEffectivePrice(pk);
+    var cost = eff > 0 ? g.portions * eff : 0;
+    entries.push({ name: pk.name, portions: g.portions, cost: cost, missing: false });
+    totalCost += cost;
+  });
+  return { entries: entries, totalCost: totalCost };
 }
 
 function formatKitchenExport() {
