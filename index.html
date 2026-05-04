@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.1</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.2</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1306,6 +1306,13 @@ Pasta,oz,8,16"></textarea>
     <div class="field">
       <label>Recipe name</label>
       <input type="text" id="newRecipeName" placeholder="e.g. Chicken & Rice meal">
+    </div>
+    <div class="field" style="margin-bottom:6px;">
+      <label>Yield mode</label>
+      <div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="newRecipeYieldMode" value="cooked" checked> Cooked output (manual)</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="newRecipeYieldMode" value="derived"> Derived from ⭐ lead RAW</label>
+      </div>
     </div>
     <div class="row-grid">
       <div class="field">
@@ -3400,6 +3407,13 @@ function buildRecipeEditCard(r) {
         '<label>Recipe name</label>' +
         '<input type="text" data-recipe-edit="name" data-rid="' + r.id + '" value="' + escapeHtml(r.name) + '">' +
       '</div>' +
+      '<div class="field" style="margin-bottom:6px;">' +
+        '<label>Yield mode</label>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;">' +
+          '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="recipeYieldMode-' + r.id + '" value="cooked"' + ((r.yieldMode || 'cooked') === 'cooked' ? ' checked' : '') + '> Cooked output (manual)</label>' +
+          '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="recipeYieldMode-' + r.id + '" value="derived"' + (r.yieldMode === 'derived' ? ' checked' : '') + '> Derived from ⭐ lead RAW</label>' +
+        '</div>' +
+      '</div>' +
       '<div class="row-grid">' +
         '<div class="field">' +
           '<label>Yield / batch (cooked)</label>' +
@@ -3476,6 +3490,8 @@ function renderRecipes() {
       document.querySelector('[data-recipe-edit="yieldVolumeUnit"][data-rid="' + rid + '"]'),
       document.querySelector('[data-recipe-density="' + rid + '"]')
     );
+    // v2.17.2 — apply current yield mode (readonly state) on first render.
+    refreshDerivedYield('edit', rid);
   } else {
     window._editYieldCoupling = null;
   }
@@ -3510,6 +3526,8 @@ function renderRecipes() {
       if (r.referenceText) copy.referenceText = r.referenceText;
       if (Array.isArray(r.packIds) && r.packIds.length > 0) copy.packIds = r.packIds.slice();
       if (r.referenceEquipmentId) copy.referenceEquipmentId = r.referenceEquipmentId;
+      if (r.yieldMode === 'derived') copy.yieldMode = 'derived';
+      if (r.yieldCookedVolume > 0) { copy.yieldCookedVolume = r.yieldCookedVolume; copy.yieldVolumeUnit = r.yieldVolumeUnit || 'floz'; }
       recipes.push(copy);
       saveRecipes();
       renderRecipes();
@@ -3566,6 +3584,9 @@ function renderRecipes() {
       if (referenceText) r.referenceText = referenceText; else delete r.referenceText;
       if (packIds.length > 0) r.packIds = packIds; else delete r.packIds;
       if (refEqId) r.referenceEquipmentId = refEqId; else delete r.referenceEquipmentId;
+      // v2.17.2 — persist yieldMode (cooked / derived).
+      var yieldMode = getYieldMode('edit', rid);
+      if (yieldMode === 'derived') r.yieldMode = 'derived'; else delete r.yieldMode;
       saveRecipes();
       recipeEditingId = null;
       renderRecipes();
@@ -3704,6 +3725,107 @@ var _addRecipeYieldCoupling = setupYieldCoupling(
   document.getElementById('newRecipeDensityRow')
 );
 
+// v2.17.2 — Yield mode: 'cooked' (user types yield manually) or 'derived'
+// (yield computed from ⭐ lead component's raw → cooked ratio). When in
+// 'derived' mode, the yield field becomes read-only and recomputes whenever
+// the user changes radio, toggles ⭐ lead, or edits the lead's amount.
+function computeDerivedYield(listEl, yieldUnit) {
+  if (!listEl) return null;
+  var leadRow = listEl.querySelector('.component-row[data-lead="true"]');
+  if (!leadRow) return null;
+  var srch = leadRow.querySelector('.comp-product-search');
+  var pid = srch ? (srch.getAttribute('data-product-id') || '') : '';
+  var amtEl = leadRow.querySelector('.comp-amount-input');
+  var amt = amtEl ? (parseFloat(amtEl.value) || 0) : 0;
+  if (!pid || !(amt > 0)) return null;
+  var lead = products.find(function(x){ return x.id === pid; });
+  if (!lead || !(lead.raw > 0) || !(lead.cooked > 0)) return null;
+  var leadInfo = UNIT_INFO[lead.unit];
+  var dishInfo = UNIT_INFO[yieldUnit || 'oz'];
+  if (!leadInfo || !dishInfo || leadInfo.kind !== dishInfo.kind) return null;
+  var cookedInLeadUnit = amt * (lead.cooked / lead.raw);
+  return cookedInLeadUnit * leadInfo.base / dishInfo.base;
+}
+function applyYieldMode(yieldEl, mode) {
+  if (!yieldEl) return;
+  if (mode === 'derived') {
+    yieldEl.readOnly = true;
+    yieldEl.style.background = '#f1f5f9';
+    yieldEl.title = 'Auto-derived from ⭐ lead RAW × (cooked / raw). Switch to "Cooked output (manual)" to type freely.';
+  } else {
+    yieldEl.readOnly = false;
+    yieldEl.style.background = '';
+    yieldEl.title = '';
+  }
+}
+function getYieldMode(formKey, rid) {
+  var name = formKey === 'add' ? 'newRecipeYieldMode' : 'recipeYieldMode-' + rid;
+  var radios = document.querySelectorAll('input[name="' + name + '"]');
+  for (var i = 0; i < radios.length; i++) if (radios[i].checked) return radios[i].value;
+  return 'cooked';
+}
+function refreshDerivedYield(formKey, rid) {
+  var yieldEl, unitEl, listEl, coupling;
+  if (formKey === 'add') {
+    yieldEl = document.getElementById('newRecipeYield');
+    unitEl = document.getElementById('newRecipeYieldUnit');
+    listEl = document.querySelector('[data-component-list="add"]');
+    coupling = _addRecipeYieldCoupling;
+  } else {
+    yieldEl = document.querySelector('[data-recipe-edit="yield"][data-rid="' + rid + '"]');
+    unitEl = document.querySelector('[data-recipe-edit="yieldUnit"][data-rid="' + rid + '"]');
+    listEl = document.querySelector('[data-component-list="edit-' + rid + '"]');
+    coupling = window._editYieldCoupling;
+  }
+  var mode = getYieldMode(formKey, rid);
+  applyYieldMode(yieldEl, mode);
+  if (mode !== 'derived' || !yieldEl || !unitEl || !listEl) return;
+  var derived = computeDerivedYield(listEl, unitEl.value);
+  if (derived !== null && derived > 0) {
+    yieldEl.value = +derived.toFixed(2);
+    if (coupling && coupling.refresh) coupling.refresh();
+  }
+}
+// Initial mode wiring on the static Add-Recipe form.
+applyYieldMode(document.getElementById('newRecipeYield'), 'cooked');
+document.querySelectorAll('input[name="newRecipeYieldMode"]').forEach(function(r) {
+  r.addEventListener('change', function() { refreshDerivedYield('add'); });
+});
+// Global delegated listeners — handle inline-edit forms (created on demand)
+// and react to lead-toggle ⭐ + lead-amount edits.
+document.addEventListener('change', function(e) {
+  if (!e.target || !e.target.matches) return;
+  if (e.target.matches('input[name^="recipeYieldMode-"]')) {
+    var name = e.target.name;
+    var rid = name.replace(/^recipeYieldMode-/, '');
+    refreshDerivedYield('edit', rid);
+  }
+});
+document.addEventListener('input', function(e) {
+  if (!e.target || !e.target.matches) return;
+  // Lead amount edited → recompute derived yield if active.
+  var row = e.target.closest && e.target.closest('.component-row[data-lead="true"]');
+  if (row && (e.target.matches('.comp-amount-input') || e.target.matches('.comp-product-search'))) {
+    var listEl = row.parentElement;
+    var key = listEl && listEl.getAttribute('data-component-list');
+    if (key === 'add') refreshDerivedYield('add');
+    else if (key && key.indexOf('edit-') === 0) refreshDerivedYield('edit', key.slice(5));
+  }
+});
+// Lead-toggle ⭐ click — fires after the existing lead-toggle handler reorders attributes.
+document.addEventListener('click', function(e) {
+  var btn = e.target && e.target.closest && e.target.closest('.comp-lead-btn');
+  if (!btn) return;
+  // Defer slightly so the existing lead-toggle handler has applied its data-lead changes first.
+  setTimeout(function() {
+    var row = btn.closest('.component-row');
+    var listEl = row && row.parentElement;
+    var key = listEl && listEl.getAttribute('data-component-list');
+    if (key === 'add') refreshDerivedYield('add');
+    else if (key && key.indexOf('edit-') === 0) refreshDerivedYield('edit', key.slice(5));
+  }, 0);
+});
+
 document.getElementById('addRecipeBtn').addEventListener('click', function() {
   var name = document.getElementById('newRecipeName').value.trim();
   var listEl = document.querySelector('[data-component-list="add"]');
@@ -3725,6 +3847,9 @@ document.getElementById('addRecipeBtn').addEventListener('click', function() {
   if (packIds.length > 0) recipe.packIds = packIds;
   if (refEqId) recipe.referenceEquipmentId = refEqId;
   if (yieldVolume > 0) { recipe.yieldCookedVolume = yieldVolume; recipe.yieldVolumeUnit = yieldVolumeUnit; }
+  // v2.17.2 — persist yield mode so the form re-opens in the same state.
+  var yieldMode = getYieldMode('add');
+  if (yieldMode === 'derived') recipe.yieldMode = 'derived';
   recipes.push(recipe);
   saveRecipes();
   document.getElementById('newRecipeName').value = '';
@@ -3732,6 +3857,9 @@ document.getElementById('addRecipeBtn').addEventListener('click', function() {
   document.getElementById('newRecipeRef').value = '';
   if (document.getElementById('newRecipePotPick')) document.getElementById('newRecipePotPick').value = '';
   if (document.getElementById('newRecipeYieldVolume')) document.getElementById('newRecipeYieldVolume').value = '';
+  // Reset yield mode radio to default ('cooked').
+  var modeRadio = document.querySelector('input[name="newRecipeYieldMode"][value="cooked"]');
+  if (modeRadio) { modeRadio.checked = true; refreshDerivedYield('add'); }
   setComponentListContent(listEl, [], null);
   populatePackMultiLists({ add: [] });
   renderRecipes();
