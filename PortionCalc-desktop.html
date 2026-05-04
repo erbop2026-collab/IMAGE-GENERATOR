@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.15.1</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.16.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1185,6 +1185,31 @@ Pasta,oz,8,16"></textarea>
     <div class="field">
       <label>Name</label>
       <input type="text" id="packName" placeholder="e.g. Small takeout box">
+    </div>
+    <div class="row-grid">
+      <div class="field">
+        <label>Shape</label>
+        <select id="packShape">
+          <option value="rect">Rectangular (pan / tray)</option>
+          <option value="round">Round (cup / container)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Inner dimensions (inches, optional)</label>
+        <div id="packDimsRect" class="row-grid-3">
+          <input type="number" id="packDimL" step="any" min="0" placeholder="Length" inputmode="decimal">
+          <input type="number" id="packDimW" step="any" min="0" placeholder="Width" inputmode="decimal">
+          <input type="number" id="packDimH" step="any" min="0" placeholder="Height" inputmode="decimal">
+        </div>
+        <div id="packDimsRound" class="row-grid" style="display:none;">
+          <input type="number" id="packDimD" step="any" min="0" placeholder="Diameter" inputmode="decimal">
+          <input type="number" id="packDimHround" step="any" min="0" placeholder="Height" inputmode="decimal">
+        </div>
+      </div>
+    </div>
+    <div id="packAutoDerived" style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;display:none;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Auto-derived from dimensions (theoretical max — adjust Capacity below if usable is less):</div>
+      <div id="packVolumeOut" style="font-size:14px;font-weight:600;color:var(--primary);">—</div>
     </div>
     <div class="row-grid">
       <div class="field">
@@ -1844,43 +1869,43 @@ function seedStandardsCatalog() {
 
   // ---- PACKAGING (single-use, disposable) ----
 
-  // Aluminum foil pans
-  addPack('Foil 21x13x3.5',    { sizeQty: 24,   sizeUnit: 'lb' });
-  addPack('Foil 12.5x10x3',    { sizeQty: 12,   sizeUnit: 'lb' });
-  addPack('Foil 12.5x10x4',    { sizeQty: 16,   sizeUnit: 'lb' });
-  addPack('Foil 8.5x6.5x2',    { sizeQty: 5,    sizeUnit: 'lb' });
-  addPack('Foil loaf 5 lb',    { sizeQty: 5,    sizeUnit: 'lb' });
-  addPack('Foil loaf 2.25 lb', { sizeQty: 2.25, sizeUnit: 'lb' });
-  addPack('Foil 12x20x2.5',    { sizeQty: 21,   sizeUnit: 'lb' });
-  addPack('Foil 12x20x4',      { sizeQty: 33,   sizeUnit: 'lb' });
+  // Aluminum foil pans (rect — dims from name; capacities are manufacturer-rated usable, not raw geometric)
+  addPack('Foil 21x13x3.5',    { sizeQty: 24,   sizeUnit: 'lb', shape: 'rect', dimL: 21,   dimW: 13,  dimH: 3.5 });
+  addPack('Foil 12.5x10x3',    { sizeQty: 12,   sizeUnit: 'lb', shape: 'rect', dimL: 12.5, dimW: 10,  dimH: 3 });
+  addPack('Foil 12.5x10x4',    { sizeQty: 16,   sizeUnit: 'lb', shape: 'rect', dimL: 12.5, dimW: 10,  dimH: 4 });
+  addPack('Foil 8.5x6.5x2',    { sizeQty: 5,    sizeUnit: 'lb', shape: 'rect', dimL: 8.5,  dimW: 6.5, dimH: 2 });
+  addPack('Foil loaf 5 lb',    { sizeQty: 5,    sizeUnit: 'lb', shape: 'rect', dimL: 8,    dimW: 4,   dimH: 2.5 });
+  addPack('Foil loaf 2.25 lb', { sizeQty: 2.25, sizeUnit: 'lb', shape: 'rect', dimL: 7,    dimW: 4,   dimH: 2 });
+  addPack('Foil 12x20x2.5',    { sizeQty: 21,   sizeUnit: 'lb', shape: 'rect', dimL: 20,   dimW: 12,  dimH: 2.5 });
+  addPack('Foil 12x20x4',      { sizeQty: 33,   sizeUnit: 'lb', shape: 'rect', dimL: 20,   dimW: 12,  dimH: 4 });
 
-  // Plastic deli containers — separate lid
-  addPack('Deli 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Deli 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Deli 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Deli 24 oz', { sizeQty: 24, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Deli 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Deli 64 oz', { sizeQty: 64, sizeUnit: 'floz', hasSeparateLid: true });
+  // Plastic deli containers (round — typical 4.5" / 4.75" diameter, height varies)
+  addPack('Deli 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 4.5,  dimH: 1.7 });
+  addPack('Deli 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 4.5,  dimH: 2.4 });
+  addPack('Deli 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 4.5,  dimH: 3.1 });
+  addPack('Deli 24 oz', { sizeQty: 24, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 4.5,  dimH: 4.2 });
+  addPack('Deli 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 4.75, dimH: 5.0 });
+  addPack('Deli 64 oz', { sizeQty: 64, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 6.0,  dimH: 6.0 });
 
-  // Paper soup cups + lids
-  addPack('Soup cup 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Soup cup 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Soup cup 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true });
-  addPack('Soup cup 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true });
+  // Paper soup cups (round — typical paper soup-cup dims by capacity)
+  addPack('Soup cup 8 oz',  { sizeQty: 8,  sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 3.6, dimH: 2.7 });
+  addPack('Soup cup 12 oz', { sizeQty: 12, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 3.9, dimH: 3.4 });
+  addPack('Soup cup 16 oz', { sizeQty: 16, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 4.4, dimH: 3.9 });
+  addPack('Soup cup 32 oz', { sizeQty: 32, sizeUnit: 'floz', hasSeparateLid: true, shape: 'round', dimD: 5.0, dimH: 5.4 });
 
-  // Hinged clamshells (1-compartment)
-  addPack('Clamshell 6x6x3 1-comp', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Clamshell 8x8x3 1-comp', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Clamshell 9x9x3 1-comp', { sizeQty: 1, sizeUnit: 'ct' });
+  // Hinged clamshells (1-compartment, rect)
+  addPack('Clamshell 6x6x3 1-comp', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 6, dimW: 6, dimH: 3 });
+  addPack('Clamshell 8x8x3 1-comp', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 8, dimW: 8, dimH: 3 });
+  addPack('Clamshell 9x9x3 1-comp', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 9, dimW: 9, dimH: 3 });
 
-  // Hinged clamshells (multi-compartment)
-  addPack('Clamshell 9x6x3 2-comp', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Clamshell 9x9x3 3-comp', { sizeQty: 1, sizeUnit: 'ct' });
+  // Hinged clamshells (multi-compartment, rect)
+  addPack('Clamshell 9x6x3 2-comp', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 9, dimW: 6, dimH: 3 });
+  addPack('Clamshell 9x9x3 3-comp', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 9, dimW: 9, dimH: 3 });
 
-  // Catering trays + lids
-  addPack('Tray 12x9',  { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Tray 16x11', { sizeQty: 1, sizeUnit: 'ct' });
-  addPack('Tray 18x14', { sizeQty: 1, sizeUnit: 'ct' });
+  // Catering trays + lids (rect, low profile)
+  addPack('Tray 12x9',  { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 12, dimW: 9,  dimH: 2 });
+  addPack('Tray 16x11', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 16, dimW: 11, dimH: 2 });
+  addPack('Tray 18x14', { sizeQty: 1, sizeUnit: 'ct', shape: 'rect', dimL: 18, dimW: 14, dimH: 2 });
 }
 
 // v2.11.0: Ingredients seed — kosher catering vendor list (preserves user's
@@ -2406,6 +2431,56 @@ function cleanupCatalogNames() {
   return changed;
 }
 
+// v2.16.0 — backfill shape + inner dimensions onto packs that already exist
+// in a user's catalog from earlier seeds (which had no dims). Keyed by the
+// CURRENT (cleaned) pack name. Adds fields only; never overrides an existing
+// shape/dim the user may have set themselves.
+var PACK_DIM_FILL = {
+  // Foil pans (rect)
+  'Foil 21x13x3.5':    { shape: 'rect', dimL: 21,   dimW: 13,  dimH: 3.5 },
+  'Foil 12.5x10x3':    { shape: 'rect', dimL: 12.5, dimW: 10,  dimH: 3 },
+  'Foil 12.5x10x4':    { shape: 'rect', dimL: 12.5, dimW: 10,  dimH: 4 },
+  'Foil 8.5x6.5x2':    { shape: 'rect', dimL: 8.5,  dimW: 6.5, dimH: 2 },
+  'Foil loaf 5 lb':    { shape: 'rect', dimL: 8,    dimW: 4,   dimH: 2.5 },
+  'Foil loaf 2.25 lb': { shape: 'rect', dimL: 7,    dimW: 4,   dimH: 2 },
+  'Foil 12x20x2.5':    { shape: 'rect', dimL: 20,   dimW: 12,  dimH: 2.5 },
+  'Foil 12x20x4':      { shape: 'rect', dimL: 20,   dimW: 12,  dimH: 4 },
+  // Deli containers (round)
+  'Deli 8 oz':  { shape: 'round', dimD: 4.5,  dimH: 1.7 },
+  'Deli 12 oz': { shape: 'round', dimD: 4.5,  dimH: 2.4 },
+  'Deli 16 oz': { shape: 'round', dimD: 4.5,  dimH: 3.1 },
+  'Deli 24 oz': { shape: 'round', dimD: 4.5,  dimH: 4.2 },
+  'Deli 32 oz': { shape: 'round', dimD: 4.75, dimH: 5.0 },
+  'Deli 64 oz': { shape: 'round', dimD: 6.0,  dimH: 6.0 },
+  // Paper soup cups (round)
+  'Soup cup 8 oz':  { shape: 'round', dimD: 3.6, dimH: 2.7 },
+  'Soup cup 12 oz': { shape: 'round', dimD: 3.9, dimH: 3.4 },
+  'Soup cup 16 oz': { shape: 'round', dimD: 4.4, dimH: 3.9 },
+  'Soup cup 32 oz': { shape: 'round', dimD: 5.0, dimH: 5.4 },
+  // Clamshells (rect)
+  'Clamshell 6x6x3 1-comp': { shape: 'rect', dimL: 6, dimW: 6, dimH: 3 },
+  'Clamshell 8x8x3 1-comp': { shape: 'rect', dimL: 8, dimW: 8, dimH: 3 },
+  'Clamshell 9x9x3 1-comp': { shape: 'rect', dimL: 9, dimW: 9, dimH: 3 },
+  'Clamshell 9x6x3 2-comp': { shape: 'rect', dimL: 9, dimW: 6, dimH: 3 },
+  'Clamshell 9x9x3 3-comp': { shape: 'rect', dimL: 9, dimW: 9, dimH: 3 },
+  // Trays (rect)
+  'Tray 12x9':  { shape: 'rect', dimL: 12, dimW: 9,  dimH: 2 },
+  'Tray 16x11': { shape: 'rect', dimL: 16, dimW: 11, dimH: 2 },
+  'Tray 18x14': { shape: 'rect', dimL: 18, dimW: 14, dimH: 2 }
+};
+function backfillPackDims() {
+  var changed = false;
+  packs.forEach(function(pk) {
+    var fill = PACK_DIM_FILL[pk.name];
+    if (!fill) return;
+    // Don't override anything the user already set.
+    if (pk.shape || pk.dimL > 0 || pk.dimW > 0 || pk.dimH > 0 || pk.dimD > 0) return;
+    Object.keys(fill).forEach(function(k){ pk[k] = fill[k]; });
+    changed = true;
+  });
+  return changed;
+}
+
 function scheduleCatalogSeed() {
   var DEFER_MS    = 3500;   // initial wait before first attempt
   var POLL_MS     = 1000;   // re-check interval while waiting for snapshots
@@ -2445,10 +2520,19 @@ function scheduleCatalogSeed() {
       renamed = cleanupCatalogNames();
       localStorage.setItem('name_cleanup_v', '1');
     }
+    // v2.16.0 — backfill shape + inner dimensions onto seeded packs that
+    // existed before the dim feature. Runs after rename so the keys match
+    // current names. Same snapshot guard as above; never overrides user data.
+    var dimBackfillV = parseInt(localStorage.getItem('pack_dims_v') || '0', 10);
+    var dimsBackfilled = false;
+    if (dimBackfillV < 1) {
+      dimsBackfilled = backfillPackDims();
+      localStorage.setItem('pack_dims_v', '1');
+    }
     var potsChanged  = (pots.length     > potsBefore) || renamed.pots;
-    var packsChanged = (packs.length    > packsBefore) || renamed.packs;
+    var packsChanged = (packs.length    > packsBefore) || renamed.packs || dimsBackfilled;
     var prodsChanged = (products.length > prodsBefore);
-    if (didSeed || renamed.pots || renamed.packs) {
+    if (didSeed || renamed.pots || renamed.packs || dimsBackfilled) {
       if (potsChanged)  localStorage.setItem(STORAGE_KEY_POTS,     JSON.stringify(pots));
       if (packsChanged) localStorage.setItem(STORAGE_KEY_PACKS,    JSON.stringify(packs));
       if (prodsChanged) localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
@@ -6864,12 +6948,103 @@ function packReadForm() {
     name: (document.getElementById('packName').value || '').trim(),
     sizeQty: parseFloat(document.getElementById('packSizeQty').value) || 0,
     sizeUnit: document.getElementById('packSizeUnit').value || 'oz',
+    shape: document.getElementById('packShape').value || '',
+    dimL: parseFloat(document.getElementById('packDimL').value) || 0,
+    dimW: parseFloat(document.getElementById('packDimW').value) || 0,
+    dimH: parseFloat(document.getElementById('packDimH').value) || 0,
+    dimD: parseFloat(document.getElementById('packDimD').value) || 0,
+    dimHround: parseFloat(document.getElementById('packDimHround').value) || 0,
     caseQty: parseFloat(document.getElementById('packCaseQty').value) || 0,
     casePrice: parseFloat(document.getElementById('packCasePrice').value) || 0,
     hasSeparateLid: !!document.getElementById('packHasLid').checked,
     lidCaseQty: parseFloat(document.getElementById('packLidCaseQty').value) || 0,
     lidCasePrice: parseFloat(document.getElementById('packLidCasePrice').value) || 0
   };
+}
+// v2.16.0 — geometric volume from dims. Same factor as pots (≈0.554 fl oz/in³)
+// so the two catalogs use the same conversion.
+function packComputeVolumeOz(p) {
+  if (!p) return 0;
+  if (p.shape === 'rect' && p.dimL > 0 && p.dimW > 0 && p.dimH > 0) {
+    return p.dimL * p.dimW * p.dimH * 0.554;
+  }
+  // For round, the form holds height in dimHround so it doesn't collide with rect's dimH.
+  if (p.shape === 'round' && p.dimD > 0 && (p.dimH > 0 || p.dimHround > 0)) {
+    var H = p.dimHround > 0 ? p.dimHround : p.dimH;
+    return Math.PI * Math.pow(p.dimD / 2, 2) * H * 0.554;
+  }
+  return 0;
+}
+// Parse explicit qty+unit from a pack name. Skips bare "oz" because it's
+// ambiguous between weight (mass) and fluid (volume) — the user picks the
+// unit when there's no fl/lb/cup/qt/gal qualifier.
+function parseSizeFromName(name) {
+  if (!name) return null;
+  var patterns = [
+    { re: /(\d+(?:\.\d+)?)\s*(?:fl\.?\s*oz|fluid\s*ounce[s]?|floz)\b/i, unit: 'floz' },
+    { re: /(\d+(?:\.\d+)?)\s*cups?\b/i,                                  unit: 'cup' },
+    { re: /(\d+(?:\.\d+)?)\s*(?:qt|quarts?)\b/i,                         unit: 'qt' },
+    { re: /(\d+(?:\.\d+)?)\s*(?:gal|gallons?)\b/i,                       unit: 'gal' },
+    { re: /(\d+(?:\.\d+)?)\s*(?:lb|pounds?)\b/i,                         unit: 'lb' }
+  ];
+  for (var i = 0; i < patterns.length; i++) {
+    var m = name.match(patterns[i].re);
+    if (m) return { qty: parseFloat(m[1]), unit: patterns[i].unit };
+  }
+  return null;
+}
+function togglePackShape() {
+  var shape = (document.getElementById('packShape') || {}).value || 'rect';
+  var rect = document.getElementById('packDimsRect');
+  var round = document.getElementById('packDimsRound');
+  if (rect)  rect.style.display  = (shape === 'rect')  ? '' : 'none';
+  if (round) round.style.display = (shape === 'round') ? '' : 'none';
+}
+function packUpdateAutoDerived() {
+  var f = packReadForm();
+  var volOz = packComputeVolumeOz(f);
+  var derived = document.getElementById('packAutoDerived');
+  var out = document.getElementById('packVolumeOut');
+  if (volOz > 0 && derived && out) {
+    derived.style.display = '';
+    out.textContent = format(volOz) + ' fl oz   ·   ' + format(volOz / 16) + ' lb water   ·   ' + format(volOz / 32) + ' qt';
+  } else if (derived) {
+    derived.style.display = 'none';
+  }
+  packMaybeAutoFillCapacity(f, volOz);
+}
+// Fills Capacity ONLY when it's empty. Once the user (or a previous auto-
+// fill) has put a value there, we never override it. Erase the field to
+// re-enable auto-fill.
+function packMaybeAutoFillCapacity(f, volOz) {
+  var capEl = document.getElementById('packSizeQty');
+  var unitEl = document.getElementById('packSizeUnit');
+  if (!capEl || capEl.value) return;
+  // 1) Try parsing the name first (most explicit signal).
+  var nameHint = parseSizeFromName(f.name);
+  if (nameHint) {
+    capEl.value = nameHint.qty;
+    if (unitEl) unitEl.value = nameHint.unit;
+    packUpdateLivePreview();
+    return;
+  }
+  // 2) Else compute from dims, in whatever unit is already selected.
+  if (volOz > 0) {
+    var unit = (unitEl && unitEl.value) || 'oz';
+    var info = UNIT_INFO[unit];
+    var v = 0;
+    if (info && info.kind === 'volume') {
+      v = convertWithinKind(volOz, 'floz', unit) || 0;
+    } else if (unit === 'lb') {
+      v = volOz / 16; // water-density approximation
+    } else if (unit === 'oz') {
+      v = volOz;       // weight oz ≈ fl oz of water (4% off — user can adjust)
+    }
+    if (v > 0) {
+      capEl.value = +v.toFixed(2);
+      packUpdateLivePreview();
+    }
+  }
 }
 function packUpdateLivePreview() {
   var f = packReadForm();
@@ -6893,6 +7068,12 @@ function startEditPack(packId) {
   document.getElementById('packName').value = pk.name || '';
   document.getElementById('packSizeQty').value = pk.sizeQty > 0 ? pk.sizeQty : '';
   document.getElementById('packSizeUnit').value = pk.sizeUnit || 'oz';
+  document.getElementById('packShape').value = pk.shape || '';
+  document.getElementById('packDimL').value = pk.dimL > 0 ? pk.dimL : '';
+  document.getElementById('packDimW').value = pk.dimW > 0 ? pk.dimW : '';
+  document.getElementById('packDimH').value = (pk.shape === 'rect' && pk.dimH > 0) ? pk.dimH : '';
+  document.getElementById('packDimD').value = pk.dimD > 0 ? pk.dimD : '';
+  document.getElementById('packDimHround').value = (pk.shape === 'round' && pk.dimH > 0) ? pk.dimH : '';
   document.getElementById('packCaseQty').value = pk.caseQty > 0 ? pk.caseQty : '';
   document.getElementById('packCasePrice').value = pk.casePrice > 0 ? pk.casePrice : '';
   document.getElementById('packHasLid').checked = !!pk.hasSeparateLid;
@@ -6902,6 +7083,8 @@ function startEditPack(packId) {
   document.getElementById('packEditCancel').style.display = '';
   document.getElementById('packFormMsg').style.color = 'var(--primary)';
   document.getElementById('packFormMsg').textContent = '✏️ Editing "' + pk.name + '" — change fields and click Update.';
+  togglePackShape();
+  packUpdateAutoDerived();
   packUpdateLivePreview();
   document.getElementById('packName').scrollIntoView({behavior:'smooth', block:'center'});
   renderPacks();
@@ -6911,6 +7094,12 @@ function cancelEditPack() {
   document.getElementById('packName').value = '';
   document.getElementById('packSizeQty').value = '';
   document.getElementById('packSizeUnit').value = 'oz';
+  document.getElementById('packShape').value = '';
+  document.getElementById('packDimL').value = '';
+  document.getElementById('packDimW').value = '';
+  document.getElementById('packDimH').value = '';
+  document.getElementById('packDimD').value = '';
+  document.getElementById('packDimHround').value = '';
   document.getElementById('packCaseQty').value = '';
   document.getElementById('packCasePrice').value = '';
   document.getElementById('packHasLid').checked = false;
@@ -6919,6 +7108,8 @@ function cancelEditPack() {
   document.getElementById('addPackBtn').textContent = 'Save packaging';
   document.getElementById('packEditCancel').style.display = 'none';
   document.getElementById('packFormMsg').textContent = '';
+  togglePackShape();
+  packUpdateAutoDerived();
   packUpdateLivePreview();
   renderPacks();
 }
@@ -6995,6 +7186,20 @@ function renderPacks() {
 var packHasLidEl = document.getElementById('packHasLid');
 if (packHasLidEl) packHasLidEl.addEventListener('change', packUpdateLivePreview);
 
+// v2.16.0 — shape + dim inputs drive auto-derivation. Name input also feeds
+// auto-fill via the embedded "5 lb" / "12 fl oz" pattern in parseSizeFromName.
+document.getElementById('packShape') && document.getElementById('packShape').addEventListener('change', function() {
+  togglePackShape();
+  packUpdateAutoDerived();
+});
+['packDimL','packDimW','packDimH','packDimD','packDimHround'].forEach(function(eid) {
+  var el = document.getElementById(eid);
+  if (el) el.addEventListener('input', packUpdateAutoDerived);
+});
+document.getElementById('packName') && document.getElementById('packName').addEventListener('input', packUpdateAutoDerived);
+document.getElementById('packSizeUnit') && document.getElementById('packSizeUnit').addEventListener('change', packUpdateAutoDerived);
+togglePackShape();
+
 document.getElementById('packEditCancel') && document.getElementById('packEditCancel').addEventListener('click', cancelEditPack);
 
 document.getElementById('addPackBtn') && document.getElementById('addPackBtn').addEventListener('click', function() {
@@ -7006,6 +7211,21 @@ document.getElementById('addPackBtn') && document.getElementById('addPackBtn').a
     target.name = f.name;
     target.sizeQty = f.sizeQty;
     target.sizeUnit = f.sizeUnit;
+    if (f.shape) {
+      target.shape = f.shape;
+      if (f.shape === 'rect') {
+        if (f.dimL > 0) target.dimL = f.dimL; else delete target.dimL;
+        if (f.dimW > 0) target.dimW = f.dimW; else delete target.dimW;
+        if (f.dimH > 0) target.dimH = f.dimH; else delete target.dimH;
+        delete target.dimD;
+      } else {
+        if (f.dimD > 0)      target.dimD = f.dimD;      else delete target.dimD;
+        if (f.dimHround > 0) target.dimH = f.dimHround; else delete target.dimH;
+        delete target.dimL; delete target.dimW;
+      }
+    } else {
+      delete target.shape; delete target.dimL; delete target.dimW; delete target.dimH; delete target.dimD;
+    }
     if (f.caseQty > 0)   target.caseQty = f.caseQty;     else delete target.caseQty;
     if (f.casePrice > 0) target.casePrice = f.casePrice; else delete target.casePrice;
     if (f.hasSeparateLid) {
