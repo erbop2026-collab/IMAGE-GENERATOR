@@ -584,6 +584,22 @@
   }
   .component-row .btn-danger { width: 32px; height: 32px; padding: 0; font-size: 14px; }
   .component-row .comp-lead-btn { width: 32px; height: 32px; padding: 0; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
+  /* v2.15.0 — searchable ingredient picker (replaces native select) */
+  .comp-product-search-wrap { position: relative; min-width: 0; }
+  .comp-product-search { width: 100%; box-sizing: border-box; }
+  .comp-product-dropdown {
+    position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+    background: white; border: 1.5px solid var(--border); border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    max-height: 240px; overflow-y: auto; z-index: 50;
+  }
+  .comp-product-dropdown-item {
+    padding: 8px 10px; font-size: 13px; cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .comp-product-dropdown-item:last-child { border-bottom: none; }
+  .comp-product-dropdown-item:hover, .comp-product-dropdown-item.active { background: #eff6ff; }
+  .comp-product-dropdown-empty { padding: 8px 10px; font-size: 12px; color: var(--text-muted); font-style: italic; }
   .component-list-empty {
     font-size: 12px;
     color: var(--text-muted);
@@ -762,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.15.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.15.1</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -3175,19 +3191,23 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
 });
 
 // ============ RECIPES (composite dishes — one meal = multiple products) ============
+// v2.15.0 — Component picker is now a searchable combobox: clicking the input
+// opens a sorted dropdown of all ingredients, typing filters by name. The
+// chosen ID lives on the input's data-product-id attribute (collectors read
+// from there). With ~130 ingredients the native <select> was unscannable.
 function buildComponentRowHTML(productId, amount, isLead) {
-  var opts = '<option value="">-- pick ingredient --</option>' + products.map(function(p) {
-    var sel = (p.id === productId) ? ' selected' : '';
-    return '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.name) + ' (' + escapeHtml(unitLabel(p.unit)) + ')</option>';
-  }).join('');
   var p = products.find(function(x){ return x.id === productId; });
+  var name = p ? p.name : '';
   var unitText = p ? unitLabel(p.unit) : '';
   var amtAttr = (amount > 0) ? ' value="' + amount + '"' : '';
   var leadBg = isLead ? '#fef3c7' : '#f8fafc';
   var leadColor = isLead ? '#92400e' : '#94a3b8';
   return '<div class="component-row" data-lead="' + (isLead ? 'true' : 'false') + '">' +
     '<button class="comp-lead-btn" type="button" title="Mark as lead ingredient" style="background:' + leadBg + ';color:' + leadColor + ';font-size:14px;">' + (isLead ? '⭐' : '☆') + '</button>' +
-    '<select class="comp-product-input">' + opts + '</select>' +
+    '<div class="comp-product-search-wrap">' +
+      '<input type="text" class="comp-product-search" data-product-id="' + escapeHtml(productId || '') + '" value="' + escapeHtml(name) + '" placeholder="🔍 Search ingredient…" autocomplete="off">' +
+      '<div class="comp-product-dropdown" style="display:none;"></div>' +
+    '</div>' +
     '<input type="number" step="any" min="0" inputmode="decimal" placeholder="Amount" class="comp-amount-input"' + amtAttr + '>' +
     '<div class="comp-unit-label">' + escapeHtml(unitText) + '</div>' +
     '<button class="btn-danger btn-icon comp-remove-btn" type="button" title="Remove">🗑</button>' +
@@ -3198,7 +3218,7 @@ function collectComponents(listEl) {
   if (!listEl) return [];
   var comps = [];
   listEl.querySelectorAll('.component-row').forEach(function(row) {
-    var pid = row.querySelector('.comp-product-input').value;
+    var pid = (row.querySelector('.comp-product-search').getAttribute('data-product-id') || '');
     var amt = parseFloat(row.querySelector('.comp-amount-input').value);
     if (pid && amt > 0) comps.push({ productId: pid, amount: amt });
   });
@@ -3208,7 +3228,7 @@ function collectLeadProductId(listEl) {
   if (!listEl) return null;
   var row = listEl.querySelector('.component-row[data-lead="true"]');
   if (!row) return null;
-  var pid = row.querySelector('.comp-product-input').value;
+  var pid = row.querySelector('.comp-product-search').getAttribute('data-product-id') || '';
   return pid || null;
 }
 
@@ -3585,13 +3605,70 @@ document.addEventListener('click', function(e) {
     return;
   }
 });
-document.addEventListener('change', function(e) {
-  if (e.target && e.target.matches && e.target.matches('.comp-product-input')) {
-    var pid = e.target.value;
-    var p = products.find(function(x){ return x.id === pid; });
-    var label = e.target.parentElement.querySelector('.comp-unit-label');
-    if (label) label.textContent = p ? unitLabel(p.unit) : '';
+// v2.15.0 — searchable component picker dropdown handlers.
+function _renderCompDropdown(input, showAll) {
+  var dropdown = input.parentElement.querySelector('.comp-product-dropdown');
+  if (!dropdown) return;
+  var q = showAll ? '' : (input.value || '').trim().toLowerCase();
+  var matches = products.slice()
+    .sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); })
+    .filter(function(p) { return !q || (p.name||'').toLowerCase().indexOf(q) !== -1; });
+  if (matches.length === 0) {
+    dropdown.innerHTML = '<div class="comp-product-dropdown-empty">No matching ingredient. Add it in the 🥕 Ingredients tab.</div>';
+  } else {
+    dropdown.innerHTML = matches.map(function(p) {
+      return '<div class="comp-product-dropdown-item" data-pick-id="' + escapeHtml(p.id) + '">' +
+        escapeHtml(p.name) +
+        ' <span style="color:#94a3b8;font-size:11px;">(' + escapeHtml(unitLabel(p.unit)) + ')</span>' +
+        '</div>';
+    }).join('');
   }
+  dropdown.style.display = '';
+}
+function _hideCompDropdown(input) {
+  var dropdown = input.parentElement.querySelector('.comp-product-dropdown');
+  if (dropdown) { dropdown.innerHTML = ''; dropdown.style.display = 'none'; }
+}
+document.addEventListener('focusin', function(e) {
+  if (e.target && e.target.classList && e.target.classList.contains('comp-product-search')) {
+    _renderCompDropdown(e.target, true);
+  }
+});
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.classList && e.target.classList.contains('comp-product-search')) {
+    _renderCompDropdown(e.target, false);
+  }
+});
+document.addEventListener('focusout', function(e) {
+  if (!e.target || !e.target.classList || !e.target.classList.contains('comp-product-search')) return;
+  var input = e.target;
+  // Slight delay so a mousedown on a dropdown item gets to fire its handler first.
+  setTimeout(function() {
+    var pickedId = input.getAttribute('data-product-id') || '';
+    var picked = products.find(function(p){ return p.id === pickedId; });
+    input.value = picked ? picked.name : '';
+    _hideCompDropdown(input);
+  }, 200);
+});
+// mousedown fires BEFORE the input blurs; preventDefault keeps focus stable
+// and we commit the pick immediately. The blur handler still runs afterward
+// but the pickedId is already set, so it just normalises the displayed text.
+document.addEventListener('mousedown', function(e) {
+  var item = e.target && e.target.closest && e.target.closest('.comp-product-dropdown-item');
+  if (!item) return;
+  e.preventDefault();
+  var dropdown = item.closest('.comp-product-dropdown');
+  if (!dropdown) return;
+  var wrap = dropdown.parentElement;
+  var input = wrap.querySelector('.comp-product-search');
+  var label = wrap.parentElement.querySelector('.comp-unit-label');
+  var pid = item.getAttribute('data-pick-id');
+  var p = products.find(function(x){ return x.id === pid; });
+  if (!p) return;
+  input.value = p.name;
+  input.setAttribute('data-product-id', p.id);
+  if (label) label.textContent = unitLabel(p.unit);
+  _hideCompDropdown(input);
 });
 
 // ============ ORDER ROWS (grouped: each row = one product with multiple sizes) ============
@@ -3656,19 +3733,10 @@ function renderOrderRows() {
           opts.push({ val: rounded, label: label, packId: pk.id });
         });
         opts.sort(function(a, b){ return a.val - b.val; });
-        // Custom fallback: existing portionSize that doesn't match a tagged pack
-        // (or pre-v2.13.6 sizes without packId). Keeps the value visible.
-        var matches = opts.some(function(o){
-          return Math.abs(o.val - sz.portionSize) < 0.001 && (sz.packId || '') === o.packId;
-        });
-        if (sz.portionSize > 0 && !matches) {
-          opts.unshift({
-            val: +sz.portionSize.toFixed(4),
-            label: 'Custom: ' + format(sz.portionSize) + ' ' + unitLabel(dishYieldUnit),
-            custom: true,
-            packId: ''
-          });
-        }
+        // v2.15.0 — removed legacy "Custom: X" fallback. Pre-v2.13.6 sizes with
+        // no packId no longer surface as a Custom option; the dropdown stays
+        // on "— pick packaging —" until the user picks one from the catalog.
+        // Saved portionSize keeps working until a new pick replaces it.
         return opts;
       }
       var rsizesHtml = rsizes.map(function(sz) {
@@ -4004,27 +4072,37 @@ document.getElementById('addDishRowBtn').addEventListener('click', function() {
 });
 
 // ============ CALC TAB SEARCH / QUICK-ADD ============
+// v2.15.0 — calcQuickAddOpen drives whether the dropdown shows. Set on focus
+// of the search input so clicking it surfaces all dishes immediately, even
+// before the user types anything. Closed on blur (with delay so clicks on a
+// chip register first) or after a successful add.
+var calcQuickAddOpen = false;
 function renderQuickAdd() {
   var box = document.getElementById('quickAddList');
   var q = calcSearch.trim().toLowerCase();
-  if (!q) { box.innerHTML = ''; return; }
+  if (!q && !calcQuickAddOpen) { box.innerHTML = ''; return; }
   if (products.length === 0 && recipes.length === 0) {
     box.innerHTML = '<div class="quick-add-empty">No ingredients or recipes defined yet.</div>';
     return;
   }
-  var matchedProducts = products.filter(function(p) {
-    return p.name.toLowerCase().indexOf(q) !== -1;
-  });
-  var matchedRecipes = recipes.filter(function(r) {
-    return r.name.toLowerCase().indexOf(q) !== -1;
-  });
+  var byName = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
+  var matchedRecipes = recipes
+    .filter(function(r) { return !q || r.name.toLowerCase().indexOf(q) !== -1; })
+    .slice().sort(byName);
+  var matchedProducts = products
+    .filter(function(p) { return !q || p.name.toLowerCase().indexOf(q) !== -1; })
+    .slice().sort(byName);
   if (matchedProducts.length === 0 && matchedRecipes.length === 0) {
     box.innerHTML = '<div class="quick-add-empty">No matches.</div>';
     return;
   }
-  var html = matchedRecipes.slice(0, 8).map(function(r) {
+  // When showing all (empty query), surface every dish — chips are wrap so a
+  // long list scrolls within the card. Cap products at 30 to keep it sane.
+  var recipeCap  = q ? 8  : matchedRecipes.length;
+  var productCap = q ? 12 : 30;
+  var html = matchedRecipes.slice(0, recipeCap).map(function(r) {
     return '<button class="quick-add-chip" style="background:#fef3c7;color:#92400e;border-color:#92400e;" data-quickadd-recipe="' + r.id + '">+ 🍲 ' + escapeHtml(r.name) + '</button>';
-  }).join('') + matchedProducts.slice(0, 12).map(function(p) {
+  }).join('') + matchedProducts.slice(0, productCap).map(function(p) {
     return '<button class="quick-add-chip" data-quickadd="' + p.id + '">+ ' + escapeHtml(p.name) + '</button>';
   }).join('');
   box.innerHTML = html;
@@ -4079,6 +4157,14 @@ document.getElementById('calcSearch').addEventListener('input', function(e) {
   calcSearch = e.target.value;
   renderQuickAdd();
   renderOrderRows();
+});
+document.getElementById('calcSearch').addEventListener('focus', function() {
+  calcQuickAddOpen = true;
+  renderQuickAdd();
+});
+document.getElementById('calcSearch').addEventListener('blur', function() {
+  // Delay close so a click on a chip lands on the button before it's removed.
+  setTimeout(function() { calcQuickAddOpen = false; renderQuickAdd(); }, 200);
 });
 
 // ============ CALCULATION ============
@@ -6863,7 +6949,7 @@ function renderPacks() {
     if (pk.hasSeparateLid && pk.lidCaseQty > 0 && pk.lidCasePrice > 0) {
       lidTxt = '✓ ' + format(pk.lidCaseQty) + ' / $' + pk.lidCasePrice.toFixed(2);
     } else if (pk.hasSeparateLid) {
-      lidTxt = '<span style="color:#b45309;">✓ (incomplete)</span>';
+      lidTxt = '<span style="color:#b45309;" title="This pack expects a separate lid — open ✏️ and fill in lid case qty + price, or uncheck Separate lid.">⚠ Add lid price</span>';
     } else {
       lidTxt = '<span style="color:var(--text-muted);">—</span>';
     }
