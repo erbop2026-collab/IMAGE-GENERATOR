@@ -42,9 +42,10 @@
 .end method
 
 .method protected onCreate(Landroid/os/Bundle;)V
-    .registers 10
+    .registers 11
     # v0=WebView, v1=WebSettings, v2=bool, v3=AssetManager/LocalServer
     # v4=InputStream, v5=ByteArrayOutputStream, v6=buf→html, v7=n, v8=zero
+    # p0=v9(this), p1=v10(Bundle)
 
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
 
