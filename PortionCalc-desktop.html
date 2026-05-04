@@ -788,7 +788,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.8</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.9</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2126,6 +2126,7 @@ function getDeviceId() {
 }
 
 var _syncLog = [];
+var _lastSnapSource = {};  // per target: 'cache' | 'server'
 function updateSyncStatus(state, detail) {
   var el = document.getElementById('syncStatus');
   if (!el) return;
@@ -2134,6 +2135,7 @@ function updateSyncStatus(state, detail) {
     offline: '📵 Offline',
     error:   '⚠️ Sync err',
     syncing: '🔄 Syncing',
+    pending: '⏳ Pending',
     waiting: '⏳ …'
   };
   el.textContent = labels[state] || state;
@@ -2147,11 +2149,15 @@ function showSyncDebug() {
   var saveAts = ['products','recipes','pots','packs'].map(function(k){
     return k + ':' + (localStorage.getItem('_saveAt_' + k) || '0');
   }).join(', ');
+  var sources = ['products','recipes','pots','packs'].map(function(k){
+    return k + ':' + (_lastSnapSource[k] || '?');
+  }).join(', ');
   var lines = [
     'Firebase SDK: ' + (typeof firebase !== 'undefined' ? 'loaded' : 'NOT LOADED'),
     'Firestore ready: ' + firestoreReady,
     'navigator.onLine: ' + navigator.onLine,
     'Snapshots rcvd: ' + snap,
+    'Snap sources: ' + sources,
     'localSaveAt: ' + saveAts,
     'Products: ' + products.length + '  Recipes: ' + recipes.length,
     'Pots: ' + pots.length + '  Packs: ' + packs.length,
@@ -2159,9 +2165,9 @@ function showSyncDebug() {
     _syncLog.join('\n')
   ];
   var msg = lines.join('\n');
-  // Also test a live fetch to Firestore
-  fetch('https://firestore.googleapis.com/', {method:'GET', mode:'no-cors'})
-    .then(function(){ alert(msg + '\n--- Network test: FETCH OK'); })
+  // Test HTTPS connectivity via a reliable endpoint
+  fetch('https://www.googleapis.com/robots.txt', {method:'GET', mode:'no-cors'})
+    .then(function(){ alert(msg + '\n--- Network test: FETCH OK (googleapis.com reachable)'); })
     .catch(function(e){ alert(msg + '\n--- Network test: FETCH FAILED: ' + e); });
 }
 
@@ -2215,8 +2221,12 @@ function initFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
-    db.enablePersistence({ synchronizeTabs: true }).catch(function(){
-      // Persistence not available (multi-tab without sync, or unsupported browser).
+    // Force HTTP long-polling instead of gRPC/WebSocket.
+    // gRPC (HTTP/2) is blocked in Android WebView from file:// on API 29+ despite
+    // setAllowUniversalAccessFromFileURLs — long-polling uses plain HTTP/1.1 which works.
+    try { db.settings({ experimentalForceLongPolling: true, merge: true }); } catch(e) {}
+    db.enablePersistence({ synchronizeTabs: true }).catch(function(err){
+      console.warn('[sync] persistence unavailable:', err && err.code);
     });
   } catch(e) {
     console.error('[sync] init failed:', e);
@@ -2265,20 +2275,18 @@ function setupSyncListeners() {
   SYNC_TARGETS.forEach(function(t) {
     db.collection('catalog').doc(t.id).onSnapshot(function(snap) {
       // v2.13.13 — mark target as "cloud state known" before any early returns.
-      // Even a non-existent doc counts: it tells us the cloud truly is empty
-      // here, so the seed can safely push.
       firstSnapshotReceived[t.id] = true;
+      var fromCache = snap.metadata && snap.metadata.fromCache;
+      _lastSnapSource[t.id] = fromCache ? 'cache' : 'server';
       if (!snap.exists) return;
       var data = snap.data();
       if (!data || !Array.isArray(data.items)) return;
       // Skip our own writes echoing back.
       if (data.updatedBy === deviceId) return;
       // v2.13.11 — stale guard, BUT only for cached snapshots (IndexedDB).
-      // Server snapshots (fromCache=false) from another device are authoritative
-      // and must always win — the old timestamp comparison broke multi-device sync
-      // because device B's push could be "older" than device A's local save.
+      // Server snapshots (fromCache=false) from another device are authoritative.
       var cloudAt = data.updatedAt || 0;
-      if (snap.metadata && snap.metadata.fromCache) {
+      if (fromCache) {
         var localSaveAt = getLocalSaveAt(t.id);
         if (localSaveAt > 0 && cloudAt < localSaveAt) {
           console.log('[sync] cache stale for ' + t.id + ' (cloud=' + cloudAt + ', local=' + localSaveAt + ') — re-pushing local');
@@ -2286,9 +2294,7 @@ function setupSyncListeners() {
           return;
         }
       }
-      // v2.13.12 — price-loss guard: never let cloud overwrite a pack that has
-      // a price locally with a cloud version that has no price. Re-push local
-      // so the cloud catches up, but don't discard the user's pricing work.
+      // v2.13.12 — price-loss guard
       if (t.id === 'packs') {
         var localPacks = t.get();
         var wouldLosePrice = Array.isArray(data.items) && data.items.some(function(cp) {
@@ -2303,11 +2309,12 @@ function setupSyncListeners() {
         }
       }
       t.set(data.items);
-      // v2.14.0 — track the size of the catalog as the cloud has it. The
-      // big-delta guard uses this to refuse pushes that would shrink the
-      // cloud by more than the safe threshold.
       setLastKnownCloudSize(t.id, data.items.length);
       t.render();
+      // Live server snapshot = confirmed connected. Update status if not already synced.
+      if (!fromCache) {
+        updateSyncStatus('online');
+      }
     }, function(err) {
       console.error('[sync] listener error for ' + t.id + ':', err);
       updateSyncStatus('error', String(err));
@@ -2338,17 +2345,24 @@ function _doPush(targetId, opts) {
     }
   }
   updateSyncStatus('syncing', 'Pushing ' + targetId + '…');
+  // If the push doesn't complete in 8s (server unreachable), flip to "Pending"
+  // so the status badge is honest rather than stuck on "Syncing" forever.
+  var _pushTimeout = setTimeout(function(){
+    _pushTimeout = null;
+    updateSyncStatus('pending', targetId + ' write queued — will sync when server reachable');
+  }, 8000);
   return db.collection('catalog').doc(targetId).set({
     items: items,
     updatedAt: Date.now(),
     updatedBy: deviceId
   }).then(function(){
+    if (_pushTimeout) { clearTimeout(_pushTimeout); _pushTimeout = null; }
     setLastKnownCloudSize(targetId, items.length);
-    // v2.14.0 — versioned snapshot AFTER successful main write so we never
-    // leave a version pointer to a payload that didn't land.
+    // v2.14.0 — versioned snapshot AFTER successful main write.
     writeVersionSnapshot(targetId, items);
     updateSyncStatus('online');
   }).catch(function(e){
+    if (_pushTimeout) { clearTimeout(_pushTimeout); _pushTimeout = null; }
     console.error('[sync] push failed for ' + targetId + ':', e);
     updateSyncStatus('error', String(e));
   });
