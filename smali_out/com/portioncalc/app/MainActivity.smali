@@ -3,58 +3,44 @@
 .source "MainActivity.java"
 
 
-# instance fields
 .field private wv:Landroid/webkit/WebView;
 
 
-# direct methods
 .method public constructor <init>()V
     .registers 1
-
     invoke-direct {p0}, Landroid/app/Activity;-><init>()V
-
     return-void
 .end method
 
 
-# virtual methods
 .method public onBackPressed()V
     .registers 3
 
     iget-object v0, p0, Lcom/portioncalc/app/MainActivity;->wv:Landroid/webkit/WebView;
-
     if-eqz v0, :cond_e
-
     invoke-virtual {v0}, Landroid/webkit/WebView;->canGoBack()Z
-
     move-result v1
-
     if-eqz v1, :cond_e
-
     invoke-virtual {v0}, Landroid/webkit/WebView;->goBack()V
-
     return-void
 
     :cond_e
     invoke-super {p0}, Landroid/app/Activity;->onBackPressed()V
-
     return-void
 .end method
 
 .method protected onCreate(Landroid/os/Bundle;)V
     .registers 11
-    # v0=WebView, v1=WebSettings, v2=bool, v3=AssetManager/LocalServer
+    # v0=WebView, v1=WebSettings, v2=bool, v3=AssetManager/temp
     # v4=InputStream, v5=ByteArrayOutputStream, v6=buf→html, v7=n, v8=zero
     # p0=v9(this), p1=v10(Bundle)
 
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
 
-    # Create WebView
     new-instance v0, Landroid/webkit/WebView;
     invoke-direct {v0, p0}, Landroid/webkit/WebView;-><init>(Landroid/content/Context;)V
     iput-object v0, p0, Lcom/portioncalc/app/MainActivity;->wv:Landroid/webkit/WebView;
 
-    # Configure WebSettings
     invoke-virtual {v0}, Landroid/webkit/WebView;->getSettings()Landroid/webkit/WebSettings;
     move-result-object v1
 
@@ -67,18 +53,9 @@
     const/4 v2, 0x0
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setBuiltInZoomControls(Z)V
 
-    # Set WebViewClient
-    new-instance v2, Landroid/webkit/WebViewClient;
-    invoke-direct {v2}, Landroid/webkit/WebViewClient;-><init>()V
-    invoke-virtual {v0, v2}, Landroid/webkit/WebView;->setWebViewClient(Landroid/webkit/WebViewClient;)V
-
-    # Set WebChromeClient
-    new-instance v2, Landroid/webkit/WebChromeClient;
-    invoke-direct {v2}, Landroid/webkit/WebChromeClient;-><init>()V
-    invoke-virtual {v0, v2}, Landroid/webkit/WebView;->setWebChromeClient(Landroid/webkit/WebChromeClient;)V
-
-    # Read index.html bytes, start LocalServer (which binds socket + posts loadUrl
-    # from its background run() thread). No loadUrl call here.
+    # Read index.html bytes, wire CustomWebViewClient, load HTTPS origin URL.
+    # shouldInterceptRequest serves bytes for app.portioncalc.local requests.
+    # WebView grants full outbound HTTPS to content from an HTTPS-scheme origin.
     :try_start_0
     invoke-virtual {p0}, Landroid/app/Activity;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v3
@@ -107,17 +84,25 @@
     invoke-virtual {v5}, Ljava/io/ByteArrayOutputStream;->toByteArray()[B
     move-result-object v6
 
-    # LocalServer(byte[] html, WebView wv) — socket binds in run() on background thread
-    new-instance v3, Lcom/portioncalc/app/LocalServer;
-    invoke-direct {v3, v6, v0}, Lcom/portioncalc/app/LocalServer;-><init>([BLandroid/webkit/WebView;)V
-    invoke-virtual {v3}, Ljava/lang/Thread;->start()V
+    new-instance v3, Lcom/portioncalc/app/CustomWebViewClient;
+    invoke-direct {v3, v6}, Lcom/portioncalc/app/CustomWebViewClient;-><init>([B)V
+    invoke-virtual {v0, v3}, Landroid/webkit/WebView;->setWebViewClient(Landroid/webkit/WebViewClient;)V
+
+    new-instance v3, Landroid/webkit/WebChromeClient;
+    invoke-direct {v3}, Landroid/webkit/WebChromeClient;-><init>()V
+    invoke-virtual {v0, v3}, Landroid/webkit/WebView;->setWebChromeClient(Landroid/webkit/WebChromeClient;)V
+
+    const-string v3, "https://app.portioncalc.local/"
+    invoke-virtual {v0, v3}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_fallback
 
     goto :after_load
 
     :catch_fallback
-    # Emergency fallback — asset read or LocalServer init failed
+    new-instance v3, Landroid/webkit/WebViewClient;
+    invoke-direct {v3}, Landroid/webkit/WebViewClient;-><init>()V
+    invoke-virtual {v0, v3}, Landroid/webkit/WebView;->setWebViewClient(Landroid/webkit/WebViewClient;)V
     const-string v3, "file:///android_asset/index.html"
     invoke-virtual {v0, v3}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
 
