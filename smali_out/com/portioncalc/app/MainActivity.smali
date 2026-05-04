@@ -43,6 +43,8 @@
 
 .method protected onCreate(Landroid/os/Bundle;)V
     .registers 11
+    # v0=WebView, v1=WebSettings, v2=bool, v3=AssetManager/LocalServer
+    # v4=InputStream/URL, v5=ByteArrayOutputStream, v6=buf→html, v7=n, v8=zero
 
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
 
@@ -60,8 +62,6 @@
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setDomStorageEnabled(Z)V
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setAllowFileAccess(Z)V
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setAllowContentAccess(Z)V
-    invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setAllowUniversalAccessFromFileURLs(Z)V
-    invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setAllowFileAccessFromFileURLs(Z)V
 
     const/4 v2, 0x0
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setBuiltInZoomControls(Z)V
@@ -76,9 +76,9 @@
     invoke-direct {v2}, Landroid/webkit/WebChromeClient;-><init>()V
     invoke-virtual {v0, v2}, Landroid/webkit/WebView;->setWebChromeClient(Landroid/webkit/WebChromeClient;)V
 
-    # Read index.html from assets and load with HTTPS base URL so the WebView
-    # treats the page as HTTPS — this bypasses the API 29+ restriction that
-    # ignores setAllowUniversalAccessFromFileURLs and lets Firestore connect.
+    # Read index.html bytes from assets, start LocalServer, load from localhost.
+    # ServerSocket is bound in LocalServer constructor (before start()), so the port
+    # is ready before loadUrl fires — no race condition.
     :try_start_0
     invoke-virtual {p0}, Landroid/app/Activity;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v3
@@ -104,27 +104,21 @@
     :read_done
     invoke-virtual {v4}, Ljava/io/InputStream;->close()V
 
-    const-string v6, "UTF-8"
-    invoke-virtual {v5, v6}, Ljava/io/ByteArrayOutputStream;->toString(Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v7
+    invoke-virtual {v5}, Ljava/io/ByteArrayOutputStream;->toByteArray()[B
+    move-result-object v6
 
-    # Arrange consecutive registers for invoke-virtual/range:
-    # v3=WebView, v4=baseUrl, v5=html, v6=mimeType, v7=encoding, v8=null(historyUrl)
-    move-object v3, v0
-    const-string v4, "https://app.portioncalc.local/"
-    move-object v5, v7
-    const-string v6, "text/html"
-    const-string v7, "UTF-8"
-    const/4 v8, 0x0
+    new-instance v3, Lcom/portioncalc/app/LocalServer;
+    invoke-direct {v3, v6}, Lcom/portioncalc/app/LocalServer;-><init>([B)V
+    invoke-virtual {v3}, Ljava/lang/Thread;->start()V
 
-    invoke-virtual/range {v3 .. v8}, Landroid/webkit/WebView;->loadDataWithBaseURL(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    const-string v4, "http://localhost:12345/"
+    invoke-virtual {v0, v4}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_fallback
 
     goto :after_load
 
     :catch_fallback
-    # Fallback to direct file URL if asset reading fails
     const-string v3, "file:///android_asset/index.html"
     invoke-virtual {v0, v3}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
 
