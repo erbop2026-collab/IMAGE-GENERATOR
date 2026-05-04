@@ -788,7 +788,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.10</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.11</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2144,6 +2144,7 @@ function updateSyncStatus(state, detail) {
   if (_syncLog.length > 20) _syncLog.shift();
   el.title = _syncLog.slice(-5).join('\n');
 }
+var _persistenceStatus = 'unknown';
 function showSyncDebug() {
   var snap = JSON.stringify(firstSnapshotReceived);
   var saveAts = ['products','recipes','pots','packs'].map(function(k){
@@ -2153,8 +2154,11 @@ function showSyncDebug() {
     return k + ':' + (_lastSnapSource[k] || '?');
   }).join(', ');
   var lines = [
-    'Firebase SDK: ' + (typeof firebase !== 'undefined' ? 'loaded' : 'NOT LOADED'),
+    'v: ' + (document.querySelector('h1 span') ? document.querySelector('h1 span').textContent : '?'),
+    'origin: ' + location.origin,
+    'Firebase: ' + (typeof firebase !== 'undefined' ? 'loaded' : 'NOT LOADED'),
     'Firestore ready: ' + firestoreReady,
+    'Persistence: ' + _persistenceStatus,
     'navigator.onLine: ' + navigator.onLine,
     'Snapshots rcvd: ' + snap,
     'Snap sources: ' + sources,
@@ -2165,10 +2169,18 @@ function showSyncDebug() {
     _syncLog.join('\n')
   ];
   var msg = lines.join('\n');
-  // Test HTTPS connectivity via a reliable endpoint
+  // 1. Generic HTTPS test
   fetch('https://www.googleapis.com/robots.txt', {method:'GET', mode:'no-cors'})
-    .then(function(){ alert(msg + '\n--- Network test: FETCH OK (googleapis.com reachable)'); })
-    .catch(function(e){ alert(msg + '\n--- Network test: FETCH FAILED: ' + e); });
+    .then(function(){
+      // 2. If generic works, also test Firestore REST directly
+      return fetch('https://firestore.googleapis.com/v1/projects/portioncalc/databases/(default)/documents/catalog/products')
+        .then(function(r){ return r.ok ? 'Firestore REST: OK (' + r.status + ')' : 'Firestore REST: HTTP ' + r.status; })
+        .catch(function(e){ return 'Firestore REST: FAILED ' + e; });
+    })
+    .then(function(firestoreResult){
+      alert(msg + '\n--- Network: FETCH OK\n--- ' + firestoreResult);
+    })
+    .catch(function(e){ alert(msg + '\n--- Network: FETCH FAILED: ' + e); });
 }
 
 // Catalog sync targets — each is one Firestore document under collection 'catalog'.
@@ -2225,9 +2237,13 @@ function initFirebase() {
     // gRPC (HTTP/2) is blocked in Android WebView from file:// on API 29+ despite
     // setAllowUniversalAccessFromFileURLs — long-polling uses plain HTTP/1.1 which works.
     try { db.settings({ experimentalForceLongPolling: true, merge: true }); } catch(e) {}
-    db.enablePersistence({ synchronizeTabs: true }).catch(function(err){
-      console.warn('[sync] persistence unavailable:', err && err.code);
-    });
+    db.enablePersistence({ synchronizeTabs: true })
+      .then(function(){ _persistenceStatus = 'OK'; })
+      .catch(function(err){
+        var code = err && err.code || 'unknown';
+        _persistenceStatus = 'FAILED:' + code;
+        console.warn('[sync] persistence unavailable:', code);
+      });
   } catch(e) {
     console.error('[sync] init failed:', e);
     updateSyncStatus('error', String(e));
