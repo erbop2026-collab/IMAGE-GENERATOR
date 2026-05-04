@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.16.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.0</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1328,8 +1328,9 @@ Pasta,oz,8,16"></textarea>
         </select>
       </div>
     </div>
+    <div id="newRecipeDensityRow" style="font-size:11px;color:var(--text-muted);margin:-4px 0 8px;padding:6px 10px;background:#f8fafc;border-radius:6px;">Density: — <span style="opacity:.7;">(fill both yield + volume to compute; edits preserve density)</span></div>
     <div class="field">
-      <label>Or pick equipment to auto-fill yield + volume <span style="color:var(--text-muted);font-weight:400;">(from the 🧰 Equipment catalog)</span></label>
+      <label>Or pick equipment to auto-fill yield + volume <span style="color:var(--text-muted);font-weight:400;">(informational — does not affect calculation)</span></label>
       <select id="newRecipePotPick" data-pot-pick="add"><option value="">— manual entry —</option></select>
     </div>
     <div class="field">
@@ -3407,8 +3408,9 @@ function buildRecipeEditCard(r) {
           '<select data-recipe-edit="yieldVolumeUnit" data-rid="' + r.id + '">' + volUnitOpts + '</select>' +
         '</div>' +
       '</div>' +
+      '<div data-recipe-density="' + r.id + '" style="font-size:11px;color:var(--text-muted);margin:-4px 0 8px;padding:6px 10px;background:#f8fafc;border-radius:6px;">Density: —</div>' +
       '<div class="field">' +
-        '<label>Or pick equipment to auto-fill yield + volume</label>' +
+        '<label>Or pick equipment to auto-fill yield + volume <span style="color:var(--text-muted);font-weight:400;">(informational — does not affect calculation)</span></label>' +
         '<select data-pot-pick="edit-' + r.id + '"><option value="">— manual entry —</option></select>' +
       '</div>' +
       '<div class="field">' +
@@ -3453,6 +3455,17 @@ function renderRecipes() {
     if (refPicker && editingRecForPot && editingRecForPot.referenceEquipmentId) {
       refPicker.value = editingRecForPot.referenceEquipmentId;
     }
+    // v2.17.0 — wire yield ↔ volume coupling on the inline edit form.
+    var rid = recipeEditingId;
+    window._editYieldCoupling = setupYieldCoupling(
+      document.querySelector('[data-recipe-edit="yield"][data-rid="' + rid + '"]'),
+      document.querySelector('[data-recipe-edit="yieldUnit"][data-rid="' + rid + '"]'),
+      document.querySelector('[data-recipe-edit="yieldVolume"][data-rid="' + rid + '"]'),
+      document.querySelector('[data-recipe-edit="yieldVolumeUnit"][data-rid="' + rid + '"]'),
+      document.querySelector('[data-recipe-density="' + rid + '"]')
+    );
+  } else {
+    window._editYieldCoupling = null;
   }
   // Populate pack-multi lists for the edit card (if any).
   if (typeof populatePackMultiLists === 'function' && recipeEditingId) {
@@ -3555,6 +3568,127 @@ function renderRecipes() {
     });
   });
 }
+
+// v2.17.0 — yield ↔ volume coupling on the recipe form.
+//
+// One physical batch has both a weight (yield) and a volume; they're related
+// by density (water-relative; water = 1.0). The form keeps both sides in
+// sync: edit weight → volume updates preserving density; edit volume →
+// weight updates preserving density. Unit dropdown changes auto-convert
+// the number within the same kind. Equipment select fills both at once.
+//
+// Density is derived from the values when both are filled (and the field
+// kinds match weight + volume). If either side is empty or kinds don't
+// match, no coupling — fields stay independent.
+function impliedDensityVal(yieldVal, yieldUnit, volVal, volUnit) {
+  var w = UNIT_INFO[yieldUnit], v = UNIT_INFO[volUnit];
+  if (!w || !v) return 0;
+  if (w.kind !== 'weight' || v.kind !== 'volume') return 0;
+  if (!(yieldVal > 0) || !(volVal > 0)) return 0;
+  return (yieldVal * w.base) / (volVal * v.base);
+}
+function setupYieldCoupling(yieldEl, unitEl, volEl, volUnitEl, densityEl) {
+  if (!yieldEl || !unitEl) return;
+  var oldYield = parseFloat(yieldEl.value) || 0;
+  var oldVol = volEl ? (parseFloat(volEl.value) || 0) : 0;
+  var oldYieldUnit = unitEl.value;
+  var oldVolUnit = volUnitEl ? volUnitEl.value : 'floz';
+
+  function refreshDensity() {
+    if (!densityEl) return;
+    var y = parseFloat(yieldEl.value) || 0;
+    var v = volEl ? (parseFloat(volEl.value) || 0) : 0;
+    var d = impliedDensityVal(y, unitEl.value, v, volUnitEl ? volUnitEl.value : 'floz');
+    if (d > 0) {
+      var hint = '';
+      if (Math.abs(d - 1) < 0.1) hint = ' ≈ water';
+      else if (d < 0.6) hint = ' (airy)';
+      else if (d > 1.5) hint = ' ⚠ unusually dense — check fields';
+      densityEl.innerHTML = 'Density: <strong>' + d.toFixed(2) + ' g/ml</strong>' + hint;
+    } else {
+      densityEl.innerHTML = 'Density: — <span style="opacity:.7;">(fill both yield + volume to compute)</span>';
+    }
+  }
+  function onYieldInput() {
+    var newYield = parseFloat(yieldEl.value) || 0;
+    var d = impliedDensityVal(oldYield, oldYieldUnit, oldVol, oldVolUnit);
+    if (d > 0 && newYield > 0 && volEl && volUnitEl) {
+      var yi = UNIT_INFO[unitEl.value], vi = UNIT_INFO[volUnitEl.value];
+      if (yi && vi && yi.kind === 'weight' && vi.kind === 'volume') {
+        var newVolFloz = (newYield * yi.base) / d;
+        volEl.value = +(newVolFloz / vi.base).toFixed(2);
+        oldVol = parseFloat(volEl.value) || 0;
+      }
+    }
+    oldYield = newYield;
+    refreshDensity();
+  }
+  function onVolInput() {
+    if (!volEl) return;
+    var newVol = parseFloat(volEl.value) || 0;
+    var d = impliedDensityVal(oldYield, oldYieldUnit, oldVol, oldVolUnit);
+    if (d > 0 && newVol > 0) {
+      var yi = UNIT_INFO[unitEl.value], vi = UNIT_INFO[volUnitEl.value];
+      if (yi && vi && yi.kind === 'weight' && vi.kind === 'volume') {
+        var newYieldOz = (newVol * vi.base) * d;
+        yieldEl.value = +(newYieldOz / yi.base).toFixed(2);
+        oldYield = parseFloat(yieldEl.value) || 0;
+      }
+    }
+    oldVol = newVol;
+    refreshDensity();
+  }
+  function onYieldUnitChange() {
+    var newUnit = unitEl.value;
+    if (oldYieldUnit !== newUnit) {
+      var oi = UNIT_INFO[oldYieldUnit], ni = UNIT_INFO[newUnit];
+      if (oi && ni && oi.kind === ni.kind) {
+        var v = parseFloat(yieldEl.value) || 0;
+        if (v > 0) yieldEl.value = +(v * oi.base / ni.base).toFixed(2);
+      }
+      oldYieldUnit = newUnit;
+      oldYield = parseFloat(yieldEl.value) || 0;
+      refreshDensity();
+    }
+  }
+  function onVolUnitChange() {
+    if (!volUnitEl || !volEl) return;
+    var newUnit = volUnitEl.value;
+    if (oldVolUnit !== newUnit) {
+      var oi = UNIT_INFO[oldVolUnit], ni = UNIT_INFO[newUnit];
+      if (oi && ni && oi.kind === ni.kind) {
+        var v = parseFloat(volEl.value) || 0;
+        if (v > 0) volEl.value = +(v * oi.base / ni.base).toFixed(2);
+      }
+      oldVolUnit = newUnit;
+      oldVol = parseFloat(volEl.value) || 0;
+      refreshDensity();
+    }
+  }
+  yieldEl.addEventListener('input', onYieldInput);
+  if (volEl) volEl.addEventListener('input', onVolInput);
+  unitEl.addEventListener('change', onYieldUnitChange);
+  if (volUnitEl) volUnitEl.addEventListener('change', onVolUnitChange);
+  // Equipment-pick handler later sets values programmatically; expose a
+  // refresh hook so we can re-baseline old* + density display after a fill.
+  return {
+    refresh: function() {
+      oldYield = parseFloat(yieldEl.value) || 0;
+      oldVol = volEl ? (parseFloat(volEl.value) || 0) : 0;
+      oldYieldUnit = unitEl.value;
+      oldVolUnit = volUnitEl ? volUnitEl.value : 'floz';
+      refreshDensity();
+    }
+  };
+}
+// Wire the static Add-Recipe form (single permanent instance).
+var _addRecipeYieldCoupling = setupYieldCoupling(
+  document.getElementById('newRecipeYield'),
+  document.getElementById('newRecipeYieldUnit'),
+  document.getElementById('newRecipeYieldVolume'),
+  document.getElementById('newRecipeYieldVolumeUnit'),
+  document.getElementById('newRecipeDensityRow')
+);
 
 document.getElementById('addRecipeBtn').addEventListener('click', function() {
   var name = document.getElementById('newRecipeName').value.trim();
@@ -7389,6 +7523,10 @@ document.addEventListener('change', function(e) {
       volEl.value = pot.volumeOz.toFixed(1);
       volUnitEl.value = 'floz';
     }
+    // v2.17.0 — re-baseline the coupling helper so the new (yield, volume)
+    // pair becomes the reference for density preservation on subsequent edits.
+    if (key === 'add' && _addRecipeYieldCoupling)             _addRecipeYieldCoupling.refresh();
+    else if (key.indexOf('edit-') === 0 && window._editYieldCoupling) window._editYieldCoupling.refresh();
     return;
   }
   if (e.target.matches('[data-pack-pick]')) {
