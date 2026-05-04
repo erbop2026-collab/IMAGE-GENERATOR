@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.2</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.3</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1270,36 +1270,6 @@ Pasta,oz,8,16"></textarea>
     <div id="recipesList"></div>
   </div>
 
-  <!-- v2.17.1 — Reverse Calc per recipe (replaces the old per-ingredient version on the Ingredients tab). -->
-  <div class="card">
-    <div class="card-title">🔄 Reverse Calc — How many portions?</div>
-    <div class="field">
-      <label>Recipe</label>
-      <select id="revRecipe"><option value="">— pick a recipe —</option></select>
-    </div>
-    <div id="revRecipeInfo" style="font-size:12px;color:var(--text-muted);margin:-4px 0 8px;display:none;"></div>
-    <div id="revInputArea" style="display:none;">
-      <div class="field">
-        <label>I have</label>
-        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;">
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="revMode" value="batches" checked> N batches</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="revMode" value="cooked"> X cooked</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="revMode" value="raw"> R raw of ⭐ lead</label>
-        </div>
-      </div>
-      <div class="field">
-        <label id="revInputLabel">Number of batches</label>
-        <input type="number" id="revInputValue" step="any" min="0" placeholder="e.g. 1" inputmode="decimal">
-        <div id="revInputHint" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
-      </div>
-      <div class="field">
-        <label>Portion size</label>
-        <select id="revPortionSize"><option value="">— pick a portion / packaging —</option></select>
-      </div>
-      <div id="revResult" class="reverse-result empty">Enter values to see how many portions you get.</div>
-    </div>
-  </div>
-
   <div class="card">
     <div class="card-title">➕ Add New Recipe</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products. Mark one component as ⭐ <strong>lead</strong> — its raw weight drives pot sizing in the kitchen view.</p>
@@ -1310,8 +1280,8 @@ Pasta,oz,8,16"></textarea>
     <div class="field" style="margin-bottom:6px;">
       <label>Yield mode</label>
       <div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;">
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="newRecipeYieldMode" value="cooked" checked> Cooked output (manual)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="newRecipeYieldMode" value="derived"> Derived from ⭐ lead RAW</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="newRecipeYieldMode" value="cooked" checked> Cooked output (manual)</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="newRecipeYieldMode" value="derived"> Derived from ⭐ lead RAW</label>
       </div>
     </div>
     <div class="row-grid">
@@ -3366,6 +3336,30 @@ function buildRecipeViewCard(r) {
     }).join(' · ');
     packLine = '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📦 ' + packNames + '</div>';
   }
+  // v2.17.3 — embedded per-recipe Reverse Calc panel at the bottom of each
+  // view card. Was a separate card with a recipe picker; redundant when each
+  // recipe has its own context.
+  var revPanel =
+    '<div class="recipe-rev" data-rev-rid="' + r.id + '" style="margin-top:14px;padding-top:12px;border-top:1px dashed #e2e8f0;">' +
+      '<div style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--text-muted);">🔄 How many portions?</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">I have</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;margin-bottom:8px;">' +
+        '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="revMode-' + r.id + '" value="batches" checked> N batches</label>' +
+        '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="revMode-' + r.id + '" value="cooked"> X cooked</label>' +
+        '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="revMode-' + r.id + '" value="raw"> R raw of ⭐ lead</label>' +
+      '</div>' +
+      '<div class="row-grid">' +
+        '<div class="field" style="margin:0;">' +
+          '<label data-rev-label="' + r.id + '" style="font-size:11px;">Number of batches</label>' +
+          '<input type="number" data-rev-input="' + r.id + '" step="any" min="0" placeholder="e.g. 1" inputmode="decimal">' +
+        '</div>' +
+        '<div class="field" style="margin:0;">' +
+          '<label style="font-size:11px;">Portion size</label>' +
+          '<select data-rev-portion="' + r.id + '"><option value="">— pick —</option></select>' +
+        '</div>' +
+      '</div>' +
+      '<div data-rev-result="' + r.id + '" class="reverse-result empty" style="margin-top:8px;font-size:13px;">Pick portion size and enter a value to see the result.</div>' +
+    '</div>';
   div.innerHTML =
     '<div class="product-item-header">' +
       '<div style="flex:1;min-width:0;">' +
@@ -3381,7 +3375,8 @@ function buildRecipeViewCard(r) {
         '<button class="btn-secondary btn-icon" data-dup-recipe="' + r.id + '" title="Duplicate">📋</button>' +
         '<button class="btn-danger btn-icon" data-del-recipe="' + r.id + '" title="Delete">🗑️</button>' +
       '</div>' +
-    '</div>';
+    '</div>' +
+    revPanel;
   return div;
 }
 
@@ -3410,8 +3405,8 @@ function buildRecipeEditCard(r) {
       '<div class="field" style="margin-bottom:6px;">' +
         '<label>Yield mode</label>' +
         '<div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;">' +
-          '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="recipeYieldMode-' + r.id + '" value="cooked"' + ((r.yieldMode || 'cooked') === 'cooked' ? ' checked' : '') + '> Cooked output (manual)</label>' +
-          '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="recipeYieldMode-' + r.id + '" value="derived"' + (r.yieldMode === 'derived' ? ' checked' : '') + '> Derived from ⭐ lead RAW</label>' +
+          '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="recipeYieldMode-' + r.id + '" value="cooked"' + ((r.yieldMode || 'cooked') === 'cooked' ? ' checked' : '') + '> Cooked output (manual)</label>' +
+          '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="recipeYieldMode-' + r.id + '" value="derived"' + (r.yieldMode === 'derived' ? ' checked' : '') + '> Derived from ⭐ lead RAW</label>' +
         '</div>' +
       '</div>' +
       '<div class="row-grid">' +
@@ -3594,8 +3589,12 @@ function renderRecipes() {
       toast('Recipe updated ✓');
     });
   });
-  // v2.17.1 — keep the Reverse Calc recipe picker in sync with the list.
-  if (typeof renderReverseSelect === 'function') renderReverseSelect();
+  // v2.17.3 — populate per-card Reverse Calc portion-size dropdowns + label.
+  recipes.forEach(function(r) {
+    if (recipeEditingId === r.id) return; // edit card has no rev panel
+    populateRevPortionsForRecipe(r.id);
+    updateRevLabelForRecipe(r.id);
+  });
   list.querySelectorAll('[data-cancel-recipe]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       recipeEditingId = null;
@@ -3783,6 +3782,15 @@ function refreshDerivedYield(formKey, rid) {
   var derived = computeDerivedYield(listEl, unitEl.value);
   if (derived !== null && derived > 0) {
     yieldEl.value = +derived.toFixed(2);
+    yieldEl.placeholder = 'auto-computed';
+    if (coupling && coupling.refresh) coupling.refresh();
+  } else {
+    // Derived mode but nothing valid to derive from — clear the field so the
+    // stale value doesn't masquerade as a real auto-computed yield. Keep the
+    // mode selected; the user can either set ⭐ lead, fix its raw/cooked
+    // ratio, or switch back to "Cooked (manual)".
+    yieldEl.value = '';
+    yieldEl.placeholder = 'Mark ⭐ on a component to derive yield';
     if (coupling && coupling.refresh) coupling.refresh();
   }
 }
@@ -5160,56 +5168,23 @@ document.getElementById('orderDate').addEventListener('change', function(e) {
 });
 
 // ============ REVERSE CALC (#7) ============
-// v2.17.1 — recipe-level Reverse Calc. Replaces the ingredient-level
-// version that used to live on the 🥕 Ingredients tab. The unit of
-// reverse-calc is a recipe (the dish), not an individual ingredient,
-// because cooked yield is a property of the whole dish.
-function renderReverseSelect() {
-  var sel = document.getElementById('revRecipe');
-  if (!sel) return;
-  var prev = sel.value;
-  var opts = '<option value="">— pick a recipe —</option>' + recipes.slice()
-    .sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); })
-    .map(function(r){ return '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>'; })
-    .join('');
-  sel.innerHTML = opts;
-  if (prev && recipes.some(function(r){ return r.id === prev; })) sel.value = prev;
-  renderReverseInfo();
+// v2.17.3 — Reverse Calc embedded inside each recipe view card. Each card
+// has its own radio + input + portion-size dropdown + result, scoped by
+// the recipe id (data-rev-* attributes). Replaces the standalone card with
+// a recipe picker that lived above the recipe list.
+function getRevModeForRecipe(rid) {
+  var radios = document.querySelectorAll('input[name="revMode-' + rid + '"]');
+  for (var i = 0; i < radios.length; i++) if (radios[i].checked) return radios[i].value;
+  return 'batches';
 }
-function renderReverseInfo() {
-  var sel = document.getElementById('revRecipe');
-  if (!sel) return;
-  var infoEl = document.getElementById('revRecipeInfo');
-  var areaEl = document.getElementById('revInputArea');
-  var rid = sel.value;
+function populateRevPortionsForRecipe(rid) {
+  var sel = document.querySelector('[data-rev-portion="' + rid + '"]');
   var r = recipes.find(function(x){ return x.id === rid; });
-  if (!r) {
-    if (infoEl) infoEl.style.display = 'none';
-    if (areaEl) areaEl.style.display = 'none';
-    return;
-  }
-  if (infoEl) {
-    var u = unitLabel(r.yieldUnit || 'oz');
-    var pieces = ['1 batch = ' + format(r.yieldCooked || 0) + ' ' + u + ' cooked'];
-    if (r.yieldCookedVolume > 0) pieces.push(format(r.yieldCookedVolume) + ' ' + unitLabel(r.yieldVolumeUnit || 'floz'));
-    var lead = r.leadProductId ? products.find(function(p){ return p.id === r.leadProductId; }) : null;
-    var leadComp = lead ? (r.components || []).find(function(c){ return c.productId === lead.id; }) : null;
-    if (lead && leadComp && leadComp.amount > 0) pieces.push('⭐ ' + lead.name + ': ' + format(leadComp.amount) + ' ' + unitLabel(lead.unit) + ' raw / batch');
-    infoEl.textContent = pieces.join('   ·   ');
-    infoEl.style.display = '';
-  }
-  if (areaEl) areaEl.style.display = '';
-  populateRevPortionSizes(r);
-  renderRevModeUI();
-  renderReverseResult();
-}
-function populateRevPortionSizes(r) {
-  var sel = document.getElementById('revPortionSize');
-  if (!sel) return;
+  if (!sel || !r) return;
   var prev = sel.value;
   var dishUnit = r.yieldUnit || 'oz';
   var allowed = Array.isArray(r.packIds) ? r.packIds : [];
-  var opts = '<option value="">— pick a portion / packaging —</option>';
+  var opts = '<option value="">— pick —</option>';
   packs.forEach(function(pk) {
     if (!pk || pk.sizeUnit === 'ct') return;
     if (!(pk.sizeQty > 0)) return;
@@ -5228,56 +5203,42 @@ function populateRevPortionSizes(r) {
   sel.innerHTML = opts;
   if (prev && sel.querySelector('option[value="' + prev + '"]')) sel.value = prev;
 }
-function getRevMode() {
-  var radios = document.querySelectorAll('input[name="revMode"]');
-  for (var i = 0; i < radios.length; i++) if (radios[i].checked) return radios[i].value;
-  return 'batches';
-}
-function renderRevModeUI() {
-  var labelEl = document.getElementById('revInputLabel');
-  var hintEl = document.getElementById('revInputHint');
-  var rid = (document.getElementById('revRecipe') || {}).value;
+function updateRevLabelForRecipe(rid) {
+  var labelEl = document.querySelector('[data-rev-label="' + rid + '"]');
   var r = recipes.find(function(x){ return x.id === rid; });
   if (!labelEl || !r) return;
-  var mode = getRevMode();
+  var mode = getRevModeForRecipe(rid);
   var u = unitLabel(r.yieldUnit || 'oz');
-  if (mode === 'batches') {
-    labelEl.textContent = 'Number of batches';
-    if (hintEl) hintEl.textContent = '1 batch = ' + format(r.yieldCooked || 0) + ' ' + u + ' cooked.';
-  } else if (mode === 'cooked') {
-    labelEl.textContent = 'Total cooked you have (' + u + ')';
-    if (hintEl) hintEl.textContent = 'Enter the cooked amount in ' + u + '. Recipe yield: 1 batch = ' + format(r.yieldCooked || 0) + ' ' + u + '.';
-  } else if (mode === 'raw') {
+  if (mode === 'batches') labelEl.textContent = 'Number of batches';
+  else if (mode === 'cooked') labelEl.textContent = 'Total cooked (' + u + ')';
+  else if (mode === 'raw') {
     var lead = r.leadProductId ? products.find(function(p){ return p.id === r.leadProductId; }) : null;
-    if (!lead) {
-      labelEl.textContent = 'Raw lead amount';
-      if (hintEl) hintEl.textContent = '⚠ No ⭐ lead ingredient marked on this recipe — open ✏️ on the recipe and click ☆ next to one component.';
-    } else {
-      var leadComp = (r.components || []).find(function(c){ return c.productId === lead.id; });
-      labelEl.textContent = 'Raw amount of ' + lead.name + ' (' + unitLabel(lead.unit) + ')';
-      if (hintEl) hintEl.textContent = 'Recipe asks for ' + format((leadComp && leadComp.amount) || 0) + ' ' + unitLabel(lead.unit) + ' / batch. Lead raw→cooked ratio: ' + format(lead.raw || 0) + ' raw → ' + format(lead.cooked || 0) + ' cooked.';
-    }
+    labelEl.textContent = lead
+      ? 'Raw amount of ' + lead.name + ' (' + unitLabel(lead.unit) + ')'
+      : 'Raw lead amount (no ⭐ set — open ✏️)';
   }
 }
-function renderReverseResult() {
-  var box = document.getElementById('revResult');
-  if (!box) return;
-  var rid = (document.getElementById('revRecipe') || {}).value;
+function renderRevForRecipe(rid) {
   var r = recipes.find(function(x){ return x.id === rid; });
-  var inputVal = parseFloat((document.getElementById('revInputValue') || {}).value) || 0;
-  var portionSize = parseFloat((document.getElementById('revPortionSize') || {}).value) || 0;
-  if (!r || !(inputVal > 0) || !(portionSize > 0)) {
+  var box = document.querySelector('[data-rev-result="' + rid + '"]');
+  var inputEl = document.querySelector('[data-rev-input="' + rid + '"]');
+  var portionEl = document.querySelector('[data-rev-portion="' + rid + '"]');
+  if (!r || !box) return;
+  updateRevLabelForRecipe(rid);
+  var inputVal = inputEl ? (parseFloat(inputEl.value) || 0) : 0;
+  var portionSize = portionEl ? (parseFloat(portionEl.value) || 0) : 0;
+  if (!(inputVal > 0) || !(portionSize > 0)) {
     box.className = 'reverse-result empty';
-    box.textContent = 'Pick a recipe + portion size and enter values to see how many portions you get.';
+    box.textContent = 'Pick portion size and enter a value to see the result.';
     return;
   }
-  var mode = getRevMode();
+  var mode = getRevModeForRecipe(rid);
   var u = unitLabel(r.yieldUnit || 'oz');
   var totalCooked = 0;
   if (mode === 'batches') {
     if (!(r.yieldCooked > 0)) {
       box.className = 'reverse-result empty';
-      box.textContent = 'Recipe needs Yield / batch (cooked) — open ✏️ to fill it in.';
+      box.textContent = 'Recipe needs Yield / batch — open ✏️ to fill it in.';
       return;
     }
     totalCooked = inputVal * r.yieldCooked;
@@ -5294,35 +5255,38 @@ function renderReverseResult() {
     var dishInfo = UNIT_INFO[r.yieldUnit || 'oz'];
     if (!leadInfo || !dishInfo || leadInfo.kind !== dishInfo.kind) {
       box.className = 'reverse-result empty';
-      box.textContent = 'Lead ingredient unit (' + lead.unit + ') and recipe yield unit (' + (r.yieldUnit || 'oz') + ') are different kinds — convert manually for now.';
+      box.textContent = 'Lead unit (' + lead.unit + ') and recipe yield unit (' + (r.yieldUnit || 'oz') + ') are different kinds — convert manually.';
       return;
     }
-    var leadCookedInLeadUnit = inputVal * (lead.cooked / lead.raw);
-    totalCooked = leadCookedInLeadUnit * leadInfo.base / dishInfo.base;
+    totalCooked = inputVal * (lead.cooked / lead.raw) * leadInfo.base / dishInfo.base;
   }
   var portions = totalCooked / portionSize;
   var whole = Math.floor(portions);
   var leftover = totalCooked - whole * portionSize;
-  box.className = 'reverse-result';
   var batchesEquiv = (r.yieldCooked > 0) ? totalCooked / r.yieldCooked : 0;
-  box.innerHTML = '≈ <strong>' + format(portions) + '</strong> portions of ' + format(portionSize) + ' ' + escapeHtml(u) + ' ' +
-                  '<span style="font-weight:500;font-size:13px;opacity:0.85;">(' + format(totalCooked) + ' ' + escapeHtml(u) + ' cooked' +
+  box.className = 'reverse-result';
+  box.innerHTML = '≈ <strong>' + format(portions) + '</strong> portions of ' + format(portionSize) + ' ' + escapeHtml(u) +
+                  ' <span style="font-weight:500;font-size:13px;opacity:0.85;">(' + format(totalCooked) + ' ' + escapeHtml(u) + ' cooked' +
                   (batchesEquiv > 0 ? ', ' + format(batchesEquiv) + ' batch' + (Math.abs(batchesEquiv - 1) > 0.0001 ? 'es' : '') : '') +
                   (leftover > 0.001 ? ', leftover ' + format(leftover) + ' ' + escapeHtml(u) : '') +
                   ')</span>';
 }
-['revRecipe', 'revInputValue', 'revPortionSize'].forEach(function(elId) {
-  var el = document.getElementById(elId);
-  if (el) {
-    el.addEventListener('input', renderReverseResult);
-    el.addEventListener('change', function() {
-      if (elId === 'revRecipe') renderReverseInfo();
-      else renderReverseResult();
-    });
-  }
+// Old global names kept as no-ops so legacy callers don't error after the
+// refactor (they ran on data changes). They now do nothing useful — the
+// per-recipe rendering happens inside buildRecipeViewCard / renderRecipes.
+function renderReverseSelect() {}
+function renderReverseResult() {}
+// Delegated listeners — handle every recipe card on the page.
+document.addEventListener('input', function(e) {
+  var t = e.target;
+  if (!t || !t.matches) return;
+  if (t.matches('[data-rev-input]')) renderRevForRecipe(t.getAttribute('data-rev-input'));
 });
-document.querySelectorAll('input[name="revMode"]').forEach(function(r) {
-  r.addEventListener('change', function() { renderRevModeUI(); renderReverseResult(); });
+document.addEventListener('change', function(e) {
+  var t = e.target;
+  if (!t || !t.matches) return;
+  if (t.matches('[data-rev-portion]'))      renderRevForRecipe(t.getAttribute('data-rev-portion'));
+  else if (t.matches('input[name^="revMode-"]')) renderRevForRecipe(t.name.replace(/^revMode-/, ''));
 });
 
 // ============ HISTORY ============
