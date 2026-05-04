@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.5</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.5</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2115,6 +2115,7 @@ function getDeviceId() {
   return d;
 }
 
+var _syncLog = [];
 function updateSyncStatus(state, detail) {
   var el = document.getElementById('syncStatus');
   if (!el) return;
@@ -2126,7 +2127,26 @@ function updateSyncStatus(state, detail) {
     waiting: '⏳ …'
   };
   el.textContent = labels[state] || state;
-  if (detail) el.title = detail;
+  var msg = (new Date()).toISOString().slice(11,19) + ' ' + state + (detail ? ': ' + detail : '');
+  _syncLog.push(msg);
+  if (_syncLog.length > 20) _syncLog.shift();
+  el.title = _syncLog.slice(-5).join('\n');
+}
+function showSyncDebug() {
+  var snap = JSON.stringify(firstSnapshotReceived);
+  var lines = [
+    'Firebase SDK: ' + (typeof firebase !== 'undefined' ? 'loaded' : 'NOT LOADED'),
+    'Firestore ready: ' + firestoreReady,
+    'navigator.onLine: ' + navigator.onLine,
+    'Snapshots: ' + snap,
+    'Products: ' + products.length,
+    'Recipes: ' + recipes.length,
+    'Pots: ' + pots.length,
+    'Packs: ' + packs.length,
+    '---',
+    _syncLog.join('\n')
+  ];
+  alert(lines.join('\n'));
 }
 
 // Catalog sync targets — each is one Firestore document under collection 'catalog'.
