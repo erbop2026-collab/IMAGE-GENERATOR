@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.3</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.4</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -1166,26 +1166,26 @@ Pasta,oz,8,16"></textarea>
 
     <div class="field">
       <label>Name</label>
-      <input type="text" id="packName" placeholder="e.g. Small takeout box">
+      <input type="text" id="packName" placeholder="e.g. Small takeout box" title='Pack name. If it embeds a size like "Foil loaf 5 lb" or "Deli 8 fl oz", the capacity field auto-fills (only if Capacity is currently empty).'>
     </div>
     <div class="row-grid">
       <div class="field">
         <label>Shape</label>
-        <select id="packShape">
+        <select id="packShape" title="Geometric shape — drives the auto-derived capacity from dimensions.">
           <option value="rect">Rectangular (pan / tray)</option>
           <option value="round">Round (cup / container)</option>
         </select>
       </div>
-      <div class="field">
+      <div class="field" title="Inner dimensions in inches. Optional. When filled, capacity auto-derives geometrically (≈ 0.554 fl oz per cubic inch, water-density approximation).">
         <label>Inner dimensions (inches, optional)</label>
         <div id="packDimsRect" class="row-grid-3">
-          <input type="number" id="packDimL" step="any" min="0" placeholder="Length" inputmode="decimal">
-          <input type="number" id="packDimW" step="any" min="0" placeholder="Width" inputmode="decimal">
-          <input type="number" id="packDimH" step="any" min="0" placeholder="Height" inputmode="decimal">
+          <input type="number" id="packDimL" step="any" min="0" placeholder="Length" inputmode="decimal" title="Inside length in inches">
+          <input type="number" id="packDimW" step="any" min="0" placeholder="Width" inputmode="decimal" title="Inside width in inches">
+          <input type="number" id="packDimH" step="any" min="0" placeholder="Height" inputmode="decimal" title="Inside height in inches">
         </div>
         <div id="packDimsRound" class="row-grid" style="display:none;">
-          <input type="number" id="packDimD" step="any" min="0" placeholder="Diameter" inputmode="decimal">
-          <input type="number" id="packDimHround" step="any" min="0" placeholder="Height" inputmode="decimal">
+          <input type="number" id="packDimD" step="any" min="0" placeholder="Diameter" inputmode="decimal" title="Inside diameter in inches">
+          <input type="number" id="packDimHround" step="any" min="0" placeholder="Height" inputmode="decimal" title="Inside height in inches">
         </div>
       </div>
     </div>
@@ -1196,11 +1196,11 @@ Pasta,oz,8,16"></textarea>
     <div class="row-grid">
       <div class="field">
         <label>Capacity</label>
-        <input type="number" id="packSizeQty" step="any" min="0" placeholder="8" inputmode="decimal">
+        <input type="number" id="packSizeQty" step="any" min="0" placeholder="8" inputmode="decimal" title="The pack's usable capacity. Often less than the geometric maximum — manufacturers de-rate by 20-30%. Auto-fills from name/dimensions only when the field is empty; once you type a value it stays until you clear it.">
       </div>
       <div class="field">
         <label>Unit</label>
-        <select id="packSizeUnit">
+        <select id="packSizeUnit" title="Unit for the capacity. 'oz cooked' / 'lb cooked' = weight (mass). 'fl oz' / 'cup' / 'qt' = volume. 'portions' = count-based packs (e.g. clamshells, trays where one pack holds one serving).">
           <option value="oz">oz cooked</option>
           <option value="lb">lb cooked</option>
           <option value="floz">fl oz</option>
@@ -1211,16 +1211,16 @@ Pasta,oz,8,16"></textarea>
       </div>
     </div>
 
-    <div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;">
+    <div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;" title="What you actually buy from your supplier. Unit price = case price ÷ units per case.">
       <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Box / container</div>
       <div class="row-grid">
         <div class="field">
           <label>Units per case</label>
-          <input type="number" id="packCaseQty" step="any" min="0" placeholder="100" inputmode="decimal">
+          <input type="number" id="packCaseQty" step="any" min="0" placeholder="100" inputmode="decimal" title="How many individual packs come in one case from your supplier.">
         </div>
         <div class="field">
           <label>Case price ($)</label>
-          <input type="number" id="packCasePrice" step="any" min="0" placeholder="50.00" inputmode="decimal">
+          <input type="number" id="packCasePrice" step="any" min="0" placeholder="50.00" inputmode="decimal" title="Price you pay for one case (before adding lid).">
         </div>
       </div>
       <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
@@ -1229,21 +1229,21 @@ Pasta,oz,8,16"></textarea>
     </div>
 
     <div style="margin-top:10px;">
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;" title='Tick if your supplier sells the lid in a separate case (e.g. deli containers and soup cups). The unit price will be box + lid. If unticked, lid is assumed integrated into the pack.'>
         <input type="checkbox" id="packHasLid"> Separate lid (priced and counted on its own)
       </label>
     </div>
 
-    <div id="packLidSection" style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;display:none;">
+    <div id="packLidSection" style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;display:none;" title="Lid pricing — only used when 'Separate lid' is ticked. Without it the pack shows '⚠ Add lid price'.">
       <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Lid</div>
       <div class="row-grid">
         <div class="field">
           <label>Lids per case</label>
-          <input type="number" id="packLidCaseQty" step="any" min="0" placeholder="200" inputmode="decimal">
+          <input type="number" id="packLidCaseQty" step="any" min="0" placeholder="200" inputmode="decimal" title="How many lids come in one case (often different from pack count).">
         </div>
         <div class="field">
           <label>Case price ($)</label>
-          <input type="number" id="packLidCasePrice" step="any" min="0" placeholder="40.00" inputmode="decimal">
+          <input type="number" id="packLidCasePrice" step="any" min="0" placeholder="40.00" inputmode="decimal" title="Price for one case of lids.">
         </div>
       </div>
       <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
@@ -1275,23 +1275,23 @@ Pasta,oz,8,16"></textarea>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">A recipe is one meal made of multiple products. Mark one component as ⭐ <strong>lead</strong> — its raw weight drives pot sizing in the kitchen view.</p>
     <div class="field">
       <label>Recipe name</label>
-      <input type="text" id="newRecipeName" placeholder="e.g. Chicken & Rice meal">
+      <input type="text" id="newRecipeName" placeholder="e.g. Chicken & Rice meal" title="The name of the dish, as you'd describe it to the kitchen.">
     </div>
-    <div class="field" style="margin-bottom:6px;">
+    <div class="field" style="margin-bottom:6px;" title="Cooked: type the cooked yield yourself (best for bakes — empirical). Derived: auto-compute from ⭐ lead RAW × cooked/raw ratio (best for rice/pasta/beans).">
       <label>Yield mode</label>
       <div style="display:flex;flex-wrap:wrap;gap:10px 16px;font-size:13px;">
-        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="newRecipeYieldMode" value="cooked" checked> Cooked output (manual)</label>
-        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;"><input type="radio" name="newRecipeYieldMode" value="derived"> Derived from ⭐ lead RAW</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;" title="Type the cooked yield directly. Recommended for kugel, brisket, casserole."><input type="radio" name="newRecipeYieldMode" value="cooked" checked> Cooked output (manual)</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;" title="Auto-compute yield from the ⭐ lead component's raw weight and its raw/cooked ratio. Recommended for rice, pasta, beans."><input type="radio" name="newRecipeYieldMode" value="derived"> Derived from ⭐ lead RAW</label>
       </div>
     </div>
     <div class="row-grid">
       <div class="field">
         <label>Yield / batch (cooked) <span style="color:#dc2626;font-weight:600;">*</span></label>
-        <input type="number" id="newRecipeYield" step="any" min="0" placeholder="e.g. 10" inputmode="decimal">
+        <input type="number" id="newRecipeYield" step="any" min="0" placeholder="e.g. 10" inputmode="decimal" title="How much COOKED food one batch produces. The single anchor for calculations — without it the calculator can't scale orders.">
       </div>
       <div class="field">
         <label>Yield unit</label>
-        <select id="newRecipeYieldUnit">
+        <select id="newRecipeYieldUnit" title="Unit for the yield. Changing this auto-converts the number within the same kind (lb↔oz, qt↔floz).">
           <option value="oz">oz</option>
           <option value="lb">lb</option>
           <option value="floz">fl oz</option>
@@ -1305,11 +1305,11 @@ Pasta,oz,8,16"></textarea>
     <div class="row-grid">
       <div class="field">
         <label>Volume occupied <span style="color:var(--text-muted);font-weight:400;">(optional — for volume-based packaging)</span></label>
-        <input type="number" id="newRecipeYieldVolume" step="any" min="0" placeholder="e.g. 200" inputmode="decimal">
+        <input type="number" id="newRecipeYieldVolume" step="any" min="0" placeholder="e.g. 200" inputmode="decimal" title="The same batch but expressed by volume. Fill ONLY when you need the calculator to match packaging in a different unit kind (e.g. recipe in lb, packaging in fl oz). Coupled to yield via density.">
       </div>
       <div class="field">
         <label>Volume unit</label>
-        <select id="newRecipeYieldVolumeUnit">
+        <select id="newRecipeYieldVolumeUnit" title="Unit for the volume occupied. Changing auto-converts the number within volume kind.">
           <option value="floz">fl oz</option>
           <option value="cup">cup</option>
           <option value="qt">qt</option>
@@ -1318,13 +1318,13 @@ Pasta,oz,8,16"></textarea>
       </div>
     </div>
     <div id="newRecipeDensityRow" style="font-size:11px;color:var(--text-muted);margin:-4px 0 8px;padding:6px 10px;background:#f8fafc;border-radius:6px;">Density: — <span style="opacity:.7;">(fill both yield + volume to compute; edits preserve density)</span></div>
-    <div class="field">
+    <div class="field" title="Shortcut to auto-fill yield + volume from a pot/pan in your Equipment catalog. Informational only — never affects the calculation.">
       <label>Or pick equipment to auto-fill yield + volume <span style="color:var(--text-muted);font-weight:400;">(informational — does not affect calculation)</span></label>
       <select id="newRecipePotPick" data-pot-pick="add"><option value="">— manual entry —</option></select>
     </div>
     <div class="field">
       <label>Reference <span style="color:var(--text-muted);font-weight:400;">(optional kitchen note)</span></label>
-      <input type="text" id="newRecipeRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"'>
+      <input type="text" id="newRecipeRef" placeholder='e.g. "1 Kugel = 1 pan 9×13"' title="Free-text note for yourself. Not used by the calculator.">
     </div>
     <div class="field">
       <label>Components <span style="color:var(--text-muted);font-weight:400;">(RAW amounts per ONE batch / instance — click ☆ for ⭐ lead)</span></label>
@@ -1397,12 +1397,30 @@ Pasta,oz,8,16"></textarea>
     <p>Rows whose <code>name</code> matches an existing ingredient are <strong>updated in place</strong>; new names are added. After import you'll see a toast with <em>added / updated / skipped</em> counts; full per-row issues print to the browser console.</p>
 
     <h3>Recipes (composite dishes)</h3>
-    <p>A recipe is one meal made of several ingredients. Example: <em>Chicken &amp; Rice = 200 oz rice + 150 oz chicken + 50 oz sauce</em>. Define recipes in the <strong>🍲 Recipes</strong> tab — each component picks an ingredient from your catalog plus a per-meal amount.</p>
-    <p>In the order, tap <strong>+ Add Recipe</strong> (or quick-add via search) and enter the number of meals. The app expands each recipe into raw amounts of every component ingredient, summed into the regular ingredient totals — so the kitchen sees one consolidated shopping list and prep plan.</p>
-    <p>Recipes are <strong>flat</strong>: each component is a basic ingredient, not another recipe. (Nesting is intentionally not supported.)</p>
+    <p>A recipe is one meal made of several ingredients. Define recipes in the <strong>🍲 Recipes</strong> tab — each component picks an ingredient from your catalog plus a per-batch RAW amount.</p>
+    <p>Recipes are <strong>flat</strong>: each component is a basic ingredient, not another recipe.</p>
 
-    <h3>Reverse calculation</h3>
-    <p>On the Ingredients tab: pick an ingredient, enter the raw amount you have plus a portion size — the app tells you how many portions you can serve.</p>
+    <h4>Yield modes</h4>
+    <ul>
+      <li><strong>Cooked output (manual)</strong> — you type the cooked yield directly. Best for bake-driven recipes (kugel, brisket, casseroles) where the empirical output differs from raw inputs due to evaporation / fat loss.</li>
+      <li><strong>Derived from ⭐ lead RAW</strong> — yield auto-computed from <code>lead.amount × lead's cooked/raw ratio</code>. Best for raw-anchored recipes (rice, pasta, beans). The yield field becomes read-only and recomputes when ⭐ moves or its amount changes.</li>
+    </ul>
+
+    <h4>Yield / Volume coupling</h4>
+    <p>The <strong>Yield (cooked weight)</strong> and <strong>Volume occupied</strong> fields are linked through <em>density</em> (water-relative; default 1.0 = water). Editing weight updates volume preserving density; editing volume updates weight; the dropdown shows the implied density (<code>≈ water</code> / <code>airy</code> / <code>⚠ unusually dense</code>).</p>
+    <p>Volume occupied is <strong>optional</strong> — fill only when you'll match this dish to packaging in a different unit kind (recipe in <code>lb</code>, packaging in <code>fl oz</code>).</p>
+
+    <h4>Equipment picker</h4>
+    <p><strong>Informational only</strong> — never affects calculation. It's a tag and an auto-fill shortcut for yield + volume. You can edit any value afterwards.</p>
+
+    <h3>🔄 Reverse Calc — How many portions?</h3>
+    <p>Each recipe view card has a built-in Reverse Calc panel at the bottom. Pick one of three input modes:</p>
+    <ul>
+      <li><strong>N batches</strong> — multiplies recipe yield by N.</li>
+      <li><strong>X cooked</strong> — type how much cooked food you have directly.</li>
+      <li><strong>R raw of ⭐ lead</strong> — uses the lead's raw → cooked ratio (only when lead unit kind matches recipe yield kind).</li>
+    </ul>
+    <p>Pick a portion size from the recipe's tagged packs to get the result.</p>
 
     <h3>Sharing the order</h3>
     <p>Three export modes plus JSON backup, all in the <strong>Export &amp; Backup</strong> card.</p>
