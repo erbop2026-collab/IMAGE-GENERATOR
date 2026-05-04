@@ -788,7 +788,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.7</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.8</span> <span id="syncStatus" title="Cloud sync status — tap for details" onclick="showSyncDebug()" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2273,15 +2273,18 @@ function setupSyncListeners() {
       if (!data || !Array.isArray(data.items)) return;
       // Skip our own writes echoing back.
       if (data.updatedBy === deviceId) return;
-      // v2.13.11 — guard: if our last local save is newer than the cloud
-      // snapshot, the cloud is stale (e.g. device-id reset, persistence
-      // cache delivering an old version). Keep local and re-push.
-      var localSaveAt = getLocalSaveAt(t.id);
+      // v2.13.11 — stale guard, BUT only for cached snapshots (IndexedDB).
+      // Server snapshots (fromCache=false) from another device are authoritative
+      // and must always win — the old timestamp comparison broke multi-device sync
+      // because device B's push could be "older" than device A's local save.
       var cloudAt = data.updatedAt || 0;
-      if (localSaveAt > 0 && cloudAt < localSaveAt) {
-        console.log('[sync] cloud stale for ' + t.id + ' (cloud=' + cloudAt + ', local=' + localSaveAt + ') — re-pushing local');
-        pushToCloud(t.id);
-        return;
+      if (snap.metadata && snap.metadata.fromCache) {
+        var localSaveAt = getLocalSaveAt(t.id);
+        if (localSaveAt > 0 && cloudAt < localSaveAt) {
+          console.log('[sync] cache stale for ' + t.id + ' (cloud=' + cloudAt + ', local=' + localSaveAt + ') — re-pushing local');
+          pushToCloud(t.id);
+          return;
+        }
       }
       // v2.13.12 — price-loss guard: never let cloud overwrite a pack that has
       // a price locally with a cloud version that has no price. Re-push local
