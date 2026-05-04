@@ -8,7 +8,8 @@
 # Constructor stores bytes + WebView. No socket here — binding on main thread
 # throws NetworkOnMainThreadException on Android. Socket is created in run().
 .method public constructor <init>([BLandroid/webkit/WebView;)V
-    .registers 3
+    .registers 4
+    # p0=v1(this), p1=v2([B), p2=v3(WebView), v0=local bool
 
     invoke-direct {p0}, Ljava/lang/Thread;-><init>()V
     iput-object p1, p0, Lcom/portioncalc/app/LocalServer;->html:[B
