@@ -42,9 +42,9 @@
 .end method
 
 .method protected onCreate(Landroid/os/Bundle;)V
-    .registers 11
+    .registers 10
     # v0=WebView, v1=WebSettings, v2=bool, v3=AssetManager/LocalServer
-    # v4=InputStream/URL, v5=ByteArrayOutputStream, v6=buf→html, v7=n, v8=zero
+    # v4=InputStream, v5=ByteArrayOutputStream, v6=buf→html, v7=n, v8=zero
 
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
 
@@ -76,9 +76,8 @@
     invoke-direct {v2}, Landroid/webkit/WebChromeClient;-><init>()V
     invoke-virtual {v0, v2}, Landroid/webkit/WebView;->setWebChromeClient(Landroid/webkit/WebChromeClient;)V
 
-    # Read index.html bytes from assets, start LocalServer, load from localhost.
-    # ServerSocket is bound in LocalServer constructor (before start()), so the port
-    # is ready before loadUrl fires — no race condition.
+    # Read index.html bytes, start LocalServer (which binds socket + posts loadUrl
+    # from its background run() thread). No loadUrl call here.
     :try_start_0
     invoke-virtual {p0}, Landroid/app/Activity;->getAssets()Landroid/content/res/AssetManager;
     move-result-object v3
@@ -107,18 +106,17 @@
     invoke-virtual {v5}, Ljava/io/ByteArrayOutputStream;->toByteArray()[B
     move-result-object v6
 
+    # LocalServer(byte[] html, WebView wv) — socket binds in run() on background thread
     new-instance v3, Lcom/portioncalc/app/LocalServer;
-    invoke-direct {v3, v6}, Lcom/portioncalc/app/LocalServer;-><init>([B)V
+    invoke-direct {v3, v6, v0}, Lcom/portioncalc/app/LocalServer;-><init>([BLandroid/webkit/WebView;)V
     invoke-virtual {v3}, Ljava/lang/Thread;->start()V
-
-    const-string v4, "http://localhost:12345/"
-    invoke-virtual {v0, v4}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_fallback
 
     goto :after_load
 
     :catch_fallback
+    # Emergency fallback — asset read or LocalServer init failed
     const-string v3, "file:///android_asset/index.html"
     invoke-virtual {v0, v3}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
 
