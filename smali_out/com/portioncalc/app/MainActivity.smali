@@ -42,6 +42,10 @@
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setJavaScriptEnabled(Z)V
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setDomStorageEnabled(Z)V
 
+    # LOAD_NO_CACHE=2: always fetch from network, skip cache check (fixes ERR_CACHE_MISS)
+    const/4 v2, 0x2
+    invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setCacheMode(I)V
+
     const/4 v2, 0x0
     invoke-virtual {v1, v2}, Landroid/webkit/WebSettings;->setBuiltInZoomControls(Z)V
 
@@ -53,10 +57,12 @@
     invoke-direct {v2}, Landroid/webkit/WebChromeClient;-><init>()V
     invoke-virtual {v0, v2}, Landroid/webkit/WebView;->setWebChromeClient(Landroid/webkit/WebChromeClient;)V
 
+    # setContentView BEFORE loadUrl — WebView must be attached to window
+    # before network requests can be made
+    invoke-virtual {p0, v0}, Lcom/portioncalc/app/MainActivity;->setContentView(Landroid/view/View;)V
+
     const-string v2, "https://erbop2026-collab.github.io/IMAGE-GENERATOR/"
     invoke-virtual {v0, v2}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
-
-    invoke-virtual {p0, v0}, Lcom/portioncalc/app/MainActivity;->setContentView(Landroid/view/View;)V
 
     return-void
 .end method
