@@ -778,7 +778,7 @@
 <body>
 
 <header>
-  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.4</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
+  <h1>🍳 Kitchen Portion Calculator <span style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;">v2.17.5</span> <span id="syncStatus" title="Cloud sync status" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:help;">⏳ …</span> <span id="backupsBtn" title="Cloud backups — restore a previous version" role="button" style="font-size:11px;font-weight:500;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.3px;cursor:pointer;">💾 Backups</span></h1>
   <div class="subtitle">Calculate exact raw ingredient amounts from cooked portions</div>
 </header>
 
@@ -2194,10 +2194,11 @@ function initFirebase() {
   bootstrapFromCloud();
   setupSyncListeners();
   // Reflect online/offline transitions.
+  // NOTE: navigator.onLine is unreliable in Android WebView (file:// context) —
+  // it can return false even when the device is online. Status is driven by
+  // actual Firestore events (push success / listener error), not navigator.onLine.
   window.addEventListener('online',  function(){ updateSyncStatus('online'); });
   window.addEventListener('offline', function(){ updateSyncStatus('offline'); });
-  if (!navigator.onLine) updateSyncStatus('offline');
-  else setTimeout(function(){ updateSyncStatus('online'); }, 1500);
 }
 
 // First-time bootstrap: if Firestore doc is empty, seed it from local data.
@@ -2495,10 +2496,10 @@ function scheduleCatalogSeed() {
   var MAX_WAIT_MS = 30000;  // give up waiting after this long total
 
   function snapshotsReady() {
-    // If Firestore isn't initialized or we're offline, no snapshots are coming.
-    // Run the seed locally now — pushToCloud short-circuits when !firestoreReady,
-    // and the per-target push guard below handles the offline case too.
-    if (!firestoreReady || !navigator.onLine) return true;
+    // If Firestore isn't initialized, no snapshots are coming — run seed locally.
+    // NOTE: removed navigator.onLine check — unreliable in Android WebView (file://)
+    // always returns false. The 30s timeout handles the truly-offline case.
+    if (!firestoreReady) return true;
     return firstSnapshotReceived.products &&
            firstSnapshotReceived.recipes  &&
            firstSnapshotReceived.pots     &&
