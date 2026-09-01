@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join the AI Shidduch Database</title>
+<meta name="description" content="Send your resume and picture to join the AI shidduch database.">
+<meta property="og:title" content="Join the AI Shidduch Database">
+<meta property="og:description" content="Tap to send your resume and picture.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --bg:#f6f5f2; --card:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b;
+    --line:#e4e2dd; --accent:#1f6feb; --accent-ink:#ffffff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#121212; --card:#1c1c1c; --ink:#f2f2f2; --muted:#a0a0a0;
+           --line:#2e2e2e; --accent:#4d8dff; --accent-ink:#0b0b0b; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:var(--bg); color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .card{
+    width:100%; max-width:420px; background:var(--card); border:1px solid var(--line);
+    border-radius:18px; padding:32px 26px; text-align:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.04),0 12px 32px rgba(0,0,0,.06);
+  }
+  .mark{font-size:38px; line-height:1; margin-bottom:14px}
+  h1{font-size:22px; line-height:1.25; margin:0 0 10px; letter-spacing:-.01em}
+  p{margin:0 0 22px; color:var(--muted); font-size:15px}
+  a.btn{
+    display:block; padding:15px 18px; border-radius:12px; text-decoration:none;
+    font-weight:600; font-size:16px; margin-bottom:10px;
+    background:var(--accent); color:var(--accent-ink);
+  }
+  a.btn.secondary{ background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .note{
+    margin:18px 0 0; padding-top:16px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--muted);
+  }
+  .addr{font-size:13px; color:var(--muted); word-break:break-all; margin-top:10px}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark">💌</div>
+    <h1>Join the AI Shidduch Database</h1>
+    <p>Your message is already written. Just attach your resume and picture, then hit send.</p>
+
+    <a class="btn" id="mail" href="#">Open Email App</a>
+    <a class="btn secondary" id="gmail" href="#" target="_blank" rel="noopener">Open in Gmail</a>
+
+    <p class="note">Email clients cannot pre-attach files. Please attach your resume and picture manually before sending.</p>
+    <p class="addr" id="addr"></p>
+  </main>
+
+<script>
+  var TO      = "zivug16@gmail.com";
+  var SUBJECT = "Joining the AI Shidduch Database";
+  var BODY    = "Hi, I am interested in joining the AI shidduch database. Below is my resume and picture.";
+
+  var q = "subject=" + encodeURIComponent(SUBJECT) + "&body=" + encodeURIComponent(BODY);
+  var mailto = "mailto:" + TO + "?" + q;
+  var gmail  = "https://mail.google.com/mail/?view=cm&fs=1&to=" + encodeURIComponent(TO) + "&" + q;
+
+  document.getElementById("mail").href  = mailto;
+  document.getElementById("gmail").href = gmail;
+  document.getElementById("addr").textContent = TO;
+
+  // Try to hand off to the mail client straight away; the buttons stay as a fallback
+  // because in-app browsers (WhatsApp, Instagram) often block automatic mailto navigation.
+  setTimeout(function(){ window.location.href = mailto; }, 400);
+</script>
+</body>
+</html>
